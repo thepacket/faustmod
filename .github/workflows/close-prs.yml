@@ -1,0 +1,42 @@
+name: Close pull requests
+
+# This project is not accepting pull requests at this time (see CONTRIBUTING.md).
+# Any PR opened against it is politely commented on and closed automatically.
+#
+# Uses pull_request_target so GITHUB_TOKEN has write access to comment/close even for
+# PRs from forks. It only comments and closes — it never checks out or runs the PR's
+# code, so there is no risk from untrusted contributions.
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const number = context.payload.pull_request.number;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+              body: [
+                "Thanks for your interest in FaustMod! 🙌",
+                "",
+                "This project is **not accepting pull requests at this time**, so this PR is being closed automatically. This isn't a reflection on your work.",
+                "",
+                "Bug reports and ideas are very welcome as [issues](../../issues), and you're free to fork the project (MIT licensed) and build on it. See [CONTRIBUTING.md](../../blob/master/CONTRIBUTING.md).",
+              ].join("\n"),
+            });
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: number,
+              state: "closed",
+            });

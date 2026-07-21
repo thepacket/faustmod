@@ -25,6 +25,29 @@ Click a component in the left panel to add it, drag between sockets to patch, th
 **Start Audio**. To use the AI panel, add your OpenRouter API key under **⚙ Settings**
 (stored only in your browser's localStorage; the browser calls OpenRouter directly).
 
+### Building the block catalog
+
+The DSP blocks are **precompiled at build time** into WASM factories. These artifacts —
+`public/factories/` and `src/generated/catalog.json` — are **generated, not committed**
+(they're in `.gitignore`), so a fresh clone must build them before the app can load any
+blocks:
+
+```bash
+npm run catalog            # compile all blocks → public/factories/ + src/generated/catalog.json
+npm run catalog -- --force # force a full rebuild (skips the up-to-date check)
+```
+
+You normally don't run this by hand — it's wired to run automatically:
+
+- **`npm run dev`** → `predev` runs `npm run catalog`
+- **`npm run build`** → `prebuild` runs `npm run catalog`
+
+The step **skips when already fresh** (catalog newer than `scripts/blocks.mjs`), so it
+only pays the compile cost when the block definitions change. Requires no external tools —
+libfaust runs in Node via `@grame/faustwasm`. See
+[Block catalog & precompiled factories](#block-catalog--precompiled-factories-scaling)
+for how it works and how to add blocks.
+
 ## Architecture
 
 The **audio engine** (`src/audio/`) is deliberately decoupled from the **editor**
@@ -37,14 +60,14 @@ The **audio engine** (`src/audio/`) is deliberately decoupled from the **editor*
 | `AudioGraph` | Holds the *desired* graph (nodes, connections, params). While "live", mirrors it into real Web Audio nodes. |
 | `units.ts` | `FaustUnit` / `ConstantUnit` / `OutputUnit` / `InputUnit` — each exposes Faust channels as individual mono ports via `ChannelSplitter`/`ChannelMerger`; `FaustUnit` also manages the fallback default sources for control inputs. |
 
-Each Faust component compiles to **its own AudioWorklet**; a rete connection becomes a
-`splitter.connect(merger, srcCh, dstCh)` call. The editor pushes every change
+Each Faust component runs as **its own AudioWorklet** (instantiated from a precompiled
+factory); a rete connection becomes a `splitter.connect(merger, srcCh, dstCh)` call. The editor pushes every change
 (`nodecreated`, `connectioncreated`, param edits…) into `AudioGraph`, so playback stays
 in sync with the canvas whether or not audio is currently running.
 
-Component metadata is discovered by **compiling every library component once at startup**
-(`LibraryService`), so the editor knows each node's sockets and parameters before any
-audio starts.
+Component metadata (ports, defaults) is declared up front and loaded from the generated
+`catalog.json`, so the editor knows each node's sockets and parameters instantly — no
+compilation happens at startup (see below).
 
 ## Block catalog & precompiled factories (scaling)
 
