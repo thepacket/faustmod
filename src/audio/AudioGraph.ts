@@ -9,6 +9,7 @@ import {
   GateFreqUnit,
   Vec2Unit,
   SamplerUnit,
+  GranularUnit,
   NullUnit,
   Monitors,
 } from "./monitors";
@@ -169,6 +170,9 @@ class AudioGraphImpl {
                 break;
               case "sampler":
                 widgetUnit = await SamplerUnit.create(ctx);
+                break;
+              case "granular":
+                widgetUnit = await GranularUnit.create(ctx);
                 break;
               case "comment":
                 widgetUnit = new NullUnit();

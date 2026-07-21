@@ -31,6 +31,8 @@ AudioWorklets in the browser.
   macro, a **Comment** note, a **Clock (BPM)**, and an **Env VCA** (gate-driven ADSR).
 - **Sample player** — load an audio file; a trigger plays it, with a rate/pitch control
   and stereo output.
+- **Granular** — load a file and get a continuous windowed grain cloud with position,
+  grain size, density, pitch and spray control inputs (scan/modulate them for textures).
 - **Custom blocks** — paste Faust source (with port metadata), compiled in-browser and
   added to the palette. See *Custom DSP blocks* below.
 - **Multiple tabs** — one patch per tab; only the active tab plays.
@@ -230,8 +232,6 @@ Things an electronic musician would expect that aren't built yet (rough priority
 - **Polyphony** — voice allocation (Faust supports poly DSP); poly Keyboard/MIDI.
 - **Global transport / master clock** — one BPM synced across sequencers; play/stop.
 - **MIDI out** and **MIDI clock** sync; **MIDI CC → control** node.
-- **Granular** synthesis (sample player, wavetable, mixer, pan, mod-matrix, XY pad and
-  per-step gate/velocity are **done**).
 - **Preset / example-patch browser** (bundled `.faustmod` demos) + patch thumbnails.
 - **Node editing** — copy/paste nodes, grouping / sub-patches (macros), alignment.
 - **Recording** — WAV export (currently `.webm`), loop/overdub.

@@ -53,6 +53,8 @@ export function Sampler({ node }: { node: WidgetNode }) {
   };
 
   const stop = (e: PointerEvent) => e.stopPropagation();
+  const idleHint =
+    node.widget === "granular" ? "grain cloud · wire pos/size/density" : "trig ▸ play · rate ▸ speed";
 
   return (
     <div className="sampler" onPointerDown={stop}>
@@ -66,7 +68,7 @@ export function Sampler({ node }: { node: WidgetNode }) {
         style={{ display: "none" }}
         onChange={onPick}
       />
-      <div className="sampler-status">{status || "trig ▸ play · rate ▸ speed"}</div>
+      <div className="sampler-status">{status || idleHint}</div>
     </div>
   );
 }

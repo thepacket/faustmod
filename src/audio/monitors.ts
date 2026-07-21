@@ -563,6 +563,185 @@ export class SamplerUnit implements AudioUnit, SamplerMonitor {
   }
 }
 
+// ---- Granular cloud (custom AudioWorklet) --------------------------------
+const GRANULAR_PROCESSOR = "faustmod-granular";
+const granularRegistered = new WeakSet<BaseAudioContext>();
+
+// Control inputs (channels): 0 position(0..1), 1 grain size(ms), 2 density(Hz),
+// 3 pitch, 4 spray(0..1). Continuously spawns overlapping Hann-windowed grains
+// read from the loaded buffer. Preallocated grain pool — no audio-thread alloc.
+const GRANULAR_CODE = `
+class GranularProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.chL = new Float32Array(0);
+    this.chR = new Float32Array(0);
+    this.len = 0;
+    this.srRatio = 1;
+    this.max = 48;
+    this.gPos = new Float32Array(this.max);
+    this.gRate = new Float32Array(this.max);
+    this.gI = new Float32Array(this.max);
+    this.gN = new Float32Array(this.max);
+    this.gOn = new Uint8Array(this.max);
+    this.countdown = 0;
+    this.port.onmessage = (e) => {
+      const d = e.data;
+      if (d.buffer) {
+        this.chL = d.buffer[0] || new Float32Array(0);
+        this.chR = d.buffer[1] || this.chL;
+        this.len = this.chL.length;
+        this.srRatio = d.srRatio || 1;
+        this.gOn.fill(0);
+      }
+    };
+  }
+  spawn(pos, sizeMs, pitch, spray) {
+    let slot = -1;
+    for (let k = 0; k < this.max; k++) if (!this.gOn[k]) { slot = k; break; }
+    if (slot < 0) return;
+    const len = this.len;
+    const n = Math.max(4, (Math.max(1, sizeMs) * 0.001 * sampleRate) | 0);
+    let start = pos * len + (Math.random() * 2 - 1) * spray * len;
+    start = ((start % len) + len) % len;
+    this.gPos[slot] = start;
+    this.gRate[slot] = pitch * this.srRatio;
+    this.gI[slot] = 0;
+    this.gN[slot] = n;
+    this.gOn[slot] = 1;
+  }
+  process(inputs, outputs) {
+    const inp = inputs[0] || [];
+    const posC = inp[0], sizeC = inp[1], densC = inp[2], pitchC = inp[3], sprayC = inp[4];
+    const outL = outputs[0][0];
+    const outR = outputs[0][1];
+    const len = this.len;
+    const TWO_PI = 2 * Math.PI;
+    for (let s = 0; s < outL.length; s++) {
+      if (len > 1) {
+        this.countdown -= 1;
+        if (this.countdown <= 0) {
+          const dens = Math.max(0.1, densC ? densC[s] : 20);
+          this.countdown += sampleRate / dens;
+          this.spawn(
+            posC ? posC[s] : 0,
+            sizeC ? sizeC[s] : 80,
+            pitchC ? pitchC[s] : 1,
+            sprayC ? sprayC[s] : 0.1,
+          );
+        }
+      }
+      let l = 0, r = 0;
+      for (let k = 0; k < this.max; k++) {
+        if (!this.gOn[k]) continue;
+        const i = this.gI[k], n = this.gN[k];
+        const w = 0.5 - 0.5 * Math.cos((TWO_PI * i) / n);
+        let p = this.gPos[k];
+        if (p >= len) p -= len;
+        const ip = p | 0;
+        const frac = p - ip;
+        const ip1 = ip + 1 >= len ? 0 : ip + 1;
+        l += (this.chL[ip] * (1 - frac) + this.chL[ip1] * frac) * w;
+        r += (this.chR[ip] * (1 - frac) + this.chR[ip1] * frac) * w;
+        this.gPos[k] = p + this.gRate[k];
+        this.gI[k] = i + 1;
+        if (i + 1 >= n) this.gOn[k] = 0;
+      }
+      outL[s] = l * 0.5;
+      if (outR) outR[s] = r * 0.5;
+    }
+    return true;
+  }
+}
+registerProcessor(${JSON.stringify(GRANULAR_PROCESSOR)}, GranularProcessor);
+`;
+
+async function ensureGranularModule(ctx: BaseAudioContext): Promise<void> {
+  if (granularRegistered.has(ctx)) return;
+  const url = URL.createObjectURL(new Blob([GRANULAR_CODE], { type: "text/javascript" }));
+  await (ctx as AudioContext).audioWorklet.addModule(url);
+  URL.revokeObjectURL(url);
+  granularRegistered.add(ctx);
+}
+
+export class GranularUnit implements AudioUnit, SamplerMonitor {
+  readonly numInputs = 5;
+  readonly numOutputs = 2;
+  private merger: ChannelMergerNode;
+  private splitter: ChannelSplitterNode;
+  private defaults: ConstantSourceNode[] = [];
+  private loaded = false;
+  // pos, size(ms), density(Hz), pitch, spray — unconnected control-input fallbacks.
+  private static DEFAULTS = [0, 80, 20, 1, 0.1];
+
+  private constructor(
+    private ctx: BaseAudioContext,
+    private node: AudioWorkletNode,
+  ) {
+    this.merger = ctx.createChannelMerger(5);
+    this.merger.connect(this.node);
+    this.splitter = ctx.createChannelSplitter(2);
+    this.node.connect(this.splitter);
+    GranularUnit.DEFAULTS.forEach((v, i) => {
+      const s = ctx.createConstantSource();
+      s.offset.value = v;
+      s.connect(this.merger, 0, i);
+      s.start();
+      this.defaults[i] = s;
+    });
+  }
+
+  static async create(ctx: BaseAudioContext): Promise<GranularUnit> {
+    await ensureGranularModule(ctx);
+    const node = new AudioWorkletNode(ctx as AudioContext, GRANULAR_PROCESSOR, {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+      channelCount: 5,
+      channelCountMode: "explicit",
+    });
+    return new GranularUnit(ctx, node);
+  }
+
+  input(i: number) {
+    return i >= 0 && i < 5 ? { node: this.merger as AudioNode, channel: i } : null;
+  }
+  output(i: number) {
+    return i >= 0 && i < 2 ? { node: this.splitter as AudioNode, channel: i } : null;
+  }
+  loadBuffer(channels: Float32Array[], bufferSampleRate: number) {
+    this.node.port.postMessage({
+      buffer: channels,
+      srRatio: bufferSampleRate / this.ctx.sampleRate,
+    });
+    this.loaded = true;
+  }
+  hasBuffer() {
+    return this.loaded;
+  }
+  setValue() {}
+  onInputConnected(i: number, connected: boolean) {
+    const s = this.defaults[i];
+    if (!s) return;
+    try {
+      if (connected) s.disconnect();
+      else s.connect(this.merger, 0, i);
+    } catch {
+      /* already in desired state */
+    }
+  }
+  dispose() {
+    try {
+      this.defaults.forEach((s) => (s.stop(), s.disconnect()));
+      this.merger.disconnect();
+      this.splitter.disconnect();
+      this.node.disconnect();
+    } catch {
+      /* noop */
+    }
+  }
+}
+
 /** A no-op unit for widgets with no audio (e.g. comment/label). */
 export class NullUnit implements AudioUnit {
   readonly numInputs = 0;

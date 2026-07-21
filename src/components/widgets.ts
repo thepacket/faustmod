@@ -171,4 +171,24 @@ export const WIDGETS: ComponentDef[] = [
     resizable: true,
     defaultSize: { w: 200, h: 90 },
   },
+  {
+    id: "granular",
+    title: "Granular",
+    category: "Sampling",
+    kind: "widget",
+    widget: "granular",
+    tooltip:
+      "Granular cloud from a loaded file. Continuously spawns overlapping windowed " +
+      "grains. Wire control inputs to scan/modulate. Outputs stereo L/R.",
+    inputs: [
+      { label: "pos", default: 0, min: 0, max: 1, tooltip: "Playhead position into the sample." },
+      { label: "size", default: 80, min: 5, max: 500, unit: "ms", tooltip: "Grain length." },
+      { label: "density", default: 20, min: 1, max: 200, unit: "Hz", tooltip: "Grains per second." },
+      { label: "pitch", default: 1, min: 0.25, max: 4, tooltip: "Grain playback rate / pitch." },
+      { label: "spray", default: 0.1, min: 0, max: 1, tooltip: "Random position jitter." },
+    ],
+    outputs: [{ label: "L" }, { label: "R" }],
+    resizable: true,
+    defaultSize: { w: 210, h: 120 },
+  },
 ];

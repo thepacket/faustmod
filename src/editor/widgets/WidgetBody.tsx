@@ -38,6 +38,7 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
     case "xypad":
       return <XYPad node={node} />;
     case "sampler":
+    case "granular":
       return <Sampler node={node} />;
     default:
       return null;
