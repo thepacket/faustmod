@@ -16,8 +16,14 @@ AudioWorklets in the browser.
 
 - **~400 built-in DSP blocks** (oscillators, filters, EQ, delays, reverbs, envelopes,
   dynamics, distortion, modulation, math, routing…), searchable palette.
+- **Instrument/widget nodes** — oscilloscope (signal + trigger, resizable), spectrogram
+  (resizable), analog VU meter, digital voltmeter, R/G/B/Y LEDs, and 8/16-step
+  sequencers (clock in → step frequency out, drag steps to set pitch).
 - **Custom blocks** — paste Faust source (with port metadata), compiled in-browser and
   added to the palette. See *Custom DSP blocks* below.
+- **Multiple tabs** — one patch per tab; only the active tab plays.
+- **Recording + devices** — record the master output (Rec button → `.webm`); pick audio
+  input/output devices (Help → Audio Devices).
 - **File management** — a top menu (File / Edit / View / Block / Help) with New, Open,
   Save, Save As, Export, undo/redo, and the `.faustmod` patch format.
 - **Bring-your-own-AI** — instead of an LLM baked into the app, use an external AI to
@@ -197,9 +203,19 @@ AI can write those without any catalog at all.
 
 ```
 src/
-  audio/        FaustService, AudioEngine, AudioGraph, units, types
-  components/   library, LibraryService, customBlocks (registry)
-  editor/       rete editor setup + DspNode + theme/
-  patch/        format (.faustmod), PatchManager (file I/O), aiBrief
-  ui/           App, MenuBar, LibraryPanel, modals, styles
+  audio/        FaustService, AudioEngine, AudioGraph, units, monitors (widgets),
+                devices, types
+  components/   library, widgets, LibraryService, customBlocks (registry)
+  editor/       rete editor setup + DspNode + theme/ + widgets/ (React bodies)
+  patch/        format (.faustmod), PatchManager (file I/O), TabsManager, aiBrief
+  ui/           App, MenuBar, TabBar, LibraryPanel, modals, styles
 ```
+
+## Widget nodes
+
+Instrument nodes (scope, meters, LEDs, sequencer…) are `kind: "widget"` components
+(`src/components/widgets.ts`). Each realizes into a custom audio unit in
+`src/audio/monitors.ts` (an AnalyserNode tap, or the sequencer's AudioWorklet) that
+registers in a `Monitors` map keyed by node id. The matching React body in
+`src/editor/widgets/` reads that map each frame to animate. Resizable widgets persist
+their size (and the sequencer its notes) in the patch.
