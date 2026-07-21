@@ -85,6 +85,21 @@ export class PatchManager {
     this.notify();
   }
 
+  // ---- Tab support: the identity (name/handle/dirty) belongs to the active tab.
+  getIdentity(): { name: string; handle: unknown; dirty: boolean } {
+    return { name: this.name, handle: this.handle, dirty: this.dirty };
+  }
+  setIdentity(id: { name: string; handle: unknown; dirty: boolean }): void {
+    this.name = id.name;
+    this.handle = (id.handle as FsFileHandle | null) ?? null;
+    this.dirty = id.dirty;
+    this.notify();
+  }
+  /** Load a patch object (no file picker); registers embedded custom blocks. */
+  async applyPatchObject(patch: PatchFile): Promise<void> {
+    await this.applyPatch(patch);
+  }
+
   async save(): Promise<void> {
     if (this.handle && hasFSA) {
       await this.writeHandle(this.handle);

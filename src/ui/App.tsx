@@ -4,8 +4,10 @@ import { LibraryService } from "../components/LibraryService";
 import { AudioGraph } from "../audio/AudioGraph";
 import { AudioEngine } from "../audio/AudioEngine";
 import { PatchManager } from "../patch/PatchManager";
+import { TabsManager, type TabInfo } from "../patch/TabsManager";
 import { buildAiBrief } from "../patch/aiBrief";
 import { MenuBar, type Menu } from "./MenuBar";
+import { TabBar } from "./TabBar";
 import { LibraryPanel } from "./LibraryPanel";
 import { ImportBlockModal } from "./ImportBlockModal";
 import { AboutModal } from "./AboutModal";
@@ -17,6 +19,7 @@ export function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorHandle | null>(null);
   const patchRef = useRef<PatchManager | null>(null);
+  const tabsRef = useRef<TabsManager | null>(null);
 
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState("Loading…");
@@ -24,6 +27,8 @@ export function App() {
   const [recording, setRecording] = useState(false);
   const [patchName, setPatchName] = useState("Untitled");
   const [dirty, setDirty] = useState(false);
+  const [tabs, setTabs] = useState<TabInfo[]>([]);
+  const [activeTab, setActiveTab] = useState(0);
   const [modal, setModal] = useState<ModalKind>(null);
 
   useEffect(() => {
@@ -40,12 +45,20 @@ export function App() {
       }
       editorRef.current = handle;
       const mgr = new PatchManager(handle);
+      const tabsMgr = new TabsManager(mgr);
       mgr.onChange = () => {
         setPatchName(mgr.name);
         setDirty(mgr.dirty);
+        tabsMgr.syncActive();
+      };
+      tabsMgr.onChange = () => {
+        setTabs(tabsMgr.list());
+        setActiveTab(tabsMgr.activeIndex());
       };
       handle.setChangeListener(() => mgr.markDirty());
       patchRef.current = mgr;
+      tabsRef.current = tabsMgr;
+      setTabs(tabsMgr.list());
 
       AudioGraph.onNodeError = (msg) => setStatus(msg);
       if (import.meta.env.DEV) {
@@ -80,6 +93,7 @@ export function App() {
 
   const ed = () => editorRef.current;
   const pm = () => patchRef.current;
+  const tb = () => tabsRef.current;
 
   const toggleRecord = async () => {
     try {
@@ -127,10 +141,10 @@ export function App() {
         void (e.shiftKey ? pm()?.saveAs() : pm()?.save());
       } else if (mod && k === "o") {
         e.preventDefault();
-        void pm()?.open();
+        void tb()?.openFile();
       } else if (mod && k === "n") {
         e.preventDefault();
-        void pm()?.newPatch();
+        void tb()?.newTab();
       } else if (!inField && mod && k === "d") {
         e.preventDefault();
         void ed()?.duplicateSelected();
@@ -149,8 +163,8 @@ export function App() {
     {
       label: "File",
       items: [
-        { label: "New", shortcut: "⌘N", onClick: () => void pm()?.newPatch() },
-        { label: "Open…", shortcut: "⌘O", onClick: () => void pm()?.open() },
+        { label: "New Tab", shortcut: "⌘N", onClick: () => void tb()?.newTab() },
+        { label: "Open…", shortcut: "⌘O", onClick: () => void tb()?.openFile() },
         { separator: true },
         { label: "Save", shortcut: "⌘S", onClick: () => void pm()?.save() },
         { label: "Save As…", shortcut: "⇧⌘S", onClick: () => void pm()?.saveAs() },
@@ -209,6 +223,13 @@ export function App() {
           AudioEngine.setMasterVolume(v);
           pm()?.markDirty();
         }}
+      />
+      <TabBar
+        tabs={tabs}
+        active={activeTab}
+        onSelect={(i) => void tb()?.switchTo(i)}
+        onClose={(i) => void tb()?.closeTab(i)}
+        onNew={() => void tb()?.newTab()}
       />
       <div className="body">
         <LibraryPanel disabled={!ready} onAdd={(def) => ed()?.addComponent(def)} />
