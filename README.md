@@ -19,6 +19,9 @@ AudioWorklets in the browser.
 - **Instrument/widget nodes** — oscilloscope (signal + trigger, resizable), spectrogram
   (resizable), analog VU meter, digital voltmeter, R/G/B/Y LEDs, and 8/16-step
   sequencers (clock in → step frequency out, drag steps to set pitch).
+- **Control / playability** — on-screen **Keyboard** (mouse or A–K keys) and **MIDI In**
+  (Web MIDI) outputting frequency + gate (+ velocity), a rotary **Knob**, a **Comment**
+  note, a **Clock (BPM)**, and an **Env VCA** (gate-driven ADSR) — enough to play a synth.
 - **Custom blocks** — paste Faust source (with port metadata), compiled in-browser and
   added to the palette. See *Custom DSP blocks* below.
 - **Multiple tabs** — one patch per tab; only the active tab plays.
@@ -210,6 +213,23 @@ src/
   patch/        format (.faustmod), PatchManager (file I/O), TabsManager, aiBrief
   ui/           App, MenuBar, TabBar, LibraryPanel, modals, styles
 ```
+
+## Roadmap
+
+Things an electronic musician would expect that aren't built yet (rough priority):
+
+- **Polyphony** — voice allocation (Faust supports poly DSP); poly Keyboard/MIDI.
+- **Global transport / master clock** — one BPM synced across sequencers; play/stop.
+- **Sequencing extras** — clock divider/multiplier, Euclidean sequencer, gate/velocity
+  per step, arpeggiator, scale quantizer.
+- **MIDI out** and **MIDI clock** sync; **MIDI CC → control** node.
+- **Mixer** node (multi-channel with pan + effect sends); dedicated **pan** node.
+- **Sample player / wavetable oscillator** (load audio files); **granular**.
+- **Preset / example-patch browser** (bundled `.faustmod` demos) + patch thumbnails.
+- **Node editing** — copy/paste nodes, grouping / sub-patches (macros), alignment.
+- **Recording** — WAV export (currently `.webm`), loop/overdub.
+- **Modulation** — a mod matrix / macro (XY pad) controllers; more mod sources.
+- **Sharing** — export/import patch links; a small gallery.
 
 ## Widget nodes
 
