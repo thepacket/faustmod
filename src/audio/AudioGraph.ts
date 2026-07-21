@@ -7,6 +7,8 @@ import {
   SpectrumUnit,
   SequencerUnit,
   GateFreqUnit,
+  Vec2Unit,
+  SamplerUnit,
   NullUnit,
   Monitors,
 } from "./monitors";
@@ -161,6 +163,12 @@ class AudioGraphImpl {
                 break;
               case "midi":
                 widgetUnit = new GateFreqUnit(ctx, true);
+                break;
+              case "xypad":
+                widgetUnit = new Vec2Unit(ctx);
+                break;
+              case "sampler":
+                widgetUnit = await SamplerUnit.create(ctx);
                 break;
               case "comment":
                 widgetUnit = new NullUnit();

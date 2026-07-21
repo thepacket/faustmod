@@ -9,6 +9,8 @@ import { Knob } from "./Knob";
 import { Keyboard } from "./Keyboard";
 import { MidiIn } from "./MidiIn";
 import { Comment } from "./Comment";
+import { XYPad } from "./XYPad";
+import { Sampler } from "./Sampler";
 
 /** Renders the custom body for a widget node, dispatched by its `widget` type. */
 export function WidgetBody({ node }: { node: WidgetNode }) {
@@ -33,6 +35,10 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
       return <MidiIn node={node} />;
     case "comment":
       return <Comment node={node} />;
+    case "xypad":
+      return <XYPad node={node} />;
+    case "sampler":
+      return <Sampler node={node} />;
     default:
       return null;
   }

@@ -367,11 +367,104 @@
   text-shadow: 0 1px 2px #000;
   pointer-events: none;
 }
+.seq-step.muted {
+  opacity: 0.4;
+  border-style: dashed;
+}
+.seq-step.muted .seq-bar {
+  filter: grayscale(0.8);
+}
 .seq-hint {
   margin-top: 5px;
   font-size: 9px;
   color: var(--muted);
   text-align: center;
+}
+
+/* ---- XY pad ---- */
+.xypad {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 90px;
+  min-height: 90px;
+  background: #16181e;
+  border: 1px solid #0b0c10;
+  border-radius: 5px;
+  cursor: crosshair;
+  overflow: hidden;
+  background-image: linear-gradient(#22252d 1px, transparent 1px),
+    linear-gradient(90deg, #22252d 1px, transparent 1px);
+  background-size: 25% 25%;
+}
+.xypad-cross-h,
+.xypad-cross-v {
+  position: absolute;
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  pointer-events: none;
+}
+.xypad-cross-h {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+.xypad-cross-v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.xypad-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 80%, transparent);
+  pointer-events: none;
+}
+.xypad-val {
+  position: absolute;
+  left: 3px;
+  bottom: 2px;
+  font-size: 9px;
+  color: #cfd4e0;
+  text-shadow: 0 1px 2px #000;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* ---- Sample player ---- */
+.sampler {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 4px;
+  width: 100%;
+  justify-content: center;
+}
+.sampler-load {
+  background: #23262e;
+  color: #cfd4e0;
+  border: 1px solid #0b0c10;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sampler-load:hover {
+  border-color: var(--accent);
+  color: #fff;
+}
+.sampler-status {
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- Knob ---- */

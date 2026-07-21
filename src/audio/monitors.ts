@@ -25,6 +25,10 @@ export interface SpectrumMonitor {
 }
 export interface SeqMonitor {
   setFrequencies(freqs: number[]): void;
+  /** Per-step on/off. Off steps output freq but hold gate/velocity low. */
+  setGates(gates: boolean[]): void;
+  /** Per-step velocity, 0..1. */
+  setVelocities(vels: number[]): void;
   currentStep(): number;
 }
 
@@ -168,30 +172,47 @@ export class SpectrumUnit implements AudioUnit, SpectrumMonitor {
 const SEQ_PROCESSOR = "faustmod-sequencer";
 const registered = new WeakSet<BaseAudioContext>();
 
+// Three output channels: freq, gate, velocity. The clock (input 0) advances the
+// step on each rising edge; the gate briefly drops at each step boundary so that
+// consecutive on-steps still retrigger an envelope.
 const SEQ_CODE = `
 class SeqProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this.step = 0;
     this.freqs = [0];
+    this.gates = [true];
+    this.vels = [1];
     this.prev = 0;
+    this.since = 1e9;
+    this.retrig = Math.max(1, Math.round(sampleRate * 0.003)); // ~3 ms gate-low on step change
     this.port.onmessage = (e) => {
-      if (e.data.freqs) this.freqs = e.data.freqs;
-      if (e.data.reset) { this.step = 0; this.port.postMessage({ step: 0 }); }
+      const d = e.data;
+      if (d.freqs) this.freqs = d.freqs;
+      if (d.gates) this.gates = d.gates;
+      if (d.vels) this.vels = d.vels;
+      if (d.reset) { this.step = 0; this.since = 0; this.port.postMessage({ step: 0 }); }
     };
   }
   process(inputs, outputs) {
     const clock = inputs[0] && inputs[0][0];
-    const out = outputs[0][0];
+    const fout = outputs[0][0];
+    const gout = outputs[0][1];
+    const vout = outputs[0][2];
     const n = this.freqs.length || 1;
-    for (let i = 0; i < out.length; i++) {
+    for (let i = 0; i < fout.length; i++) {
       const c = clock ? clock[i] : 0;
+      this.since++;
       if (this.prev <= 0.5 && c > 0.5) {
         this.step = (this.step + 1) % n;
+        this.since = 0;
         this.port.postMessage({ step: this.step });
       }
       this.prev = c;
-      out[i] = this.freqs[this.step] || 0;
+      const on = this.gates[this.step] === false ? 0 : 1;
+      fout[i] = this.freqs[this.step] || 0;
+      if (gout) gout[i] = on && this.since >= this.retrig ? 1 : 0;
+      if (vout) vout[i] = on ? (this.vels[this.step] ?? 1) : 0;
     }
     return true;
   }
@@ -221,7 +242,7 @@ export class SequencerUnit implements AudioUnit, SeqMonitor {
   ) {
     this.merger = ctx.createChannelMerger(1);
     this.merger.connect(this.node);
-    this.splitter = ctx.createChannelSplitter(1);
+    this.splitter = ctx.createChannelSplitter(3);
     this.node.connect(this.splitter);
     this.node.port.onmessage = (e) => {
       if (typeof e.data.step === "number") this.step = e.data.step;
@@ -234,7 +255,7 @@ export class SequencerUnit implements AudioUnit, SeqMonitor {
     const node = new AudioWorkletNode(ctx as AudioContext, SEQ_PROCESSOR, {
       numberOfInputs: 1,
       numberOfOutputs: 1,
-      outputChannelCount: [1],
+      outputChannelCount: [3],
     });
     return new SequencerUnit(ctx, node, freqs);
   }
@@ -243,10 +264,16 @@ export class SequencerUnit implements AudioUnit, SeqMonitor {
     return i === 0 ? { node: this.merger as AudioNode, channel: 0 } : null;
   }
   output(i: number) {
-    return i === 0 ? { node: this.splitter as AudioNode, channel: 0 } : null;
+    return i >= 0 && i < 3 ? { node: this.splitter as AudioNode, channel: i } : null;
   }
   setFrequencies(freqs: number[]) {
     this.node.port.postMessage({ freqs });
+  }
+  setGates(gates: boolean[]) {
+    this.node.port.postMessage({ gates });
+  }
+  setVelocities(vels: number[]) {
+    this.node.port.postMessage({ vels });
   }
   currentStep() {
     return this.step;
@@ -340,6 +367,196 @@ export class GateFreqUnit implements AudioUnit, GateFreqMonitor {
       this.freqSrc.disconnect();
       this.gateSrc.disconnect();
       this.velSrc?.disconnect();
+    } catch {
+      /* noop */
+    }
+  }
+}
+
+// ---- XY pad (two control outputs) ----------------------------------------
+export interface Vec2Monitor {
+  setXY(x: number, y: number): void;
+}
+
+export class Vec2Unit implements AudioUnit, Vec2Monitor {
+  readonly numInputs = 0;
+  readonly numOutputs = 2;
+  private xs: ConstantSourceNode;
+  private ys: ConstantSourceNode;
+
+  constructor(ctx: BaseAudioContext, x = 0.5, y = 0.5) {
+    this.xs = ctx.createConstantSource();
+    this.ys = ctx.createConstantSource();
+    this.xs.offset.value = x;
+    this.ys.offset.value = y;
+    this.xs.start();
+    this.ys.start();
+  }
+  input() {
+    return null;
+  }
+  output(i: number) {
+    const s = i === 0 ? this.xs : i === 1 ? this.ys : null;
+    return s ? { node: s as AudioNode, channel: 0 } : null;
+  }
+  setXY(x: number, y: number) {
+    this.xs.offset.value = x;
+    this.ys.offset.value = y;
+  }
+  setValue() {}
+  onInputConnected() {}
+  dispose() {
+    try {
+      this.xs.stop();
+      this.ys.stop();
+      this.xs.disconnect();
+      this.ys.disconnect();
+    } catch {
+      /* noop */
+    }
+  }
+}
+
+// ---- Sample player (custom AudioWorklet) ---------------------------------
+const SAMPLER_PROCESSOR = "faustmod-sampler";
+const samplerRegistered = new WeakSet<BaseAudioContext>();
+
+// input 0 = trigger, input 1 = rate. Two output channels (L/R). A rising edge on
+// the trigger restarts playback from the start; rate scales speed/pitch.
+const SAMPLER_CODE = `
+class SamplerProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.chL = new Float32Array(0);
+    this.chR = new Float32Array(0);
+    this.len = 0;
+    this.pos = 0;
+    this.playing = false;
+    this.prev = 0;
+    this.sr = 1;
+    this.port.onmessage = (e) => {
+      const d = e.data;
+      if (d.buffer) {
+        this.chL = d.buffer[0] || new Float32Array(0);
+        this.chR = d.buffer[1] || this.chL;
+        this.len = this.chL.length;
+        this.sr = d.srRatio || 1;
+        this.pos = 0;
+        this.playing = false;
+      }
+    };
+  }
+  process(inputs, outputs) {
+    const trig = inputs[0] && inputs[0][0];
+    const rate = inputs[0] && inputs[0][1];
+    const outL = outputs[0][0];
+    const outR = outputs[0][1];
+    for (let i = 0; i < outL.length; i++) {
+      const t = trig ? trig[i] : 0;
+      if (this.prev <= 0.5 && t > 0.5 && this.len > 1) { this.pos = 0; this.playing = true; }
+      this.prev = t;
+      let l = 0, r = 0;
+      if (this.playing) {
+        const p = this.pos | 0;
+        if (p >= this.len - 1) { this.playing = false; }
+        else {
+          const frac = this.pos - p;
+          l = this.chL[p] * (1 - frac) + this.chL[p + 1] * frac;
+          r = this.chR[p] * (1 - frac) + this.chR[p + 1] * frac;
+          const rr = (rate ? rate[i] : 1) * this.sr;
+          this.pos += rr > 0 ? rr : 0;
+        }
+      }
+      outL[i] = l;
+      if (outR) outR[i] = r;
+    }
+    return true;
+  }
+}
+registerProcessor(${JSON.stringify(SAMPLER_PROCESSOR)}, SamplerProcessor);
+`;
+
+async function ensureSamplerModule(ctx: BaseAudioContext): Promise<void> {
+  if (samplerRegistered.has(ctx)) return;
+  const url = URL.createObjectURL(new Blob([SAMPLER_CODE], { type: "text/javascript" }));
+  await (ctx as AudioContext).audioWorklet.addModule(url);
+  URL.revokeObjectURL(url);
+  samplerRegistered.add(ctx);
+}
+
+export interface SamplerMonitor {
+  loadBuffer(channels: Float32Array[], bufferSampleRate: number): void;
+  hasBuffer(): boolean;
+}
+
+export class SamplerUnit implements AudioUnit, SamplerMonitor {
+  readonly numInputs = 2;
+  readonly numOutputs = 2;
+  private merger: ChannelMergerNode;
+  private splitter: ChannelSplitterNode;
+  private rateDefault: ConstantSourceNode;
+  private loaded = false;
+
+  private constructor(
+    private ctx: BaseAudioContext,
+    private node: AudioWorkletNode,
+  ) {
+    this.merger = ctx.createChannelMerger(2);
+    this.merger.connect(this.node);
+    this.splitter = ctx.createChannelSplitter(2);
+    this.node.connect(this.splitter);
+    // Internal default (1×) for the rate input, detached when a signal is wired in.
+    this.rateDefault = ctx.createConstantSource();
+    this.rateDefault.offset.value = 1;
+    this.rateDefault.connect(this.merger, 0, 1);
+    this.rateDefault.start();
+  }
+
+  static async create(ctx: BaseAudioContext): Promise<SamplerUnit> {
+    await ensureSamplerModule(ctx);
+    const node = new AudioWorkletNode(ctx as AudioContext, SAMPLER_PROCESSOR, {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+      channelCount: 2,
+      channelCountMode: "explicit",
+    });
+    return new SamplerUnit(ctx, node);
+  }
+
+  input(i: number) {
+    return i >= 0 && i < 2 ? { node: this.merger as AudioNode, channel: i } : null;
+  }
+  output(i: number) {
+    return i >= 0 && i < 2 ? { node: this.splitter as AudioNode, channel: i } : null;
+  }
+  loadBuffer(channels: Float32Array[], bufferSampleRate: number) {
+    this.node.port.postMessage({
+      buffer: channels,
+      srRatio: bufferSampleRate / this.ctx.sampleRate,
+    });
+    this.loaded = true;
+  }
+  hasBuffer() {
+    return this.loaded;
+  }
+  setValue() {}
+  onInputConnected(i: number, connected: boolean) {
+    if (i !== 1) return;
+    try {
+      if (connected) this.rateDefault.disconnect();
+      else this.rateDefault.connect(this.merger, 0, 1);
+    } catch {
+      /* already in desired state */
+    }
+  }
+  dispose() {
+    try {
+      this.rateDefault.stop();
+      this.rateDefault.disconnect();
+      this.merger.disconnect();
+      this.splitter.disconnect();
+      this.node.disconnect();
     } catch {
       /* noop */
     }

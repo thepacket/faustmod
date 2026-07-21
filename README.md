@@ -24,10 +24,13 @@ AudioWorklets in the browser.
   and a morphing **Wavetable** oscillator.
 - **Instrument/widget nodes** — oscilloscope (signal + trigger, resizable), spectrogram
   (resizable), analog VU meter, digital voltmeter, R/G/B/Y LEDs, and 8/16-step
-  sequencers (clock in → step frequency out, drag steps to set pitch).
+  sequencers (drag for pitch, click to mute, shift-drag for velocity → frequency,
+  gate and velocity outputs).
 - **Control / playability** — on-screen **Keyboard** (mouse or A–K keys) and **MIDI In**
-  (Web MIDI) outputting frequency + gate (+ velocity), a rotary **Knob**, a **Comment**
-  note, a **Clock (BPM)**, and an **Env VCA** (gate-driven ADSR) — enough to play a synth.
+  (Web MIDI) outputting frequency + gate (+ velocity), a rotary **Knob**, an **XY Pad**
+  macro, a **Comment** note, a **Clock (BPM)**, and an **Env VCA** (gate-driven ADSR).
+- **Sample player** — load an audio file; a trigger plays it, with a rate/pitch control
+  and stereo output.
 - **Custom blocks** — paste Faust source (with port metadata), compiled in-browser and
   added to the palette. See *Custom DSP blocks* below.
 - **Multiple tabs** — one patch per tab; only the active tab plays.
@@ -226,12 +229,9 @@ Things an electronic musician would expect that aren't built yet (rough priority
 
 - **Polyphony** — voice allocation (Faust supports poly DSP); poly Keyboard/MIDI.
 - **Global transport / master clock** — one BPM synced across sequencers; play/stop.
-- **Sequencing extras** — per-step gate/velocity on the step sequencer (clock divider/
-  multiplier, Euclidean sequencer, arpeggiators and scale quantizers are **done**).
 - **MIDI out** and **MIDI clock** sync; **MIDI CC → control** node.
-- **Sample player** (load audio files) and **granular** (basic wavetable/mixer/pan/mod-
-  matrix are **done**).
-- **Modulation** — an **XY pad** macro controller (a 2×2 mod matrix + CV mixer are **done**).
+- **Granular** synthesis (sample player, wavetable, mixer, pan, mod-matrix, XY pad and
+  per-step gate/velocity are **done**).
 - **Preset / example-patch browser** (bundled `.faustmod` demos) + patch thumbnails.
 - **Node editing** — copy/paste nodes, grouping / sub-patches (macros), alignment.
 - **Recording** — WAV export (currently `.webm`), loop/overdub.

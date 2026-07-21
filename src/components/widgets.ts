@@ -122,9 +122,11 @@ export const WIDGETS: ComponentDef[] = [
     kind: "widget",
     widget: "sequencer",
     widgetConfig: { steps: 8 },
-    tooltip: "8-step note sequencer. Clock in advances the step; outputs its frequency.",
+    tooltip:
+      "8-step note sequencer. Clock in advances the step. Drag steps for pitch, " +
+      "click to mute, shift-drag for velocity. Outputs frequency, gate and velocity.",
     inputs: [{ label: "clock" }],
-    outputs: [{ label: "freq" }],
+    outputs: [{ label: "freq" }, { label: "gate" }, { label: "vel" }],
   },
   {
     id: "seq16",
@@ -133,8 +135,40 @@ export const WIDGETS: ComponentDef[] = [
     kind: "widget",
     widget: "sequencer",
     widgetConfig: { steps: 16 },
-    tooltip: "16-step note sequencer. Clock in advances the step; outputs its frequency.",
+    tooltip:
+      "16-step note sequencer. Clock in advances the step. Drag steps for pitch, " +
+      "click to mute, shift-drag for velocity. Outputs frequency, gate and velocity.",
     inputs: [{ label: "clock" }],
-    outputs: [{ label: "freq" }],
+    outputs: [{ label: "freq" }, { label: "gate" }, { label: "vel" }],
+  },
+
+  // ---- Macro controllers --------------------------------------------------
+  {
+    id: "xypad",
+    title: "XY Pad",
+    category: "Controls",
+    kind: "widget",
+    widget: "xypad",
+    tooltip: "2D macro control — drag the pad. Outputs X and Y (0..1). Wire into control inputs.",
+    inputs: [],
+    outputs: [{ label: "x" }, { label: "y" }],
+    resizable: true,
+    defaultSize: { w: 120, h: 120 },
+  },
+
+  // ---- Sampling -----------------------------------------------------------
+  {
+    id: "sampler",
+    title: "Sample Player",
+    category: "Sampling",
+    kind: "widget",
+    widget: "sampler",
+    tooltip:
+      "Loads an audio file (click to choose). A rising edge on trig plays it; " +
+      "rate scales playback speed/pitch. Outputs stereo L/R.",
+    inputs: [{ label: "trig" }, { label: "rate", default: 1, min: 0.1, max: 4 }],
+    outputs: [{ label: "L" }, { label: "R" }],
+    resizable: true,
+    defaultSize: { w: 200, h: 90 },
   },
 ];
