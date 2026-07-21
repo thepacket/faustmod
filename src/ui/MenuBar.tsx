@@ -17,8 +17,10 @@ interface Props {
   patchName: string;
   dirty: boolean;
   playing: boolean;
+  recording: boolean;
   status: string;
   onTogglePlay: () => void;
+  onToggleRecord: () => void;
   onMasterVolume: (v: number) => void;
 }
 
@@ -27,8 +29,10 @@ export function MenuBar({
   patchName,
   dirty,
   playing,
+  recording,
   status,
   onTogglePlay,
+  onToggleRecord,
   onMasterVolume,
 }: Props) {
   const [open, setOpen] = useState<string | null>(null);
@@ -100,6 +104,13 @@ export function MenuBar({
           onChange={(e) => onMasterVolume(Number(e.target.value))}
         />
       </label>
+      <button
+        className={`btn rec-btn ${recording ? "recording" : ""}`}
+        onClick={onToggleRecord}
+        title={recording ? "Stop recording & download" : "Record master output"}
+      >
+        {recording ? "◼ Rec" : "● Rec"}
+      </button>
       <button className={playing ? "btn danger" : "btn primary"} onClick={onTogglePlay}>
         {playing ? "◼ Stop" : "▶ Start"}
       </button>

@@ -1,5 +1,6 @@
 import type { FaustMonoAudioWorkletNode } from "@grame/faustwasm";
 import type { AudioUnit, InputSpec } from "./types";
+import { AudioDevices } from "./devices";
 
 /**
  * Wraps a Faust AudioWorkletNode, exposing each Faust channel as an individual
@@ -163,7 +164,10 @@ export class InputUnit implements AudioUnit {
 
   async open() {
     if (this.source) return;
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const id = AudioDevices.inputDeviceId;
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      audio: id ? { deviceId: { exact: id } } : true,
+    });
     this.source = (this.ctx as AudioContext).createMediaStreamSource(this.stream);
     this.source.connect(this.splitter);
   }

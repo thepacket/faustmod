@@ -9,8 +9,9 @@ import { MenuBar, type Menu } from "./MenuBar";
 import { LibraryPanel } from "./LibraryPanel";
 import { ImportBlockModal } from "./ImportBlockModal";
 import { AboutModal } from "./AboutModal";
+import { AudioSettingsModal } from "./AudioSettingsModal";
 
-type ModalKind = null | "about" | "import-block";
+type ModalKind = null | "about" | "import-block" | "audio-devices";
 
 export function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -20,6 +21,7 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState("Loading…");
   const [playing, setPlaying] = useState(false);
+  const [recording, setRecording] = useState(false);
   const [patchName, setPatchName] = useState("Untitled");
   const [dirty, setDirty] = useState(false);
   const [modal, setModal] = useState<ModalKind>(null);
@@ -78,6 +80,29 @@ export function App() {
 
   const ed = () => editorRef.current;
   const pm = () => patchRef.current;
+
+  const toggleRecord = async () => {
+    try {
+      if (recording) {
+        const blob = await AudioEngine.stopRecording();
+        setRecording(false);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${patchName || "recording"}.webm`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        setStatus("Recording saved");
+      } else {
+        if (!playing) await togglePlay();
+        await AudioEngine.startRecording();
+        setRecording(true);
+        setStatus("● Recording…");
+      }
+    } catch (err) {
+      setStatus(`Recording error: ${(err as Error).message}`);
+    }
+  };
 
   const copyBrief = async () => {
     try {
@@ -163,6 +188,8 @@ export function App() {
       items: [
         { label: "About FaustMod", onClick: () => setModal("about") },
         { label: "Copy Catalog for AI", onClick: () => void copyBrief() },
+        { separator: true },
+        { label: "Audio Devices…", onClick: () => setModal("audio-devices") },
       ],
     },
   ];
@@ -174,8 +201,10 @@ export function App() {
         patchName={patchName}
         dirty={dirty}
         playing={playing}
+        recording={recording}
         status={status}
         onTogglePlay={togglePlay}
+        onToggleRecord={toggleRecord}
         onMasterVolume={(v) => {
           AudioEngine.setMasterVolume(v);
           pm()?.markDirty();
@@ -193,6 +222,7 @@ export function App() {
         />
       )}
       {modal === "about" && <AboutModal onClose={() => setModal(null)} />}
+      {modal === "audio-devices" && <AudioSettingsModal onClose={() => setModal(null)} />}
     </div>
   );
 }
