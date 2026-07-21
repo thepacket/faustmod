@@ -2,6 +2,9 @@
   "name": "faustmod",
   "private": true,
   "version": "0.1.0",
+  "description": "Browser-based modular audio synthesis IDE using Faust DSP and rete.js",
+  "author": "Andre Paquette",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "predev": "npm run catalog",
