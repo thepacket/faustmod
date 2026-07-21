@@ -1,0 +1,33 @@
+{
+  "name": "faustmod",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "predev": "npm run catalog",
+    "dev": "vite",
+    "catalog": "node scripts/build-catalog.mjs",
+    "prebuild": "npm run catalog",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "@grame/faustwasm": "^0.16.6",
+    "rete": "^2.0.6",
+    "rete-area-plugin": "^2.3.2",
+    "rete-connection-plugin": "^2.0.5",
+    "rete-react-plugin": "^2.1.2",
+    "rete-render-utils": "^2.0.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "styled-components": "^6.4.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.3"
+  }
+}

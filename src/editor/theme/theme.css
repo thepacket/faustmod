@@ -1,0 +1,191 @@
+/* ============================================================================
+   Metallic dark node theme for the rete editor.
+   Purely presentational — node behavior is unchanged. Accent color comes from
+   each node's --accent (set per category in ThemedNode).
+   ============================================================================ */
+
+/* ---- Canvas: fine line grid (higher specificity than the base .canvas rule) ---- */
+.body .canvas {
+  background-color: #16181e;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 130px 130px, 130px 130px, 26px 26px, 26px 26px;
+}
+
+/* ---- Node body: 3D metallic ---- */
+.dsp-node {
+  position: relative;
+  /* Shrink-wrap: nodes are only as wide/tall as their content requires. */
+  width: max-content;
+  max-width: 260px;
+  border-radius: 10px;
+  font-family: "Inter", system-ui, sans-serif;
+  color: #e6e8ee;
+  border: 1px solid #0b0c0f;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0) 14px),
+    linear-gradient(180deg, #2d323d 0%, #23262e 42%, #1d1f26 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 10px 24px rgba(0, 0, 0, 0.55);
+  padding-bottom: 2px;
+  transition: box-shadow 0.15s ease;
+}
+
+.dsp-node[data-selected] {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 10px 26px rgba(0, 0, 0, 0.6),
+    0 0 0 2px color-mix(in srgb, var(--accent) 65%, transparent),
+    0 0 18px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* ---- Header: glowing accent bar ---- */
+.dsp-title {
+  position: relative;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  color: #fff;
+  text-align: center;
+  border-radius: 9px 9px 0 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.55);
+  background: radial-gradient(
+      90% 180% at 50% -70%,
+      color-mix(in srgb, var(--accent) 75%, transparent) 0%,
+      transparent 72%
+    ),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 26%, #272b34) 0%, #21242c 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 55%, rgba(255, 255, 255, 0.2));
+  text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+/* thin accent underline glow */
+.dsp-title::after {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: -1px;
+  height: 1px;
+  background: color-mix(in srgb, var(--accent) 80%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+/* ---- Ports: inputs left column, outputs right column ---- */
+.dsp-io {
+  display: flex;
+  gap: 18px;
+  padding: 7px 13px 4px;
+}
+.dsp-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dsp-inputs {
+  align-items: flex-start;
+}
+/* Push outputs to the node's right edge (also right-aligns output-only nodes). */
+.dsp-outputs {
+  align-items: flex-end;
+  margin-left: auto;
+}
+.dsp-port {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.dsp-port-label {
+  color: #aeb4c2;
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Pull socket discs onto the node edge */
+.dsp-input .input-socket {
+  display: flex;
+  align-items: center;
+  margin-left: -23px;
+}
+.dsp-output .output-socket {
+  display: flex;
+  align-items: center;
+  margin-right: -23px;
+}
+
+/* ---- Constant: compact titleless box (value beside its output socket) ---- */
+.dsp-node[data-constant] {
+  border-color: color-mix(in srgb, var(--accent) 40%, #0b0c0f);
+}
+.dsp-const {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+}
+.dsp-const .dsp-output {
+  gap: 0;
+}
+.dsp-node[data-constant] input {
+  width: 60px;
+}
+
+/* ---- Socket disc: metallic ---- */
+.dsp-socket {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #737b8b 0%, #3a3f4a 55%, #262a33 100%);
+  border: 1px solid #0a0b0e;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.28), 0 1px 2px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
+}
+.dsp-socket:hover {
+  transform: scale(1.15);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 0 10px rgba(120, 200, 160, 0.8);
+}
+
+/* ---- Controls: dark pill inputs ---- */
+.dsp-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 12px 10px;
+}
+.dsp-node input {
+  width: 76px;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  font-size: 12px;
+  text-align: center;
+  font-family: inherit;
+  color: #e6e8ee;
+  background: linear-gradient(180deg, #191b21, #23262f);
+  border: 1px solid #0b0c10;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.dsp-node input:hover {
+  border-color: #2a2e39;
+}
+.dsp-node input:focus {
+  border-color: #f0a53c;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(240, 165, 60, 0.28);
+}
+
+/* ---- Connections: soft glowing signal cables ---- */
+.body .canvas svg[data-testid="connection"] path {
+  stroke: #7bd0a8;
+  stroke-width: 3px;
+  fill: none;
+  filter: drop-shadow(0 0 4px rgba(123, 208, 168, 0.55));
+  transition: stroke 0.12s ease;
+}
+.body .canvas svg[data-testid="connection"] path:hover {
+  stroke: #9ff0c6;
+  stroke-width: 4px;
+}
