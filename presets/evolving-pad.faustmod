@@ -1,0 +1,42 @@
+{
+  "format": "faustmod-patch",
+  "version": 1,
+  "name": "Evolving Pad",
+  "masterVolume": 0.8,
+  "customBlocks": [],
+  "nodes": [
+    { "id": "c_root",    "componentId": "constant",           "position": { "x": 40,   "y": 40 },  "value": 110 },
+    { "id": "c_fifth",   "componentId": "constant",           "position": { "x": 40,   "y": 150 }, "value": 165 },
+    { "id": "saw1",      "componentId": "osc-supersaw",       "position": { "x": 240,  "y": 40 } },
+    { "id": "saw2",      "componentId": "osc-supersaw",       "position": { "x": 240,  "y": 180 } },
+    { "id": "mix",       "componentId": "util-sum-gain",      "position": { "x": 470,  "y": 110 } },
+    { "id": "c_rate",    "componentId": "constant",           "position": { "x": 40,   "y": 330 }, "value": 0.08 },
+    { "id": "lfo",       "componentId": "os-lf_triangle",     "position": { "x": 240,  "y": 330 } },
+    { "id": "c_scale",   "componentId": "constant",           "position": { "x": 40,   "y": 450 }, "value": 700 },
+    { "id": "c_bias",    "componentId": "constant",           "position": { "x": 40,   "y": 560 }, "value": 1100 },
+    { "id": "bias",      "componentId": "cv-bias",            "position": { "x": 240,  "y": 460 } },
+    { "id": "filt",      "componentId": "ve-moog",            "position": { "x": 680,  "y": 200 } },
+    { "id": "chorus",    "componentId": "mod-chorus",         "position": { "x": 900,  "y": 200 } },
+    { "id": "split",     "componentId": "route-split",        "position": { "x": 1120, "y": 200 } },
+    { "id": "verb",      "componentId": "re-stereo-freeverb", "position": { "x": 1300, "y": 200 } },
+    { "id": "out",       "componentId": "output",             "position": { "x": 1540, "y": 200 } }
+  ],
+  "connections": [
+    { "id": "n1",  "source": "c_root",  "sourceOutput": "out-0", "target": "saw1",   "targetInput": "in-0" },
+    { "id": "n2",  "source": "c_fifth", "sourceOutput": "out-0", "target": "saw2",   "targetInput": "in-0" },
+    { "id": "n3",  "source": "saw1",    "sourceOutput": "out-0", "target": "mix",    "targetInput": "in-0" },
+    { "id": "n4",  "source": "saw2",    "sourceOutput": "out-0", "target": "mix",    "targetInput": "in-1" },
+    { "id": "n5",  "source": "c_rate",  "sourceOutput": "out-0", "target": "lfo",    "targetInput": "in-0" },
+    { "id": "n6",  "source": "lfo",     "sourceOutput": "out-0", "target": "bias",   "targetInput": "in-0" },
+    { "id": "n7",  "source": "c_scale", "sourceOutput": "out-0", "target": "bias",   "targetInput": "in-1" },
+    { "id": "n8",  "source": "c_bias",  "sourceOutput": "out-0", "target": "bias",   "targetInput": "in-2" },
+    { "id": "n9",  "source": "mix",     "sourceOutput": "out-0", "target": "filt",   "targetInput": "in-0" },
+    { "id": "n10", "source": "bias",    "sourceOutput": "out-0", "target": "filt",   "targetInput": "in-1" },
+    { "id": "n11", "source": "filt",    "sourceOutput": "out-0", "target": "chorus", "targetInput": "in-0" },
+    { "id": "n12", "source": "chorus",  "sourceOutput": "out-0", "target": "split",  "targetInput": "in-0" },
+    { "id": "n13", "source": "split",   "sourceOutput": "out-0", "target": "verb",   "targetInput": "in-0" },
+    { "id": "n14", "source": "split",   "sourceOutput": "out-1", "target": "verb",   "targetInput": "in-1" },
+    { "id": "n15", "source": "verb",    "sourceOutput": "out-0", "target": "out",    "targetInput": "in-0" },
+    { "id": "n16", "source": "verb",    "sourceOutput": "out-1", "target": "out",    "targetInput": "in-1" }
+  ]
+}
