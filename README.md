@@ -14,8 +14,14 @@ AudioWorklets in the browser.
 
 ## Features
 
-- **~400 built-in DSP blocks** (oscillators, filters, EQ, delays, reverbs, envelopes,
+- **400+ built-in DSP blocks** (oscillators, filters, EQ, delays, reverbs, envelopes,
   dynamics, distortion, modulation, math, routing…), searchable palette.
+- **Sequencing & pitch** — clock **divider**/**multiplier**, **Euclidean** sequencer
+  (steps/pulses/rotation), **arpeggiators** (chord shapes clocked), and per-scale
+  **quantizers** (major, minor, modes, pentatonic, blues, whole-tone, chromatic).
+- **Mixing & modulation** — a **Mixer 4** (level/pan/send → L, R, aux), an 8→mono
+  sub-mixer, a constant-power **Pan**, a **2×2 mod matrix**, an attenuverting **CV mixer**,
+  and a morphing **Wavetable** oscillator.
 - **Instrument/widget nodes** — oscilloscope (signal + trigger, resizable), spectrogram
   (resizable), analog VU meter, digital voltmeter, R/G/B/Y LEDs, and 8/16-step
   sequencers (clock in → step frequency out, drag steps to set pitch).
@@ -220,15 +226,15 @@ Things an electronic musician would expect that aren't built yet (rough priority
 
 - **Polyphony** — voice allocation (Faust supports poly DSP); poly Keyboard/MIDI.
 - **Global transport / master clock** — one BPM synced across sequencers; play/stop.
-- **Sequencing extras** — clock divider/multiplier, Euclidean sequencer, gate/velocity
-  per step, arpeggiator, scale quantizer.
+- **Sequencing extras** — per-step gate/velocity on the step sequencer (clock divider/
+  multiplier, Euclidean sequencer, arpeggiators and scale quantizers are **done**).
 - **MIDI out** and **MIDI clock** sync; **MIDI CC → control** node.
-- **Mixer** node (multi-channel with pan + effect sends); dedicated **pan** node.
-- **Sample player / wavetable oscillator** (load audio files); **granular**.
+- **Sample player** (load audio files) and **granular** (basic wavetable/mixer/pan/mod-
+  matrix are **done**).
+- **Modulation** — an **XY pad** macro controller (a 2×2 mod matrix + CV mixer are **done**).
 - **Preset / example-patch browser** (bundled `.faustmod` demos) + patch thumbnails.
 - **Node editing** — copy/paste nodes, grouping / sub-patches (macros), alignment.
 - **Recording** — WAV export (currently `.webm`), loop/overdub.
-- **Modulation** — a mod matrix / macro (XY pad) controllers; more mod sources.
 - **Sharing** — export/import patch links; a small gallery.
 
 ## Widget nodes

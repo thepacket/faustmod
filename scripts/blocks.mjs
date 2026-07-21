@@ -591,4 +591,215 @@ B("glide", "Glide / Portamento", "Utility",
   [sig("x", "in"), ctl("time", "time", 0.05, 0, 1, "s")],
   "x : si.smooth(ba.tau2pole(time))");
 
+// ================================================================= BATCH 7
+// Sequencing, mixing, modulation and pitch utilities. Several of these embed a
+// precomputed integer table (as a Faust `waveform`) so the block stays a pure,
+// stateless-to-compile factory while still doing scale/rhythm logic at runtime.
+
+// A rising-edge trigger from a clock signal, and a running trigger count.
+const RISE = "(clk > 0.5) & (clk' <= 0.5)";
+
+// ------------------------------------------------------------------ Clock utilities
+// Clock divider: pass every Nth incoming pulse (N=1 passes all).
+B("clock-div", "Clock Divider", "Sequencers",
+  [sig("clk", "clock"), ctl("n", "divide", 2, 1, 32)],
+  `tr & ((int(acc) % int(max(1, n))) == 0) with {
+     tr = ${RISE};
+     acc = tr : + ~ _;
+   }`);
+// Clock multiplier: emit `mult` evenly spaced pulses per incoming clock period.
+// The period is measured between the last two input pulses and a phasor of
+// mult/period runs across the next period, emitting a pulse on each wrap.
+B("clock-mult", "Clock Multiplier", "Sequencers",
+  [sig("clk", "clock"), ctl("mult", "multiply", 2, 1, 16)],
+  `(ph < ph') with {
+     tr = ${RISE};
+     cnt = (+(1) : \\(x).(x * (1 - tr'))) ~ _;
+     period = ba.sAndH(tr, cnt) : max(1);
+     inc = int(max(1, mult)) / period;
+     ph = (+(inc) : \\(p).(p - floor(p))) ~ _;
+   }`);
+
+// ------------------------------------------------------------------ Euclidean sequencer
+// Precompute Bjorklund patterns for every steps(1..16) x pulses(0..16), padded to
+// 16 positions, and read the current position (advanced by the clock) at runtime.
+const bjorklund = (steps, pulses) => {
+  steps = Math.max(1, Math.min(16, steps | 0));
+  pulses = Math.max(0, Math.min(steps, pulses | 0));
+  if (pulses === 0) return Array(steps).fill(0);
+  if (pulses === steps) return Array(steps).fill(1);
+  const counts = [];
+  const remainders = [pulses];
+  let divisor = steps - pulses;
+  let level = 0;
+  for (;;) {
+    counts.push(Math.floor(divisor / remainders[level]));
+    remainders.push(divisor % remainders[level]);
+    divisor = remainders[level];
+    level++;
+    if (remainders[level] <= 1) break;
+  }
+  counts.push(divisor);
+  const pattern = [];
+  const build = (lvl) => {
+    if (lvl === -1) pattern.push(0);
+    else if (lvl === -2) pattern.push(1);
+    else {
+      for (let i = 0; i < counts[lvl]; i++) build(lvl - 1);
+      if (remainders[lvl] !== 0) build(lvl - 2);
+    }
+  };
+  build(level);
+  const i = pattern.indexOf(1); // rotate so it starts on a hit
+  return pattern.slice(i).concat(pattern.slice(0, i));
+};
+const EUC = [];
+for (let s = 1; s <= 16; s++) {
+  for (let p = 0; p <= 16; p++) {
+    const pat = bjorklund(s, Math.min(p, s));
+    for (let i = 0; i < 16; i++) EUC.push(i < s ? pat[i] || 0 : 0);
+  }
+}
+B("euclid", "Euclidean Seq", "Sequencers",
+  [sig("clk", "clock"), ctl("steps", "steps", 8, 1, 16), ctl("pulses", "pulses", 4, 0, 16), ctl("rot", "rotate", 0, 0, 15)],
+  `tr & bit with {
+     tr = ${RISE};
+     s = int(max(1, min(16, steps)));
+     p = int(max(0, min(16, pulses)));
+     acc = tr : + ~ _;
+     pos = (int(acc) + s - 1) % s;
+     rp = (pos + int(max(0, rot))) % s;
+     idx = ((s - 1) * 17 + p) * 16 + rp;
+     bit = waveform{ ${EUC.join(",")} }, idx : rdtable;
+   }`);
+
+// ------------------------------------------------------------------ Scale quantizers
+// One block per scale: snap an incoming frequency to the nearest scale degree via a
+// per-pitch-class offset table (signed semitones to the closest allowed note).
+const SCALES = [
+  ["Major", [0, 2, 4, 5, 7, 9, 11]],
+  ["Minor", [0, 2, 3, 5, 7, 8, 10]],
+  ["Dorian", [0, 2, 3, 5, 7, 9, 10]],
+  ["Phrygian", [0, 1, 3, 5, 7, 8, 10]],
+  ["Lydian", [0, 2, 4, 6, 7, 9, 11]],
+  ["Mixolydian", [0, 2, 4, 5, 7, 9, 10]],
+  ["Harm Minor", [0, 2, 3, 5, 7, 8, 11]],
+  ["Mel Minor", [0, 2, 3, 5, 7, 9, 11]],
+  ["Penta Major", [0, 2, 4, 7, 9]],
+  ["Penta Minor", [0, 3, 5, 7, 10]],
+  ["Blues", [0, 3, 5, 6, 7, 10]],
+  ["Whole Tone", [0, 2, 4, 6, 8, 10]],
+];
+const nearestOffsets = (set) => {
+  const off = [];
+  for (let pc = 0; pc < 12; pc++) {
+    let bo = 0, bd = 99;
+    for (const m of set) for (const oc of [-12, 0, 12]) {
+      const d = m + oc - pc;
+      if (Math.abs(d) < bd) { bd = Math.abs(d); bo = d; }
+    }
+    off.push(bo);
+  }
+  return off;
+};
+for (const [name, set] of SCALES) {
+  const off = nearestOffsets(set);
+  B(`quant-${name.toLowerCase().replace(/\s+/g, "-")}`, `Quantize ${name}`, "Pitch",
+    [sig("x", "freq")],
+    `ba.midikey2hz(m + o) with {
+       m = rint(ba.hz2midikey(max(1, x)));
+       pc = int(m) - 12 * int(floor(m / 12));
+       o = waveform{ ${off.join(",")} }, pc : rdtable;
+     }`);
+}
+B("quant-chromatic", "Quantize Chromatic", "Pitch", [sig("x", "freq")],
+  "ba.midikey2hz(rint(ba.hz2midikey(max(1, x))))");
+
+// ------------------------------------------------------------------ Arpeggiators
+// Step through a chord shape (semitone offsets) on each clock pulse.
+const ARPS = [
+  ["Major", [0, 4, 7, 12]],
+  ["Minor", [0, 3, 7, 12]],
+  ["Maj7", [0, 4, 7, 11]],
+  ["Min7", [0, 3, 7, 10]],
+  ["Sus4", [0, 5, 7, 12]],
+  ["Dim", [0, 3, 6, 9]],
+  ["Octaves", [0, 12]],
+  ["Fifths", [0, 7]],
+  ["Major Up/Down", [0, 4, 7, 12, 7, 4]],
+];
+for (const [name, offs] of ARPS) {
+  B(`arp-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-$/, "")}`, `Arp ${name}`, "Sequencers",
+    [sig("clk", "clock"), FREQ()],
+    `freq * ba.semi2ratio(o) with {
+       tr = ${RISE};
+       step = tr : + ~ _;
+       idx = int(step) % ${offs.length};
+       o = waveform{ ${offs.join(",")} }, idx : rdtable;
+     }`);
+}
+
+// ------------------------------------------------------------------ Mixer + pan
+// Constant-power bipolar pan: pan=-1 hard left, 0 centre, +1 hard right.
+B("mix-pan", "Pan", "Mixer", [sig("x", "in"), ctl("pan", "pan", 0, -1, 1)],
+  "x * cos((max(-1,min(1,pan)) + 1) * ma.PI / 4), x * sin((max(-1,min(1,pan)) + 1) * ma.PI / 4)");
+// 4-channel mixer: per-channel level + pan, stereo bus, plus one mono aux send.
+{
+  const chan = (i) => [
+    sig(`i${i}`, `in ${i}`),
+  ];
+  const lvl = (i) => ctl(`l${i}`, `lvl ${i}`, 0.8, 0, 1);
+  const pan = (i) => ctl(`p${i}`, `pan ${i}`, 0, -1, 1);
+  const snd = (i) => ctl(`s${i}`, `send ${i}`, 0, 0, 1);
+  const args = [];
+  for (let i = 1; i <= 4; i++) args.push(...chan(i));
+  for (let i = 1; i <= 4; i++) args.push(lvl(i));
+  for (let i = 1; i <= 4; i++) args.push(pan(i));
+  for (let i = 1; i <= 4; i++) args.push(snd(i));
+  const Lg = (i) => `cos((max(-1,min(1,p${i}))+1)*ma.PI/4)`;
+  const Rg = (i) => `sin((max(-1,min(1,p${i}))+1)*ma.PI/4)`;
+  const L = [1, 2, 3, 4].map((i) => `i${i}*l${i}*${Lg(i)}`).join(" + ");
+  const R = [1, 2, 3, 4].map((i) => `i${i}*l${i}*${Rg(i)}`).join(" + ");
+  const S = [1, 2, 3, 4].map((i) => `i${i}*l${i}*s${i}`).join(" + ");
+  B("mix-4", "Mixer 4", "Mixer", args, `${L}, ${R}, ${S}`);
+}
+// 8-channel level mixer to mono (sub-mixer / bus).
+{
+  const args = [];
+  for (let i = 1; i <= 8; i++) args.push(sig(`i${i}`, `in ${i}`));
+  for (let i = 1; i <= 8; i++) args.push(ctl(`l${i}`, `lvl ${i}`, 0.7, 0, 1));
+  const body = [1, 2, 3, 4, 5, 6, 7, 8].map((i) => `i${i}*l${i}`).join(" + ");
+  B("mix-8-mono", "Mixer 8 → Mono", "Mixer", args, body);
+}
+
+// ------------------------------------------------------------------ Modulation / CV
+// 2x2 modulation matrix: two sources routed to two destinations with per-cell amounts.
+B("mod-matrix-2x2", "Mod Matrix 2×2", "Modulation",
+  [sig("a", "src A"), sig("b", "src B"),
+   ctl("aa", "A→1", 1, -2, 2), ctl("ab", "A→2", 0, -2, 2),
+   ctl("ba", "B→1", 0, -2, 2), ctl("bb", "B→2", 1, -2, 2)],
+  "a*aa + b*ba, a*ab + b*bb");
+// Attenuverting CV mixer: 4 sources, each with a bipolar amount, summed to one.
+B("cv-mix-4", "CV Mix 4", "Modulation",
+  [sig("a", "a"), sig("b", "b"), sig("c", "c"), sig("d", "d"),
+   ctl("ga", "amt a", 1, -2, 2), ctl("gb", "amt b", 0, -2, 2), ctl("gc", "amt c", 0, -2, 2), ctl("gd", "amt d", 0, -2, 2)],
+  "a*ga + b*gb + c*gc + d*gd");
+// Offset + scale CV shaper (bias/attenuvert a modulation signal).
+B("cv-bias", "CV Bias/Scale", "Modulation",
+  [sig("x", "in"), ctl("scale", "scale", 1, -2, 2), ctl("bias", "bias", 0, -1, 1)],
+  "x*scale + bias");
+
+// ------------------------------------------------------------------ Wavetable oscillator
+// Morph across sine → triangle → saw → square with a continuous 0..3 position
+// (triangular blend of adjacent waves, so it interpolates smoothly).
+B("osc-wavetable", "Wavetable Osc", "Oscillators",
+  [FREQ(), ctl("wave", "wave", 0, 0, 3), GAIN(0.4)],
+  `(os.osc(freq)*b0 + os.triangle(freq)*b1 + os.sawtooth(freq)*b2 + os.square(freq)*b3) * gain with {
+     p = max(0, min(3, wave));
+     b0 = max(0, 1 - abs(p - 0));
+     b1 = max(0, 1 - abs(p - 1));
+     b2 = max(0, 1 - abs(p - 2));
+     b3 = max(0, 1 - abs(p - 3));
+   }`);
+
 export default blocks;
