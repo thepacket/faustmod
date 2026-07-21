@@ -189,3 +189,187 @@
   stroke: #9ff0c6;
   stroke-width: 4px;
 }
+
+/* ============================================================================
+   Widget / instrument nodes
+   ============================================================================ */
+.dsp-widget-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 10px;
+}
+.dsp-widget-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.widget-resize {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 2px,
+    rgba(255, 255, 255, 0.28) 2px 3px
+  );
+  border-radius: 0 0 8px 0;
+}
+
+/* ---- Scope / spectrogram canvases ---- */
+.scope-canvas,
+.spectro-canvas {
+  display: block;
+  border-radius: 6px;
+  border: 1px solid #0b0c10;
+  background: #0a0c10;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.6);
+}
+
+/* ---- LEDs ---- */
+.led-wrap {
+  padding: 6px 10px;
+}
+.led {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid #05060a;
+  transition: filter 0.03s linear;
+}
+.led-red {
+  background: radial-gradient(circle at 35% 30%, #ffd0d0 0%, #ff2b2b 34%, #5e0000 100%);
+}
+.led-green {
+  background: radial-gradient(circle at 35% 30%, #d6ffd6 0%, #22e022 34%, #063a06 100%);
+}
+.led-blue {
+  background: radial-gradient(circle at 35% 30%, #d6e6ff 0%, #2f7bff 34%, #041b52 100%);
+}
+.led-yellow {
+  background: radial-gradient(circle at 35% 30%, #fff6cf 0%, #ffcf1f 34%, #5e4a00 100%);
+}
+
+/* ---- Analog VU meter ---- */
+.vu {
+  width: 140px;
+}
+.vu svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.vu-face {
+  fill: #efe7cf;
+  stroke: #0b0c10;
+  stroke-width: 1;
+}
+.vu-tick {
+  stroke: #2a2620;
+  stroke-width: 1;
+}
+.vu-tick.hot {
+  stroke: #c0301a;
+  stroke-width: 1.4;
+}
+.vu-label {
+  fill: #4a4436;
+  font-size: 7px;
+  font-family: system-ui, sans-serif;
+  letter-spacing: 1px;
+}
+.vu-needle {
+  stroke: #1a1a1a;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.vu-hub {
+  fill: #1a1a1a;
+}
+
+/* ---- Digital voltmeter ---- */
+.dvm {
+  width: 120px;
+  padding: 4px 0;
+}
+.dvm-readout {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 20px;
+  font-weight: 600;
+  color: #46d19e;
+  text-align: right;
+  background: #071410;
+  border: 1px solid #0b0c10;
+  border-radius: 5px;
+  padding: 4px 8px;
+  text-shadow: 0 0 8px rgba(70, 209, 158, 0.6);
+}
+.dvm-unit {
+  font-size: 11px;
+  color: #2a8a6a;
+  margin-left: 4px;
+}
+.dvm-bar {
+  height: 6px;
+  margin-top: 5px;
+  background: #14161c;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.dvm-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #46d19e, #ffd21f 70%, #ff5b6e);
+  transition: width 0.03s linear;
+}
+
+/* ---- Step sequencer ---- */
+.seq {
+  padding: 2px 4px;
+}
+.seq-steps {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+}
+.seq-step {
+  width: 18px;
+  height: 62px;
+  background: #191b21;
+  border: 1px solid #0b0c10;
+  border-radius: 4px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  cursor: ns-resize;
+  overflow: hidden;
+}
+.seq-step.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.seq-bar {
+  width: 100%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 85%, #fff), var(--accent));
+  border-radius: 0 0 3px 3px;
+}
+.seq-note {
+  position: absolute;
+  bottom: 1px;
+  font-size: 8px;
+  color: #cfd4e0;
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+}
+.seq-hint {
+  margin-top: 5px;
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+}

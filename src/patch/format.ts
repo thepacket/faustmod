@@ -12,6 +12,10 @@ export interface PatchNode {
   componentId: string;
   position: { x: number; y: number };
   value?: number;
+  /** Widget node size (resizable widgets). */
+  size?: { w: number; h: number };
+  /** Widget node state (e.g. sequencer notes). */
+  state?: Record<string, unknown>;
 }
 
 export interface PatchConnection {

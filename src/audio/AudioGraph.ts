@@ -1,6 +1,7 @@
 import { AudioEngine } from "./AudioEngine";
 import { FaustService } from "./FaustService";
 import { FaustUnit, ConstantUnit, OutputUnit, InputUnit } from "./units";
+import { MeterUnit, ScopeUnit, SpectrumUnit, SequencerUnit, Monitors } from "./monitors";
 import type { AudioUnit } from "./types";
 import { resolveComponent } from "../components/customBlocks";
 
@@ -43,6 +44,7 @@ class AudioGraphImpl {
   async removeNode(nodeId: string) {
     this.desiredNodes.delete(nodeId);
     this.values.delete(nodeId);
+    Monitors.delete(nodeId);
     for (const [id, c] of this.conns) {
       if (c.src === nodeId || c.dst === nodeId) this.conns.delete(id);
     }
@@ -89,6 +91,7 @@ class AudioGraphImpl {
     this.live = false;
     const all = [...this.units.values()];
     this.units.clear();
+    Monitors.clear();
     for (const p of all) (await p)?.dispose();
     await AudioEngine.suspend();
   }
@@ -128,6 +131,26 @@ class AudioGraphImpl {
           }
           case "constant":
             return new ConstantUnit(ctx, this.values.get(nodeId) ?? def.value ?? 0);
+          case "widget": {
+            let widgetUnit: AudioUnit;
+            switch (def.widget) {
+              case "scope":
+                widgetUnit = new ScopeUnit(ctx);
+                break;
+              case "spectrogram":
+                widgetUnit = new SpectrumUnit(ctx);
+                break;
+              case "sequencer": {
+                const steps = Number(def.widgetConfig?.steps ?? 8);
+                widgetUnit = await SequencerUnit.create(ctx, new Array(steps).fill(0));
+                break;
+              }
+              default:
+                widgetUnit = new MeterUnit(ctx); // meters + LEDs
+            }
+            Monitors.set(nodeId, widgetUnit);
+            return widgetUnit;
+          }
           default: {
             let worklet;
             if (def.code) {

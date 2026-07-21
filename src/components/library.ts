@@ -1,8 +1,9 @@
 import type { InputSpec, OutputSpec } from "../audio/types";
 import generatedCatalog from "../generated/catalog.json";
+import { WIDGETS } from "./widgets";
 
 /** What kind of audio unit a component realizes into. */
-export type ComponentKind = "faust" | "output" | "input" | "constant";
+export type ComponentKind = "faust" | "output" | "input" | "constant" | "widget";
 
 export interface ComponentDef {
   /** Stable identifier used in serialized graphs, factory filenames, and by the AI. */
@@ -21,6 +22,14 @@ export interface ComponentDef {
   code?: string;
   /** True for user-authored blocks in the custom-block registry. */
   custom?: boolean;
+  /** For kind "widget": which React widget body renders this node. */
+  widget?: string;
+  /** Widget-specific config (LED colour, meter mode, sequencer step count…). */
+  widgetConfig?: Record<string, unknown>;
+  /** Widgets with a resize handle. */
+  resizable?: boolean;
+  /** Default widget body size in px. */
+  defaultSize?: { w: number; h: number };
 }
 
 /**
@@ -67,6 +76,7 @@ const SPECIAL: ComponentDef[] = [
 
 export const LIBRARY: ComponentDef[] = [
   ...SPECIAL,
+  ...WIDGETS,
   ...(generatedCatalog as ComponentDef[]),
 ];
 

@@ -45,6 +45,14 @@ export class DspNode extends ClassicPreset.Node {
   readonly tooltip?: string;
   readonly tips: Record<string, string> = {};
 
+  // Widget nodes (scope, meters, sequencer…) render a custom body.
+  readonly widget?: string;
+  readonly widgetConfig?: Record<string, unknown>;
+  readonly resizable: boolean;
+  width?: number;
+  height?: number;
+  widgetState: Record<string, unknown> = {};
+
   constructor(
     def: ComponentDef,
     private onValueChange: (nodeId: string, value: number) => void,
@@ -53,6 +61,13 @@ export class DspNode extends ClassicPreset.Node {
     this.componentId = def.id;
     this.category = def.category;
     this.tooltip = def.tooltip;
+    this.widget = def.widget;
+    this.widgetConfig = def.widgetConfig;
+    this.resizable = !!def.resizable;
+    if (def.defaultSize) {
+      this.width = def.defaultSize.w;
+      this.height = def.defaultSize.h;
+    }
 
     def.inputs.forEach((spec, i) => {
       const key = inKey(i);

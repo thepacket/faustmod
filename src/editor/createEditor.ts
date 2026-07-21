@@ -23,6 +23,7 @@ import { AudioGraph } from "../audio/AudioGraph";
 import { type ComponentDef } from "../components/library";
 import { resolveComponent } from "../components/customBlocks";
 import type { GraphSnapshot } from "../patch/format";
+import { WidgetBridge } from "./widgets/WidgetBridge";
 import "./theme/theme.css";
 
 export type { GraphSnapshot } from "../patch/format";
@@ -85,6 +86,11 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
 
   let changeCb: (() => void) | null = null;
   const notifyChange = () => changeCb?.();
+
+  // Let widget node bodies re-measure themselves after a resize + mark dirty.
+  WidgetBridge.updateNode = (nodeId) => void area.update("node", nodeId);
+  WidgetBridge.onChange = () => notifyChange();
+  WidgetBridge.zoom = () => area.area.transform.k;
 
   // --- mirror editor events into the live audio graph ---------------------
   editor.addPipe((ctx) => {
@@ -159,11 +165,18 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     const nodes = (editor.getNodes() as DspNode[]).map((n) => {
       const view = area.nodeViews.get(n.id);
       const valueCtrl = n.controls.value as ClassicPreset.InputControl<"number"> | undefined;
+      const isWidget = !!n.widget;
+      const hasState = Object.keys(n.widgetState).length > 0;
       return {
         id: n.id,
         componentId: n.componentId,
         position: view ? { x: view.position.x, y: view.position.y } : { x: 0, y: 0 },
         value: valueCtrl ? Number(valueCtrl.value) : undefined,
+        size:
+          isWidget && n.width != null && n.height != null
+            ? { w: n.width, h: n.height }
+            : undefined,
+        state: isWidget && hasState ? { ...n.widgetState } : undefined,
       };
     });
     const connections = editor.getConnections().map((c) => ({
@@ -192,6 +205,11 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         ctrl?.setValue(n.value);
         AudioGraph.setValue(node.id, n.value);
       }
+      if (n.size) {
+        node.width = n.size.w;
+        node.height = n.size.h;
+      }
+      if (n.state) node.widgetState = { ...n.state };
       await area.update("node", node.id);
     }
     for (const c of snap.connections) {

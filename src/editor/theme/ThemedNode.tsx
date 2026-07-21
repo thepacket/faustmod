@@ -1,6 +1,9 @@
 import { Presets as ReactPresets } from "rete-react-plugin";
 import type { ClassicPreset } from "rete";
 import { accentFor } from "./accents";
+import { WidgetBody } from "../widgets/WidgetBody";
+import { ResizeHandle } from "../widgets/ResizeHandle";
+import type { WidgetNode } from "../widgets/WidgetBridge";
 
 // Ref components from the classic preset — they register each socket/control with
 // the render pipeline so connection positions are tracked. Using them keeps node
@@ -19,6 +22,12 @@ interface NodeData extends ClassicPreset.Node {
   selected?: boolean;
   tooltip?: string;
   tips?: Record<string, string>;
+  widget?: string;
+  widgetConfig?: Record<string, unknown>;
+  widgetState?: Record<string, unknown>;
+  resizable?: boolean;
+  width?: number;
+  height?: number;
 }
 
 interface Props {
@@ -41,6 +50,36 @@ export function ThemedNode(props: Props) {
 
   const hasInputs = inputEntries.some(([, v]) => v);
   const hasOutputs = outputEntries.some(([, v]) => v);
+  const isWidget = !!props.data.widget;
+
+  const inputPort = ([key, input]: Entry<any>) =>
+    input && (
+      <div className="dsp-port dsp-input" key={key} data-testid={`input-${key}`} title={tip(key)}>
+        <RefSocket
+          name="input-socket"
+          side="input"
+          socketKey={key}
+          nodeId={id}
+          emit={props.emit}
+          payload={input.socket}
+        />
+        <span className="dsp-port-label">{input.label}</span>
+      </div>
+    );
+  const outputPort = ([key, output]: Entry<any>) =>
+    output && (
+      <div className="dsp-port dsp-output" key={key} data-testid={`output-${key}`} title={tip(key)}>
+        <span className="dsp-port-label">{output.label}</span>
+        <RefSocket
+          name="output-socket"
+          side="output"
+          socketKey={key}
+          nodeId={id}
+          emit={props.emit}
+          payload={output.socket}
+        />
+      </div>
+    );
 
   return (
     <div
@@ -96,7 +135,19 @@ export function ThemedNode(props: Props) {
         </div>
       )}
 
-      {!isConstant && (hasInputs || hasOutputs) && (
+      {/* Widget: inputs (left) · custom body · outputs (right), optionally resizable. */}
+      {isWidget && (
+        <div className="dsp-widget-row">
+          {hasInputs && <div className="dsp-col dsp-inputs">{inputEntries.map(inputPort)}</div>}
+          <div className="dsp-widget-body">
+            <WidgetBody node={props.data as unknown as WidgetNode} />
+          </div>
+          {hasOutputs && <div className="dsp-col dsp-outputs">{outputEntries.map(outputPort)}</div>}
+          {props.data.resizable && <ResizeHandle node={props.data as unknown as WidgetNode} />}
+        </div>
+      )}
+
+      {!isConstant && !isWidget && (hasInputs || hasOutputs) && (
         <div className="dsp-io">
           {hasInputs && (
             <div className="dsp-col dsp-inputs">
@@ -152,7 +203,7 @@ export function ThemedNode(props: Props) {
         </div>
       )}
 
-      {!isConstant && controlEntries.length > 0 && (
+      {!isConstant && !isWidget && controlEntries.length > 0 && (
         <div className="dsp-controls">
           {controlEntries.map(
             ([key, control]) =>

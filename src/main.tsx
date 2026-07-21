@@ -3,6 +3,7 @@ import { App } from "./ui/App";
 import { AudioEngine } from "./audio/AudioEngine";
 import { AudioGraph } from "./audio/AudioGraph";
 import { FaustService } from "./audio/FaustService";
+import { Monitors } from "./audio/monitors";
 import "./ui/styles.css";
 
 // Dev-only debug handle for inspecting the running audio graph from the console.
@@ -11,6 +12,7 @@ if (import.meta.env.DEV) {
     AudioEngine,
     AudioGraph,
     FaustService,
+    Monitors,
   };
 }
 
