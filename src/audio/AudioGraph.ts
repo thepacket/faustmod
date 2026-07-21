@@ -1,6 +1,6 @@
 import { AudioEngine } from "./AudioEngine";
 import { FaustService } from "./FaustService";
-import { FaustUnit, ConstantUnit, OutputUnit, InputUnit } from "./units";
+import { FaustUnit, ModuleUnit, ConstantUnit, OutputUnit, InputUnit } from "./units";
 import {
   MeterUnit,
   ScopeUnit,
@@ -142,6 +142,11 @@ class AudioGraphImpl {
           }
           case "constant":
             return new ConstantUnit(ctx, this.values.get(nodeId) ?? def.value ?? 0);
+          case "module": {
+            // Ported Faust example: precompiled factory + params-as-control-inputs.
+            const worklet = await FaustService.createFactoryNode(def.id, ctx);
+            return new ModuleUnit(ctx, worklet, def.inputs);
+          }
           case "widget": {
             let widgetUnit: AudioUnit;
             switch (def.widget) {

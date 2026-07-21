@@ -285,6 +285,10 @@ body {
   border-left: 1px solid var(--border);
   width: 300px;
 }
+.panel.modules {
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
 .panel h2 {
   font-size: 13px;
   text-transform: uppercase;

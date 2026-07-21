@@ -9,6 +9,7 @@ import { buildAiBrief } from "../patch/aiBrief";
 import { MenuBar, type Menu } from "./MenuBar";
 import { TabBar } from "./TabBar";
 import { LibraryPanel } from "./LibraryPanel";
+import { ModulePanel } from "./ModulePanel";
 import { ImportBlockModal } from "./ImportBlockModal";
 import { AboutModal } from "./AboutModal";
 import { AudioSettingsModal } from "./AudioSettingsModal";
@@ -234,6 +235,7 @@ export function App() {
       <div className="body">
         <LibraryPanel disabled={!ready} onAdd={(def) => ed()?.addComponent(def)} />
         <div className="canvas" ref={canvasRef} />
+        <ModulePanel disabled={!ready} onAdd={(def) => ed()?.addComponent(def)} />
       </div>
 
       {modal === "import-block" && (

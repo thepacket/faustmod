@@ -3,7 +3,7 @@ import generatedCatalog from "../generated/catalog.json";
 import { WIDGETS } from "./widgets";
 
 /** What kind of audio unit a component realizes into. */
-export type ComponentKind = "faust" | "output" | "input" | "constant" | "widget";
+export type ComponentKind = "faust" | "output" | "input" | "constant" | "widget" | "module";
 
 export interface ComponentDef {
   /** Stable identifier used in serialized graphs, factory filenames, and by the AI. */

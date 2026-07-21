@@ -84,6 +84,93 @@ export class FaustUnit implements AudioUnit {
   }
 }
 
+/**
+ * A ported Faust example program (see build-examples.mjs). Like FaustUnit for audio
+ * channels, but its Faust UI params are exposed as extra CONTROL INPUTS: each param
+ * input is a pass-through GainNode feeding the worklet's matching AudioParam. When
+ * unconnected the param sits at its Faust default; when a signal is wired in, the
+ * default is zeroed so the incoming signal fully drives it (add → replace).
+ */
+export class ModuleUnit implements AudioUnit {
+  readonly numInputs: number;
+  readonly numOutputs: number;
+  private merger: ChannelMergerNode | null = null;
+  private splitter: ChannelSplitterNode | null = null;
+  // Per input port: either an audio channel index, or a driven AudioParam.
+  private ports: (
+    | { kind: "audio"; channel: number }
+    | { kind: "param"; gain: GainNode; param: AudioParam; init: number }
+    | null
+  )[] = [];
+
+  constructor(
+    ctx: BaseAudioContext,
+    private worklet: FaustMonoAudioWorkletNode,
+    inputs: InputSpec[],
+  ) {
+    const numAudioIn = worklet.getNumInputs();
+    this.numOutputs = worklet.getNumOutputs();
+    this.numInputs = inputs.length;
+
+    if (numAudioIn > 0) {
+      this.merger = ctx.createChannelMerger(numAudioIn);
+      this.merger.connect(worklet as unknown as AudioNode);
+    }
+    if (this.numOutputs > 0) {
+      this.splitter = ctx.createChannelSplitter(this.numOutputs);
+      (worklet as unknown as AudioNode).connect(this.splitter);
+    }
+
+    const params = (worklet as unknown as AudioWorkletNode).parameters;
+    let audioIdx = 0;
+    inputs.forEach((spec, i) => {
+      if (spec.paramPath) {
+        const param = params.get(spec.paramPath);
+        if (param) {
+          const init = spec.default ?? param.defaultValue;
+          param.value = init;
+          const gain = ctx.createGain();
+          gain.connect(param);
+          this.ports[i] = { kind: "param", gain, param, init };
+        } else {
+          this.ports[i] = null; // param address not found on the node
+        }
+      } else if (this.merger && audioIdx < numAudioIn) {
+        this.ports[i] = { kind: "audio", channel: audioIdx++ };
+      } else {
+        this.ports[i] = null;
+      }
+    });
+  }
+
+  input(i: number) {
+    const p = this.ports[i];
+    if (!p) return null;
+    if (p.kind === "audio") return { node: this.merger as AudioNode, channel: p.channel };
+    return { node: p.gain as AudioNode, channel: 0 };
+  }
+  output(i: number) {
+    if (!this.splitter || i < 0 || i >= this.numOutputs) return null;
+    return { node: this.splitter as AudioNode, channel: i };
+  }
+  setValue() {}
+  onInputConnected(i: number, connected: boolean) {
+    const p = this.ports[i];
+    if (p?.kind === "param") p.param.value = connected ? 0 : p.init;
+  }
+  dispose() {
+    try {
+      for (const p of this.ports) if (p?.kind === "param") p.gain.disconnect();
+      this.merger?.disconnect();
+      this.splitter?.disconnect();
+      (this.worklet as unknown as AudioNode).disconnect();
+      this.worklet.destroy?.();
+    } catch {
+      /* already torn down */
+    }
+  }
+}
+
 /** A constant DC signal source with one output port; its value is user-editable. */
 export class ConstantUnit implements AudioUnit {
   readonly numInputs = 0;

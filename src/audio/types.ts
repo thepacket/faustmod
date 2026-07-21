@@ -12,6 +12,11 @@ export interface InputSpec {
   unit?: string;
   /** Human description shown in the port's hover tooltip. */
   tooltip?: string;
+  /**
+   * For example "module" nodes: the Faust UI param address this control input
+   * drives (via the worklet's AudioParam). Absent on plain audio signal inputs.
+   */
+  paramPath?: string;
 }
 
 export interface OutputSpec {

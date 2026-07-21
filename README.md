@@ -33,8 +33,12 @@ AudioWorklets in the browser.
   and stereo output.
 - **Granular** — load a file and get a continuous windowed grain cloud with position,
   grain size, density, pitch and spray control inputs (scan/modulate them for textures).
+- **Modules palette** — a right-hand palette of larger, self-contained modules: the
+  GRAME **Faust example programs** (filters, reverbs, physical models, generators…),
+  ported so each example's audio channels become ports and its Faust UI params become
+  control inputs. Grouped by category (the example directory). See *Example modules* below.
 - **Custom blocks** — paste Faust source (with port metadata), compiled in-browser and
-  added to the palette. See *Custom DSP blocks* below.
+  added to the palette (also shown in the right Modules palette). See *Custom DSP blocks*.
 - **Multiple tabs** — one patch per tab; only the active tab plays.
 - **Recording + devices** — record the master output (Rec button → `.webm`); pick audio
   input/output devices (Help → Audio Devices).
@@ -66,12 +70,13 @@ blocks:
 ```bash
 npm run catalog            # compile all blocks → public/factories/ + src/generated/catalog.json
 npm run catalog -- --force # force a full rebuild (skips the up-to-date check)
+npm run examples           # fetch + compile the GRAME Faust examples → modules (see below)
 ```
 
 You normally don't run this by hand — it's wired to run automatically:
 
-- **`npm run dev`** → `predev` runs `npm run catalog`
-- **`npm run build`** → `prebuild` runs `npm run catalog`
+- **`npm run dev`** → `predev` runs `npm run catalog` then `npm run examples`
+- **`npm run build`** → `prebuild` runs `npm run catalog` then `npm run examples`
 
 The step **skips when already fresh** (catalog newer than `scripts/blocks.mjs`), so it
 only pays the compile cost when the block definitions change. Requires no external tools —
@@ -176,6 +181,27 @@ bodies, pill controls, signal cables, line grid) lives in
 [`src/editor/theme/`](src/editor/theme/) and is applied through rete-react-plugin's
 `customize` hooks (`ThemedNode`, `ThemedSocket`) plus `theme.css`. Header accents are set
 per category in [`accents.ts`](src/editor/theme/accents.ts).
+
+## Example modules
+
+The right-hand **Modules** palette is populated by porting the
+[GRAME Faust examples](https://github.com/grame-cncm/faust/tree/master-dev/examples).
+Unlike the core blocks (whose params are named signal inputs), these are ordinary Faust
+programs with an `hslider`/`nentry` UI. `scripts/build-examples.mjs`:
+
+- fetches each `.dsp` from the Faust repo into a gitignored cache (`.examples-cache/`),
+- compiles it once with libfaust to a WASM factory (`public/factories/ex-*`), and
+- reads the compiled JSON to turn its **audio channels into ports** and each **UI param
+  into a control input** (default/range/unit from the slider), writing
+  `src/generated/examples.json`.
+
+At runtime a `ModuleUnit` wires the audio channels like a normal block and routes each
+param control input to the worklet's matching **AudioParam** (a signal wired in replaces
+the slider default; unconnected, the default holds). Categories are the example
+directories; only the musical ones are included (hardware/mobile/research dirs are
+skipped), and any example that fails to compile is pruned. Nothing from the Faust repo is
+committed — the cache, factories and `examples.json` are all generated (gitignored), the
+same posture as the core catalog. Run `npm run examples` (or let `predev`/`prebuild` do it).
 
 ## Custom DSP blocks
 
