@@ -264,3 +264,99 @@ export class SequencerUnit implements AudioUnit, SeqMonitor {
     }
   }
 }
+
+// ---- Note source (keyboard / MIDI): freq + gate [+ velocity] outputs --------
+export interface GateFreqMonitor {
+  noteOn(midi: number, velocity?: number): void;
+  noteOff(midi: number): void;
+  activeNote(): number | null;
+  setStatus?(s: string): void;
+  getStatus?(): string;
+}
+
+const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
+
+export class GateFreqUnit implements AudioUnit, GateFreqMonitor {
+  readonly numInputs = 0;
+  readonly numOutputs: number;
+  private freqSrc: ConstantSourceNode;
+  private gateSrc: ConstantSourceNode;
+  private velSrc: ConstantSourceNode | null;
+  private held: number[] = []; // held notes (last-note priority, monophonic)
+  private status = "";
+
+  constructor(ctx: BaseAudioContext, withVelocity: boolean) {
+    this.numOutputs = withVelocity ? 3 : 2;
+    this.freqSrc = ctx.createConstantSource();
+    this.freqSrc.offset.value = 220;
+    this.gateSrc = ctx.createConstantSource();
+    this.gateSrc.offset.value = 0;
+    this.velSrc = withVelocity ? ctx.createConstantSource() : null;
+    if (this.velSrc) this.velSrc.offset.value = 0;
+    this.freqSrc.start();
+    this.gateSrc.start();
+    this.velSrc?.start();
+  }
+
+  input() {
+    return null;
+  }
+  output(i: number) {
+    const src = i === 0 ? this.freqSrc : i === 1 ? this.gateSrc : this.velSrc;
+    return src ? { node: src as AudioNode, channel: 0 } : null;
+  }
+
+  noteOn(midi: number, velocity = 100) {
+    this.held = this.held.filter((n) => n !== midi);
+    this.held.push(midi);
+    this.freqSrc.offset.value = midiToHz(midi);
+    this.gateSrc.offset.value = 1;
+    if (this.velSrc) this.velSrc.offset.value = velocity / 127;
+  }
+  noteOff(midi: number) {
+    this.held = this.held.filter((n) => n !== midi);
+    if (this.held.length) {
+      this.freqSrc.offset.value = midiToHz(this.held[this.held.length - 1]);
+    } else {
+      this.gateSrc.offset.value = 0;
+    }
+  }
+  activeNote() {
+    return this.held.length ? this.held[this.held.length - 1] : null;
+  }
+  setStatus(s: string) {
+    this.status = s;
+  }
+  getStatus() {
+    return this.status;
+  }
+  setValue() {}
+  onInputConnected() {}
+  dispose() {
+    try {
+      this.freqSrc.stop();
+      this.gateSrc.stop();
+      this.velSrc?.stop();
+      this.freqSrc.disconnect();
+      this.gateSrc.disconnect();
+      this.velSrc?.disconnect();
+    } catch {
+      /* noop */
+    }
+  }
+}
+
+/** A no-op unit for widgets with no audio (e.g. comment/label). */
+export class NullUnit implements AudioUnit {
+  readonly numInputs = 0;
+  readonly numOutputs = 0;
+  input() {
+    return null;
+  }
+  output() {
+    return null;
+  }
+  setValue() {}
+  onInputConnected() {}
+  dispose() {}
+}

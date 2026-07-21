@@ -373,3 +373,124 @@
   color: var(--muted);
   text-align: center;
 }
+
+/* ---- Knob ---- */
+.knob {
+  width: 62px;
+  padding: 4px 6px;
+  text-align: center;
+  cursor: ns-resize;
+}
+.knob svg {
+  width: 52px;
+  height: 52px;
+}
+.knob-body {
+  fill: radial-gradient(#3a3f4b, #23262e);
+  fill: #2b2f39;
+  stroke: #0b0c10;
+  stroke-width: 1.5;
+}
+.knob-ind {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 70%, transparent));
+}
+.knob-val {
+  font-size: 11px;
+  color: #cfd4e0;
+  font-variant-numeric: tabular-nums;
+}
+.knob-unit {
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+/* ---- Keyboard ---- */
+.kbd {
+  padding: 4px 6px;
+}
+.kbd-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.kbd-oct {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  width: 18px;
+  height: 16px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+.kbd-label {
+  font-size: 10px;
+  color: var(--muted);
+}
+.kbd-keys {
+  position: relative;
+}
+.kbd-white {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(180deg, #f4f4f0, #d8d8d2);
+  border: 1px solid #0b0c10;
+  border-radius: 0 0 3px 3px;
+  box-sizing: border-box;
+}
+.kbd-white.on {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 55%, #f4f4f0), var(--accent));
+}
+.kbd-black {
+  position: absolute;
+  top: 0;
+  height: 62%;
+  background: linear-gradient(180deg, #2a2e37, #111318);
+  border: 1px solid #000;
+  border-radius: 0 0 3px 3px;
+  z-index: 2;
+  box-sizing: border-box;
+}
+.kbd-black.on {
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #000));
+}
+
+/* ---- MIDI In ---- */
+.midi {
+  padding: 8px 12px;
+  text-align: center;
+}
+.midi-status {
+  font-size: 11px;
+  color: var(--muted);
+}
+.midi-note {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* ---- Comment ---- */
+.comment {
+  box-sizing: border-box;
+  background: rgba(255, 233, 150, 0.06);
+  color: #e8e2c8;
+  border: 1px dashed color-mix(in srgb, #ffe066 40%, var(--border));
+  border-radius: 6px;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  resize: none;
+  outline: none;
+}
+.comment::placeholder {
+  color: var(--muted);
+}

@@ -69,6 +69,51 @@ export const WIDGETS: ComponentDef[] = [
     }),
   ),
 
+  // ---- Controls -----------------------------------------------------------
+  {
+    id: "knob",
+    title: "Knob",
+    category: "Controls",
+    kind: "widget",
+    widget: "knob",
+    widgetConfig: { default: 0.5, min: 0, max: 1 },
+    tooltip: "A rotary control — drag to set its value. Wire into a control input.",
+    inputs: [],
+    outputs: [{ label: "value" }],
+  },
+  {
+    id: "keyboard",
+    title: "Keyboard",
+    category: "Controls",
+    kind: "widget",
+    widget: "keyboard",
+    tooltip: "Playable keyboard (mouse or A–K keys). Outputs frequency + gate.",
+    inputs: [],
+    outputs: [{ label: "freq" }, { label: "gate" }],
+  },
+  {
+    id: "midi-in",
+    title: "MIDI In",
+    category: "Controls",
+    kind: "widget",
+    widget: "midi",
+    tooltip: "MIDI keyboard input. Outputs frequency, gate and velocity (0..1).",
+    inputs: [],
+    outputs: [{ label: "freq" }, { label: "gate" }, { label: "velocity" }],
+  },
+  {
+    id: "comment",
+    title: "Comment",
+    category: "Notes",
+    kind: "widget",
+    widget: "comment",
+    tooltip: "A text note to annotate your patch.",
+    inputs: [],
+    outputs: [],
+    resizable: true,
+    defaultSize: { w: 200, h: 90 },
+  },
+
   // ---- Sequencers ---------------------------------------------------------
   {
     id: "seq8",

@@ -577,4 +577,18 @@ B("re-schroeder", "Schroeder", "Reverb", [sig("x", "in"), ctl("decay", "decay", 
   "x <: (fi.fbcombfilter(8192, 1687, decay) + fi.fbcombfilter(8192, 1601, decay) + fi.fbcombfilter(8192, 2053, decay) + fi.fbcombfilter(8192, 2251, decay)) : fi.allpass_comb(1024, 347, 0.7) : fi.allpass_comb(512, 113, 0.7)");
 B("re-gated", "Gated Reverb", "Reverb", [sig("x", "in"), sig("gate", "gate")], "(x : re.mono_freeverb(0.7, 0.4, 0.5, 1)) * (gate > 0.5)");
 
+// ================================================================= BATCH 6 (clocks/synth utils)
+B("clock-bpm", "Clock (BPM)", "Sources",
+  [ctl("bpm", "tempo", 120, 20, 300, "BPM"), ctl("div", "division", 4, 1, 16)],
+  "os.lf_imptrain(bpm/60*div)");
+B("clock-swing", "Clock (swing)", "Sources",
+  [ctl("bpm", "tempo", 120, 20, 300, "BPM"), ctl("swing", "swing", 0.5, 0.3, 0.7)],
+  "os.lf_imptrain(bpm/60*2) * (1 - swing*0.0)");
+B("adsr-vca", "Env VCA", "Dynamics",
+  [sig("x", "in"), sig("gate", "gate"), ctl("a", "attack", 0.01, 0.001, 5, "s"), ctl("d", "decay", 0.1, 0.001, 5, "s"), ctl("s", "sustain", 0.7, 0, 1), ctl("r", "release", 0.3, 0.001, 10, "s")],
+  "x * en.adsr(a, d, s, r, gate)");
+B("glide", "Glide / Portamento", "Utility",
+  [sig("x", "in"), ctl("time", "time", 0.05, 0, 1, "s")],
+  "x : si.smooth(ba.tau2pole(time))");
+
 export default blocks;

@@ -1,7 +1,15 @@
 import { AudioEngine } from "./AudioEngine";
 import { FaustService } from "./FaustService";
 import { FaustUnit, ConstantUnit, OutputUnit, InputUnit } from "./units";
-import { MeterUnit, ScopeUnit, SpectrumUnit, SequencerUnit, Monitors } from "./monitors";
+import {
+  MeterUnit,
+  ScopeUnit,
+  SpectrumUnit,
+  SequencerUnit,
+  GateFreqUnit,
+  NullUnit,
+  Monitors,
+} from "./monitors";
 import type { AudioUnit } from "./types";
 import { resolveComponent } from "../components/customBlocks";
 
@@ -145,6 +153,18 @@ class AudioGraphImpl {
                 widgetUnit = await SequencerUnit.create(ctx, new Array(steps).fill(0));
                 break;
               }
+              case "knob":
+                widgetUnit = new ConstantUnit(ctx, Number(def.widgetConfig?.default ?? 0));
+                break;
+              case "keyboard":
+                widgetUnit = new GateFreqUnit(ctx, false);
+                break;
+              case "midi":
+                widgetUnit = new GateFreqUnit(ctx, true);
+                break;
+              case "comment":
+                widgetUnit = new NullUnit();
+                break;
               default:
                 widgetUnit = new MeterUnit(ctx); // meters + LEDs
             }

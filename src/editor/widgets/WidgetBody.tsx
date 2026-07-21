@@ -5,6 +5,10 @@ import { AnalogMeter } from "./AnalogMeter";
 import { DigitalMeter } from "./DigitalMeter";
 import { Led } from "./Led";
 import { Sequencer } from "./Sequencer";
+import { Knob } from "./Knob";
+import { Keyboard } from "./Keyboard";
+import { MidiIn } from "./MidiIn";
+import { Comment } from "./Comment";
 
 /** Renders the custom body for a widget node, dispatched by its `widget` type. */
 export function WidgetBody({ node }: { node: WidgetNode }) {
@@ -21,6 +25,14 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
       return <Led node={node} />;
     case "sequencer":
       return <Sequencer node={node} />;
+    case "knob":
+      return <Knob node={node} />;
+    case "keyboard":
+      return <Keyboard node={node} />;
+    case "midi":
+      return <MidiIn node={node} />;
+    case "comment":
+      return <Comment node={node} />;
     default:
       return null;
   }
