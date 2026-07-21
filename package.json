@@ -17,13 +17,15 @@
   },
   "dependencies": {
     "@grame/faustwasm": "^0.16.6",
-    "rete": "^2.0.6",
-    "rete-area-plugin": "^2.3.2",
-    "rete-connection-plugin": "^2.0.5",
-    "rete-react-plugin": "^2.1.2",
-    "rete-render-utils": "^2.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "rete": "^2.0.6",
+    "rete-area-plugin": "^2.3.2",
+    "rete-comment-plugin": "^2.2.0",
+    "rete-connection-plugin": "^2.0.5",
+    "rete-history-plugin": "^2.2.0",
+    "rete-react-plugin": "^2.1.2",
+    "rete-render-utils": "^2.0.3",
     "styled-components": "^6.4.4"
   },
   "devDependencies": {

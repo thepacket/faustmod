@@ -3,18 +3,26 @@ import { createEditor, type EditorHandle } from "../editor/createEditor";
 import { LibraryService } from "../components/LibraryService";
 import { AudioGraph } from "../audio/AudioGraph";
 import { AudioEngine } from "../audio/AudioEngine";
-import { Toolbar } from "./Toolbar";
+import { PatchManager } from "../patch/PatchManager";
+import { buildAiBrief } from "../patch/aiBrief";
+import { MenuBar, type Menu } from "./MenuBar";
 import { LibraryPanel } from "./LibraryPanel";
-import { AiPanel } from "./AiPanel";
-import { SettingsModal } from "./SettingsModal";
+import { ImportBlockModal } from "./ImportBlockModal";
+import { AboutModal } from "./AboutModal";
+
+type ModalKind = null | "about" | "import-block";
 
 export function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorHandle | null>(null);
+  const patchRef = useRef<PatchManager | null>(null);
+
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState("Loading…");
   const [playing, setPlaying] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const [patchName, setPatchName] = useState("Untitled");
+  const [dirty, setDirty] = useState(false);
+  const [modal, setModal] = useState<ModalKind>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -29,6 +37,14 @@ export function App() {
         return;
       }
       editorRef.current = handle;
+      const mgr = new PatchManager(handle);
+      mgr.onChange = () => {
+        setPatchName(mgr.name);
+        setDirty(mgr.dirty);
+      };
+      handle.setChangeListener(() => mgr.markDirty());
+      patchRef.current = mgr;
+
       AudioGraph.onNodeError = (msg) => setStatus(msg);
       if (import.meta.env.DEV) {
         (window as unknown as Record<string, unknown>).editor = handle;
@@ -53,44 +69,130 @@ export function App() {
       } else {
         const errors = await AudioGraph.start();
         setPlaying(true);
-        setStatus(
-          errors.length
-            ? `⚠ ${errors.length} node(s) failed — ${errors[0]}`
-            : "Playing",
-        );
+        setStatus(errors.length ? `⚠ ${errors.length} node(s) failed — ${errors[0]}` : "Playing");
       }
     } catch (err) {
       setStatus(`Audio error: ${(err as Error).message}`);
     }
   };
 
+  const ed = () => editorRef.current;
+  const pm = () => patchRef.current;
+
+  const copyBrief = async () => {
+    try {
+      await navigator.clipboard.writeText(buildAiBrief());
+      setStatus("Catalog + format copied — paste it into your AI");
+    } catch {
+      setStatus("Clipboard blocked — allow clipboard access");
+    }
+  };
+
+  // Global keyboard shortcuts (rete handles ⌘Z/⌘Y on the canvas itself).
+  useEffect(() => {
+    if (!ready) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const inField =
+        !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+      const mod = e.metaKey || e.ctrlKey;
+      const k = e.key.toLowerCase();
+      if (mod && k === "s") {
+        e.preventDefault();
+        void (e.shiftKey ? pm()?.saveAs() : pm()?.save());
+      } else if (mod && k === "o") {
+        e.preventDefault();
+        void pm()?.open();
+      } else if (mod && k === "n") {
+        e.preventDefault();
+        void pm()?.newPatch();
+      } else if (!inField && mod && k === "d") {
+        e.preventDefault();
+        void ed()?.duplicateSelected();
+      } else if (!inField && mod && k === "a") {
+        e.preventDefault();
+        void ed()?.selectAll();
+      } else if (!inField && (e.key === "Delete" || e.key === "Backspace")) {
+        void ed()?.removeSelected();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [ready]);
+
+  const menus: Menu[] = [
+    {
+      label: "File",
+      items: [
+        { label: "New", shortcut: "⌘N", onClick: () => void pm()?.newPatch() },
+        { label: "Open…", shortcut: "⌘O", onClick: () => void pm()?.open() },
+        { separator: true },
+        { label: "Save", shortcut: "⌘S", onClick: () => void pm()?.save() },
+        { label: "Save As…", shortcut: "⇧⌘S", onClick: () => void pm()?.saveAs() },
+        { separator: true },
+        { label: "Export a copy…", onClick: () => pm()?.export() },
+      ],
+    },
+    {
+      label: "Edit",
+      items: [
+        { label: "Undo", shortcut: "⌘Z", onClick: () => ed()?.undo() },
+        { label: "Redo", shortcut: "⇧⌘Z", onClick: () => ed()?.redo() },
+        { separator: true },
+        { label: "Duplicate", shortcut: "⌘D", onClick: () => void ed()?.duplicateSelected() },
+        { label: "Delete", shortcut: "⌫", onClick: () => void ed()?.removeSelected() },
+        { label: "Select All", shortcut: "⌘A", onClick: () => void ed()?.selectAll() },
+      ],
+    },
+    {
+      label: "View",
+      items: [
+        { label: "Fit to Screen", onClick: () => void ed()?.zoomToFit() },
+        { separator: true },
+        { label: "Zoom In", shortcut: "⌘+", onClick: () => void ed()?.zoomIn() },
+        { label: "Zoom Out", shortcut: "⌘−", onClick: () => void ed()?.zoomOut() },
+        { label: "Reset Zoom", shortcut: "⌘0", onClick: () => void ed()?.resetZoom() },
+      ],
+    },
+    {
+      label: "Block",
+      items: [{ label: "Import DSP Block…", onClick: () => setModal("import-block") }],
+    },
+    {
+      label: "Help",
+      items: [
+        { label: "About FaustMod", onClick: () => setModal("about") },
+        { label: "Copy Catalog for AI", onClick: () => void copyBrief() },
+      ],
+    },
+  ];
+
   return (
     <div className="app">
-      <Toolbar
+      <MenuBar
+        menus={menus}
+        patchName={patchName}
+        dirty={dirty}
         playing={playing}
-        onTogglePlay={togglePlay}
-        onMasterVolume={(v) => AudioEngine.setMasterVolume(v)}
-        onClear={() => editorRef.current?.clear()}
-        onFit={() => editorRef.current?.zoomToFit()}
-        onSettings={() => setShowSettings(true)}
         status={status}
+        onTogglePlay={togglePlay}
+        onMasterVolume={(v) => {
+          AudioEngine.setMasterVolume(v);
+          pm()?.markDirty();
+        }}
       />
       <div className="body">
-        <LibraryPanel
-          disabled={!ready}
-          onAdd={(def) => editorRef.current?.addComponent(def)}
-        />
+        <LibraryPanel disabled={!ready} onAdd={(def) => ed()?.addComponent(def)} />
         <div className="canvas" ref={canvasRef} />
-        <AiPanel
-          disabled={!ready}
-          onGenerated={async (snap) => {
-            await editorRef.current?.load(snap);
-            setStatus("Patch generated");
-          }}
-          setStatus={setStatus}
-        />
       </div>
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+
+      {modal === "import-block" && (
+        <ImportBlockModal
+          onClose={() => setModal(null)}
+          onImported={(title) => setStatus(`Added block "${title}"`)}
+        />
+      )}
+      {modal === "about" && <AboutModal onClose={() => setModal(null)} />}
     </div>
   );
 }

@@ -34,20 +34,104 @@ body {
   height: 100vh;
 }
 
-/* ---- Toolbar ---- */
-.toolbar {
+/* ---- Menu bar ---- */
+.menubar {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
+  gap: 6px;
+  padding: 4px 12px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
+  z-index: 100;
 }
 .brand {
   font-weight: 700;
   letter-spacing: 0.5px;
   color: var(--accent);
-  margin-right: 6px;
+  margin-right: 8px;
+}
+.menus {
+  display: flex;
+  gap: 1px;
+}
+.menu {
+  position: relative;
+}
+.menu-label {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.menu-label:hover,
+.menu-label.active {
+  background: var(--panel-2);
+}
+.menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 200px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  padding: 5px;
+  z-index: 101;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+.menu-item:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+}
+.menu-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.menu-item kbd {
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.menu-item:hover:not(:disabled) kbd {
+  color: rgba(255, 255, 255, 0.85);
+}
+.menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 5px 6px;
+}
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+.patch-name {
+  margin-left: 10px;
+  color: var(--muted);
+  font-size: 13px;
 }
 .spacer {
   flex: 1;
@@ -289,4 +373,30 @@ body {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+.code-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #14161c;
+  color: #e6e8ee;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+.code-input:focus {
+  border-color: var(--accent);
+}
+.err-msg {
+  color: var(--danger);
+  font-size: 12px;
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+}
+.modal a {
+  color: var(--accent);
 }

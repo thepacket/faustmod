@@ -1,8 +1,8 @@
 # FaustMod
 
 A browser-based **modular audio synthesis IDE**. Patch DSP components together on a
-node canvas, hear the result live, and let an AI design patches for you. DSP is
-written in the [Faust](https://faust.grame.fr/) language, compiled to WebAssembly
+node canvas, hear the result live, author your own DSP blocks, and save/open patches.
+DSP is written in the [Faust](https://faust.grame.fr/) language and runs as WebAssembly
 AudioWorklets in the browser.
 
 ## Stack
@@ -11,7 +11,17 @@ AudioWorklets in the browser.
 - **[rete.js v2](https://retejs.org/)** (React renderer) — the node editor
 - **[@grame/faustwasm](https://github.com/grame-cncm/faustwasm)** — in-browser Faust → WASM AudioWorklet compiler
 - **Web Audio API** — routing, mixing, stereo I/O
-- **[OpenRouter](https://openrouter.ai/)** — LLM access for AI patch generation (client-side key)
+
+## Features
+
+- **~400 built-in DSP blocks** (oscillators, filters, EQ, delays, reverbs, envelopes,
+  dynamics, distortion, modulation, math, routing…), searchable palette.
+- **Custom blocks** — paste Faust source (with port metadata), compiled in-browser and
+  added to the palette. See *Custom DSP blocks* below.
+- **File management** — a top menu (File / Edit / View / Block / Help) with New, Open,
+  Save, Save As, Export, undo/redo, and the `.faustmod` patch format.
+- **Bring-your-own-AI** — instead of an LLM baked into the app, use an external AI to
+  write blocks/patches and paste them in. See *Using an external AI* below.
 
 ## Getting started
 
@@ -22,8 +32,9 @@ npm run build      # type-check + production build
 ```
 
 Click a component in the left panel to add it, drag between sockets to patch, then
-**Start Audio**. To use the AI panel, add your OpenRouter API key under **⚙ Settings**
-(stored only in your browser's localStorage; the browser calls OpenRouter directly).
+**Start**. Use the **File** menu to save/open `.faustmod` patches, **Block → Import DSP
+Block…** to add your own Faust blocks, and **Help → Copy Catalog for AI** to drive an
+external AI.
 
 ### Building the block catalog
 
@@ -146,21 +157,49 @@ bodies, pill controls, signal cables, line grid) lives in
 `customize` hooks (`ThemedNode`, `ThemedSocket`) plus `theme.css`. Header accents are set
 per category in [`accents.ts`](src/editor/theme/accents.ts).
 
-## AI patch generation
+## Custom DSP blocks
 
-`src/ai/patchGenerator.ts` sends the LLM a catalog of every component (id, labelled
-input/output ports, control-input defaults) and asks for a JSON graph. It's told to add
-**Constant** nodes wired into control inputs to set values. The response is parsed, laid
-out left-to-right by connection depth, and loaded into the editor — the same code path
-used for loading any saved patch.
+**Block → Import DSP Block…** takes a self-describing block definition — Faust source plus
+the port metadata the control-input model needs (labels + defaults). It's compiled
+in-browser with libfaust to verify (and to read the I/O count), then added to the palette
+under its category and persisted in `localStorage`:
+
+```json
+{
+  "format": "faustmod-block",
+  "title": "My Lowpass", "category": "Custom",
+  "inputs": [ {"label":"in"}, {"label":"cutoff","default":1000,"min":20,"max":20000,"unit":"Hz"} ],
+  "outputs": [ {"label":"out"} ],
+  "code": "import(\"stdfaust.lib\"); process(x, cutoff) = x : fi.lowpass(2, cutoff);"
+}
+```
+
+`process()` takes its control values as **named signal inputs in the same order as
+`inputs`** (this is the audio-rate control-input model — see above). Custom blocks are
+compiled at runtime; built-in blocks load precompiled factories.
+
+## Patches & file format
+
+Patches save as `.faustmod` (JSON): metadata, `nodes`, `connections`, and any **custom
+blocks embedded** so a patch is self-contained. Save/Open use the File System Access API
+(with download/upload fallback). See [`src/patch/format.ts`](src/patch/format.ts).
+
+## Using an external AI
+
+Rather than pay per-token for an in-app LLM (which would need the whole ~400-block catalog
+in context), FaustMod is **bring-your-own-AI**: **Help → Copy Catalog for AI** copies a
+brief (file formats + the full component catalog) to your clipboard. Paste it into an
+external AI, ask for a patch or a DSP block, and paste the result back via **Open** (patch)
+or **Block → Import DSP Block…**. Patches that use custom blocks are self-contained, so the
+AI can write those without any catalog at all.
 
 ## Project layout
 
 ```
 src/
   audio/        FaustService, AudioEngine, AudioGraph, units, types
-  components/   library (component defs) + LibraryService (startup compile)
-  editor/       rete editor setup + DspNode
-  ai/           openrouter client, settings, patchGenerator
-  ui/           App, Toolbar, LibraryPanel, AiPanel, SettingsModal, styles
+  components/   library, LibraryService, customBlocks (registry)
+  editor/       rete editor setup + DspNode + theme/
+  patch/        format (.faustmod), PatchManager (file I/O), aiBrief
+  ui/           App, MenuBar, LibraryPanel, modals, styles
 ```

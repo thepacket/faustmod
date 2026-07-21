@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { LibraryService } from "../components/LibraryService";
+import { CustomBlocks } from "../components/customBlocks";
 import type { ComponentDef } from "../components/library";
 
 interface Props {
@@ -15,6 +16,10 @@ interface Group {
 export function LibraryPanel({ disabled, onAdd }: Props) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [rev, bump] = useReducer((x) => x + 1, 0);
+
+  // Re-render when custom blocks are added/removed so they appear in the palette.
+  useEffect(() => CustomBlocks.subscribe(bump), []);
 
   const all = LibraryService.components;
 
@@ -38,7 +43,7 @@ export function LibraryPanel({ disabled, onAdd }: Props) {
         items: items.sort((a, b) => a.title.localeCompare(b.title)),
       }))
       .sort((a, b) => a.category.localeCompare(b.category));
-  }, [all, query]);
+  }, [all, query, rev]);
 
   const total = all.length;
   const shown = groups.reduce((n, g) => n + g.items.length, 0);

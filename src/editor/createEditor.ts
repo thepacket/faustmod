@@ -9,14 +9,23 @@ import {
   Presets as ReactPresets,
   type ReactArea2D,
 } from "rete-react-plugin";
+import {
+  HistoryPlugin,
+  HistoryExtensions,
+  Presets as HistoryPresets,
+} from "rete-history-plugin";
 import { createRoot } from "react-dom/client";
 
 import { DspNode, indexFromKey } from "./DspNode";
 import { ThemedNode } from "./theme/ThemedNode";
 import { ThemedSocket } from "./theme/ThemedSocket";
 import { AudioGraph } from "../audio/AudioGraph";
-import { LIBRARY_BY_ID, type ComponentDef } from "../components/library";
+import { type ComponentDef } from "../components/library";
+import { resolveComponent } from "../components/customBlocks";
+import type { GraphSnapshot } from "../patch/format";
 import "./theme/theme.css";
+
+export type { GraphSnapshot } from "../patch/format";
 
 // rete presets require the base ClassicPreset.Node as the scheme's node type;
 // DspNode is used at runtime as a subclass and cast back where its fields are needed.
@@ -25,31 +34,22 @@ type Conn = ClassicPreset.Connection<Node, Node>;
 type Schemes = GetSchemes<Node, Conn>;
 type AreaExtra = ReactArea2D<Schemes>;
 
-/** Serializable snapshot of the patch — used for persistence and AI round-trips. */
-export interface GraphSnapshot {
-  nodes: {
-    id: string;
-    componentId: string;
-    position: { x: number; y: number };
-    /** Only present for Constant nodes. */
-    value?: number;
-  }[];
-  connections: {
-    id: string;
-    source: string;
-    sourceOutput: string;
-    target: string;
-    targetInput: string;
-  }[];
-}
-
 export interface EditorHandle {
   addComponent(def: ComponentDef, position?: { x: number; y: number }): Promise<DspNode>;
   removeSelected(): Promise<void>;
+  duplicateSelected(): Promise<void>;
+  selectAll(): Promise<void>;
   clear(): Promise<void>;
   snapshot(): GraphSnapshot;
   load(snapshot: GraphSnapshot): Promise<void>;
   zoomToFit(): Promise<void>;
+  zoomIn(): Promise<void>;
+  zoomOut(): Promise<void>;
+  resetZoom(): Promise<void>;
+  undo(): void;
+  redo(): void;
+  /** Register a callback fired whenever the graph changes (for dirty tracking). */
+  setChangeListener(cb: (() => void) | null): void;
   destroy(): void;
 }
 
@@ -58,6 +58,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   const area = new AreaPlugin<Schemes, AreaExtra>(container);
   const connection = new ConnectionPlugin<Schemes, AreaExtra>();
   const render = new ReactPlugin<Schemes, AreaExtra>({ createRoot });
+  const history = new HistoryPlugin<Schemes>();
 
   AreaExtensions.selectableNodes(area, AreaExtensions.selector(), {
     accumulating: AreaExtensions.accumulateOnCtrl(),
@@ -72,12 +73,18 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     }),
   );
   connection.addPreset(ConnectionPresets.classic.setup());
+  history.addPreset(HistoryPresets.classic.setup());
 
   editor.use(area);
   area.use(connection);
   area.use(render);
+  area.use(history);
+  HistoryExtensions.keyboard(history);
 
   AreaExtensions.simpleNodesOrder(area);
+
+  let changeCb: (() => void) | null = null;
+  const notifyChange = () => changeCb?.();
 
   // --- mirror editor events into the live audio graph ---------------------
   editor.addPipe((ctx) => {
@@ -89,18 +96,32 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         dst: c.target,
         dstIdx: indexFromKey(c.targetInput),
       });
+      notifyChange();
     } else if (ctx.type === "connectionremoved") {
       void AudioGraph.removeConn(ctx.data.id);
+      notifyChange();
+    } else if (ctx.type === "nodecreated") {
+      notifyChange();
     } else if (ctx.type === "noderemoved") {
       void AudioGraph.removeNode(ctx.data.id);
+      notifyChange();
     }
+    return ctx;
+  });
+
+  // Node drags mark the patch dirty too.
+  area.addPipe((ctx) => {
+    if (ctx.type === "nodetranslated") notifyChange();
     return ctx;
   });
 
   let spawnOffset = 0;
 
   const addComponent: EditorHandle["addComponent"] = async (def, position) => {
-    const node = new DspNode(def, (nodeId, value) => AudioGraph.setValue(nodeId, value));
+    const node = new DspNode(def, (nodeId, value) => {
+      AudioGraph.setValue(nodeId, value);
+      notifyChange();
+    });
     await editor.addNode(node);
 
     AudioGraph.setNode(node.id, def.id);
@@ -159,7 +180,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     await clear();
     const idMap = new Map<string, string>();
     for (const n of snap.nodes) {
-      const def = LIBRARY_BY_ID.get(n.componentId);
+      const def = resolveComponent(n.componentId);
       if (!def) {
         console.warn(`Unknown component "${n.componentId}" in snapshot — skipped`);
         continue;
@@ -185,11 +206,56 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       );
       await editor.addConnection(conn);
     }
+    // Loading isn't an undoable edit — drop the history it just generated.
+    (history as unknown as { clear?: () => void }).clear?.();
     await zoomToFit();
   };
 
+  const duplicateSelected: EditorHandle["duplicateSelected"] = async () => {
+    const selected = (editor.getNodes() as DspNode[]).filter((n) => (n as any).selected);
+    for (const node of selected) {
+      const def = resolveComponent(node.componentId);
+      if (!def) continue;
+      const view = area.nodeViews.get(node.id);
+      const pos = view
+        ? { x: view.position.x + 40, y: view.position.y + 40 }
+        : undefined;
+      const copy = await addComponent(def, pos);
+      const srcCtrl = node.controls.value as ClassicPreset.InputControl<"number"> | undefined;
+      if (def.kind === "constant" && srcCtrl) {
+        const dstCtrl = copy.controls.value as ClassicPreset.InputControl<"number">;
+        dstCtrl?.setValue(Number(srcCtrl.value));
+        AudioGraph.setValue(copy.id, Number(srcCtrl.value));
+        await area.update("node", copy.id);
+      }
+    }
+    notifyChange();
+  };
+
+  const selectAll: EditorHandle["selectAll"] = async () => {
+    for (const node of editor.getNodes()) {
+      (node as any).selected = true;
+      await area.update("node", node.id);
+    }
+  };
+
   const zoomToFit: EditorHandle["zoomToFit"] = async () => {
-    await AreaExtensions.zoomAt(area, editor.getNodes());
+    if (editor.getNodes().length) await AreaExtensions.zoomAt(area, editor.getNodes());
+  };
+  const zoomBy = async (factor: number) => {
+    const { k } = area.area.transform;
+    await area.area.zoom(k * factor, container.clientWidth / 2, container.clientHeight / 2);
+  };
+  const zoomIn = () => zoomBy(1.2);
+  const zoomOut = () => zoomBy(1 / 1.2);
+  const resetZoom = async () => {
+    await area.area.zoom(1, container.clientWidth / 2, container.clientHeight / 2);
+  };
+
+  const undo = () => void history.undo();
+  const redo = () => void history.redo();
+  const setChangeListener = (cb: (() => void) | null) => {
+    changeCb = cb;
   };
 
   const destroy = () => area.destroy();
@@ -197,10 +263,18 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   return {
     addComponent,
     removeSelected,
+    duplicateSelected,
+    selectAll,
     clear,
     snapshot,
     load,
     zoomToFit,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    undo,
+    redo,
+    setChangeListener,
     destroy,
   };
 }

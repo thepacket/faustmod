@@ -2,7 +2,7 @@ import { AudioEngine } from "./AudioEngine";
 import { FaustService } from "./FaustService";
 import { FaustUnit, ConstantUnit, OutputUnit, InputUnit } from "./units";
 import type { AudioUnit } from "./types";
-import { LIBRARY_BY_ID } from "../components/library";
+import { resolveComponent } from "../components/customBlocks";
 
 interface Conn {
   src: string;
@@ -108,7 +108,7 @@ class AudioGraphImpl {
     if (existing) return existing;
 
     const componentId = this.desiredNodes.get(nodeId);
-    const def = componentId ? LIBRARY_BY_ID.get(componentId) : undefined;
+    const def = componentId ? resolveComponent(componentId) : undefined;
     if (!def) return null;
 
     const promise = (async (): Promise<AudioUnit | null> => {
@@ -129,8 +129,15 @@ class AudioGraphImpl {
           case "constant":
             return new ConstantUnit(ctx, this.values.get(nodeId) ?? def.value ?? 0);
           default: {
-            // Built-in blocks load a precompiled WASM factory on demand (no compiler).
-            const worklet = await FaustService.createFactoryNode(def.id, ctx);
+            let worklet;
+            if (def.code) {
+              // User-authored custom block: compile the Faust source with libfaust.
+              const compiled = await FaustService.compile(def.id, def.code);
+              worklet = await FaustService.createNode(compiled, ctx);
+            } else {
+              // Built-in block: load its precompiled WASM factory (no compiler).
+              worklet = await FaustService.createFactoryNode(def.id, ctx);
+            }
             return new FaustUnit(ctx, worklet, def.inputs);
           }
         }

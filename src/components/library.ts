@@ -16,6 +16,11 @@ export interface ComponentDef {
   outputs: OutputSpec[];
   /** Initial value for a Constant node. */
   value?: number;
+  /** Faust source. Present for user-authored custom blocks (compiled at runtime);
+   *  absent for built-in blocks (loaded from a precompiled factory by id). */
+  code?: string;
+  /** True for user-authored blocks in the custom-block registry. */
+  custom?: boolean;
 }
 
 /**

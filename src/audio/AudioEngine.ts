@@ -38,6 +38,10 @@ class AudioEngineImpl {
     }
   }
 
+  get masterVolume(): number {
+    return this.master ? this.master.gain.value : 0.8;
+  }
+
   setMasterVolume(v: number) {
     if (this.master) this.master.gain.value = Math.max(0, Math.min(1, v));
   }
