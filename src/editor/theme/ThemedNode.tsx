@@ -52,6 +52,12 @@ export function ThemedNode(props: Props) {
     e.stopPropagation();
     ContextMenuBridge.open({ x: e.clientX, y: e.clientY, nodeId: id, inputKey: key, inputLabel });
   };
+  // Right-click the node title → the action applies to ALL of the node's inputs.
+  const onTitleContext = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    ContextMenuBridge.open({ x: e.clientX, y: e.clientY, nodeId: id, allInputs: true });
+  };
   const isConstant = componentId === "constant";
   const inputEntries = Object.entries(inputs) as Entry<any>[];
   const outputEntries = Object.entries(outputs) as Entry<any>[];
@@ -150,6 +156,7 @@ export function ThemedNode(props: Props) {
             className="dsp-title"
             data-testid="title"
             data-tip={tooltip}
+            onContextMenu={onTitleContext}
             onClick={() => {
               setDraft(label ?? "");
               setEditing(true);

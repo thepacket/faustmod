@@ -200,23 +200,19 @@ export function App() {
     ContextMenuBridge.open = (t) => setCtxMenu(t);
   }, []);
 
-  const runAddSlider = (orientation: "v" | "h") => {
+  const runAddControl = (control: "slider-v" | "slider-h" | "knob") => {
     const ed = editorRef.current;
     if (!ed || !ctxMenu) return;
-    if (ctxMenu.nodeId && ctxMenu.inputKey) {
-      void ed.addSliderForInput(ctxMenu.nodeId, ctxMenu.inputKey, orientation);
+    const orientation = control === "slider-h" ? "h" : "v";
+    if (ctxMenu.allInputs && ctxMenu.nodeId) {
+      void ed.addControlsForAllInputs(ctxMenu.nodeId, control);
+    } else if (ctxMenu.nodeId && ctxMenu.inputKey) {
+      if (control === "knob") void ed.addKnobForInput(ctxMenu.nodeId, ctxMenu.inputKey);
+      else void ed.addSliderForInput(ctxMenu.nodeId, ctxMenu.inputKey, orientation);
     } else {
-      void ed.addSlider(orientation, ed.screenToWorld(ctxMenu.x, ctxMenu.y));
-    }
-  };
-
-  const runAddKnob = () => {
-    const ed = editorRef.current;
-    if (!ed || !ctxMenu) return;
-    if (ctxMenu.nodeId && ctxMenu.inputKey) {
-      void ed.addKnobForInput(ctxMenu.nodeId, ctxMenu.inputKey);
-    } else {
-      void ed.addKnob(ed.screenToWorld(ctxMenu.x, ctxMenu.y));
+      const pos = ed.screenToWorld(ctxMenu.x, ctxMenu.y);
+      if (control === "knob") void ed.addKnob(pos);
+      else void ed.addSlider(orientation, pos);
     }
   };
 
@@ -430,26 +426,18 @@ export function App() {
           x={ctxMenu.x}
           y={ctxMenu.y}
           onClose={() => setCtxMenu(null)}
-          items={[
-            {
-              label: ctxMenu.inputKey
-                ? `Add V Slider → ${ctxMenu.inputLabel ?? "input"}`
-                : "Add V Slider",
-              onClick: () => runAddSlider("v"),
-            },
-            {
-              label: ctxMenu.inputKey
-                ? `Add H Slider → ${ctxMenu.inputLabel ?? "input"}`
-                : "Add H Slider",
-              onClick: () => runAddSlider("h"),
-            },
-            {
-              label: ctxMenu.inputKey
-                ? `Add Knob → ${ctxMenu.inputLabel ?? "input"}`
-                : "Add Knob",
-              onClick: runAddKnob,
-            },
-          ]}
+          items={(() => {
+            const suffix = ctxMenu.allInputs
+              ? " to all inputs"
+              : ctxMenu.inputKey
+                ? ` → ${ctxMenu.inputLabel ?? "input"}`
+                : "";
+            return [
+              { label: `Add V Slider${suffix}`, onClick: () => runAddControl("slider-v") },
+              { label: `Add H Slider${suffix}`, onClick: () => runAddControl("slider-h") },
+              { label: `Add Knob${suffix}`, onClick: () => runAddControl("knob") },
+            ];
+          })()}
         />
       )}
     </div>

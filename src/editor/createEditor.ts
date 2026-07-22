@@ -51,6 +51,14 @@ export interface EditorHandle {
   addKnob(position?: { x: number; y: number }): Promise<void>;
   /** Add a knob configured from an input port's declared range and wire it in. */
   addKnobForInput(nodeId: string, inputKey: string): Promise<void>;
+  /**
+   * Attach a control (slider-v / slider-h / knob) to every control input of a node,
+   * each configured from its input's range and wired in.
+   */
+  addControlsForAllInputs(
+    nodeId: string,
+    componentId: "slider-v" | "slider-h" | "knob",
+  ): Promise<void>;
   /** Convert a viewport (client) point to editor world coordinates (for drops). */
   screenToWorld(clientX: number, clientY: number): { x: number; y: number };
   /** Current Faust source of a module node (edited override, else stock), or null. */
@@ -257,6 +265,32 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     const c = controlForInput(nodeId, inputKey);
     if (!c) return;
     await spawnControl("knob", c.range, c.pos, { node: c.target, inputKey });
+  };
+
+  // Right-click the title → attach a control to every CONTROL input (those with a
+  // declared default/range), stacked in a column to the left of the node.
+  const addControlsForAllInputs: EditorHandle["addControlsForAllInputs"] = async (
+    nodeId,
+    componentId,
+  ) => {
+    const target = editor.getNode(nodeId) as DspNode | undefined;
+    if (!target) return;
+    const view = area.nodeViews.get(nodeId);
+    const baseX = (view ? view.position.x : 0) - 90;
+    const baseY = view ? view.position.y : 0;
+    const spacing = componentId === "slider-v" ? 170 : componentId === "knob" ? 96 : 42;
+    let i = 0;
+    for (const [key, spec] of Object.entries(target.inputSpecs)) {
+      if (spec.default === undefined) continue; // control inputs only, not audio signals
+      const min = spec.min ?? 0;
+      const max = spec.max ?? 1;
+      const value = spec.default ?? (min + max) / 2;
+      await spawnControl(componentId, { min, max, value }, { x: baseX, y: baseY + i * spacing }, {
+        node: target,
+        inputKey: key,
+      });
+      i++;
+    }
   };
 
   // Resolve a component id to a def; if edited `code` is supplied, compile it (throws
@@ -642,7 +676,9 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   // Right-click anywhere that isn't an input port → generic context menu (Add Slider
   // at that spot). Input ports open their own menu via ThemedNode's React handler.
   const onContextMenu = (e: MouseEvent) => {
-    if ((e.target as HTMLElement).closest(".dsp-port.dsp-input")) return;
+    // Input ports and node titles open their own menus (via ThemedNode).
+    const el = e.target as HTMLElement;
+    if (el.closest(".dsp-port.dsp-input") || el.closest(".dsp-title")) return;
     e.preventDefault();
     ContextMenuBridge.open({ x: e.clientX, y: e.clientY });
   };
@@ -662,6 +698,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     addSliderForInput,
     addKnob,
     addKnobForInput,
+    addControlsForAllInputs,
     screenToWorld,
     getModuleCode,
     getNodeTitle,

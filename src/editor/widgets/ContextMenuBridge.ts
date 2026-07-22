@@ -13,6 +13,8 @@ export interface ContextMenuTarget {
   inputKey?: string;
   /** Label of the input (for the menu wording). */
   inputLabel?: string;
+  /** Right-click on the node title: the action applies to ALL of the node's inputs. */
+  allInputs?: boolean;
 }
 
 export const ContextMenuBridge: { open: (target: ContextMenuTarget) => void } = {
