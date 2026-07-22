@@ -387,12 +387,6 @@
   stroke: #c0301a;
   stroke-width: 1.4;
 }
-.vu-label {
-  fill: #4a4436;
-  font-size: 7px;
-  font-family: system-ui, sans-serif;
-  letter-spacing: 1px;
-}
 .vu-needle {
   stroke: #1a1a1a;
   stroke-width: 1.4;

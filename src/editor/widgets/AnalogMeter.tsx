@@ -77,9 +77,6 @@ export function AnalogMeter({ node }: { node: WidgetNode }) {
             </text>
           </>
         )}
-        <text x="50" y="20" className="vu-label" textAnchor="middle">
-          {linear ? "LEVEL" : "VU"}
-        </text>
         <g ref={needle} transform={`rotate(${A0} 50 52)`}>
           <line x1="50" y1="52" x2="50" y2="15" className="vu-needle" />
         </g>
