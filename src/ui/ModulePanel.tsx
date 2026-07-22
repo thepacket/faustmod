@@ -19,7 +19,10 @@ interface Group {
  */
 export function ModulePanel({ disabled }: Props) {
   const [query, setQuery] = useState("");
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Start with every category collapsed.
+  const [collapsed, setCollapsed] = useState<Set<string>>(
+    () => new Set([...MODULES, ...CustomBlocks.all()].map((c) => c.category)),
+  );
   const [rev, bump] = useReducer((x) => x + 1, 0);
 
   // Re-render when imported custom blocks change.

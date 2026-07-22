@@ -14,7 +14,10 @@ interface Group {
 
 export function LibraryPanel({ disabled }: Props) {
   const [query, setQuery] = useState("");
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Start with every category collapsed.
+  const [collapsed, setCollapsed] = useState<Set<string>>(
+    () => new Set(LibraryService.components.map((c) => c.category)),
+  );
   const [rev, bump] = useReducer((x) => x + 1, 0);
 
   // Re-render when custom blocks are added/removed so they appear in the palette.
