@@ -42,7 +42,6 @@ export function App() {
   const [playing, setPlaying] = useState(false);
   const [recording, setRecording] = useState(false);
   const [patchName, setPatchName] = useState("Untitled");
-  const [dirty, setDirty] = useState(false);
   const [tabs, setTabs] = useState<TabInfo[]>([]);
   const [activeTab, setActiveTab] = useState(0);
   const [nodeStyle, setNodeStyle] = useState<string>(
@@ -82,7 +81,6 @@ export function App() {
       const tabsMgr = new TabsManager(mgr);
       mgr.onChange = () => {
         setPatchName(mgr.name);
-        setDirty(mgr.dirty);
         tabsMgr.syncActive();
       };
       tabsMgr.onChange = () => {
@@ -261,8 +259,6 @@ export function App() {
     <div className="app" data-node-style={nodeStyle}>
       <MenuBar
         menus={menus}
-        patchName={patchName}
-        dirty={dirty}
         playing={playing}
         recording={recording}
         status={status}

@@ -14,8 +14,6 @@ export interface Menu {
 
 interface Props {
   menus: Menu[];
-  patchName: string;
-  dirty: boolean;
   playing: boolean;
   recording: boolean;
   status: string;
@@ -26,8 +24,6 @@ interface Props {
 
 export function MenuBar({
   menus,
-  patchName,
-  dirty,
   playing,
   recording,
   status,
@@ -84,11 +80,6 @@ export function MenuBar({
           </div>
         ))}
       </nav>
-
-      <span className="patch-name">
-        {patchName}
-        {dirty ? " •" : ""}
-      </span>
 
       <div className="spacer" />
 
