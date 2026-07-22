@@ -20,6 +20,11 @@
   /* Shrink-wrap: nodes are only as wide/tall as their content requires. */
   width: max-content;
   max-width: 260px;
+}
+/* Widget nodes size to their body (wide sequencers, resized scopes/spectra…),
+   so they must not be capped by the compact-node max-width. */
+.dsp-node[data-widget] {
+  max-width: none;
   border-radius: 10px;
   font-family: "Inter", system-ui, sans-serif;
   color: #e6e8ee;
