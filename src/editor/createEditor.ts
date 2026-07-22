@@ -65,9 +65,14 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
 
   // One selector drives all selection (click, marquee, Select All) so state stays
   // consistent. `selectable.select/unselect` go through this same selector.
+  // `accumulating.active()` is read by rete when a node is picked (mousedown): true
+  // keeps the current selection (so grabbing an already-selected node drags the whole
+  // group), false reduces it to the picked node. Set from the pointerdown below.
+  let pickAccumulate = false; // a modifier (Shift/Ctrl/⌘) is held
+  let pickPreserve = false; // the grabbed node was already selected
   const selector = AreaExtensions.selector();
   const selectable = AreaExtensions.selectableNodes(area, selector, {
-    accumulating: AreaExtensions.accumulateOnCtrl(),
+    accumulating: { active: () => pickAccumulate || pickPreserve },
   });
 
   render.addPreset(
@@ -300,8 +305,17 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   window.addEventListener("keyup", onSpace);
 
   const onCanvasPointerDown = (e: PointerEvent) => {
+    const nodeEl = (e.target as HTMLElement).closest(".dsp-node");
+    if (nodeEl) {
+      // Grabbing a node: preserve the whole selection when it's already selected (no
+      // modifier), so dragging it moves the group. rete then handles the node drag.
+      pickAccumulate = e.shiftKey || e.metaKey || e.ctrlKey;
+      pickPreserve = !pickAccumulate && nodeEl.getAttribute("data-selected") === "true";
+      return;
+    }
+    pickAccumulate = false;
+    pickPreserve = false;
     if (e.button !== 0 || spaceHeld) return; // space / middle / right drag → pan
-    if ((e.target as HTMLElement).closest(".dsp-node")) return; // node interaction
     // Capture-phase intercept: stop rete from starting its own canvas pan.
     e.stopImmediatePropagation();
     e.preventDefault();
