@@ -713,7 +713,7 @@
   display: flex;
   align-items: center;
   gap: 3px;
-  padding: 2px;
+  padding: 0;
 }
 .slider-v {
   flex-direction: column;
@@ -728,7 +728,11 @@
    control with only the standard node margins. */
 .dsp-node[data-widget-kind="slider"] .dsp-widget-row {
   gap: 0;
-  padding: 5px 8px 6px;
+  padding: 3px;
+}
+/* Titleless + minimal frame so the node is barely wider than the track. */
+.dsp-node[data-widget-kind="slider"] {
+  padding-bottom: 0;
 }
 .slider-track {
   position: relative;
