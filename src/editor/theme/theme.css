@@ -240,12 +240,12 @@
   stroke: #7bd0a8;
   stroke-width: 3px;
   fill: none;
-  filter: drop-shadow(0 0 4px rgba(123, 208, 168, 0.55));
+  filter: drop-shadow(0 0 1.5px rgba(123, 208, 168, 0.5));
   transition: stroke 0.12s ease;
 }
 .body .canvas svg[data-testid="connection"] path:hover {
   stroke: #9ff0c6;
-  stroke-width: 4px;
+  stroke-width: 3px;
 }
 
 /* ============================================================================
