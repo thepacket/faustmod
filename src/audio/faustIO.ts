@@ -68,11 +68,32 @@ export interface DerivedPorts {
   outputs: OutputSpec[];
 }
 
-/** Parse `generator.getJSON()` into FaustMod input/output port specs. */
-export function derivePorts(generatorJson: string): DerivedPorts {
+/** Parse the `process(a, b, …)` argument names from Faust source (simple identifiers only). */
+function processArgNames(code?: string): string[] | null {
+  if (!code) return null;
+  const m = code.match(/\bprocess\s*\(([^)]*)\)\s*=/);
+  if (!m) return null;
+  const args = m[1].split(",").map((s) => s.trim());
+  if (!args.length || args.some((a) => !/^[a-zA-Z_]\w*$/.test(a))) return null;
+  return args;
+}
+
+/**
+ * Parse `generator.getJSON()` into FaustMod input/output port specs. When the Faust
+ * `code` is supplied and its `process(…)` signature is plain identifiers, those names
+ * label the audio inputs (so `process(a, b)` gives ports `a`, `b`); otherwise the
+ * generic L/R / in-N labels are used.
+ */
+export function derivePorts(generatorJson: string, code?: string): DerivedPorts {
   const meta = JSON.parse(generatorJson) as { inputs?: number; outputs?: number; ui?: UiItem[] };
+  const nAudio = meta.inputs ?? 0;
+  const argNames = processArgNames(code);
+  const audioIn =
+    argNames && argNames.length === nAudio
+      ? argNames.map((label) => ({ label }))
+      : audioInputs(nAudio);
   return {
-    inputs: [...audioInputs(meta.inputs ?? 0), ...flattenParams(meta.ui)],
+    inputs: [...audioIn, ...flattenParams(meta.ui)],
     outputs: audioOutputs(meta.outputs ?? 0),
   };
 }

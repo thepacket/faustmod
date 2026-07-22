@@ -356,7 +356,7 @@ export function App() {
 /** Recompile a saved user module's edited source and persist it (ports re-derived). */
 async function updateUserModule(id: string, code: string): Promise<void> {
   const compiled = await FaustService.compile(`${id}-edit`, code);
-  const { inputs, outputs } = derivePorts(compiled.generator.getJSON());
+  const { inputs, outputs } = derivePorts(compiled.generator.getJSON(), code);
   const base = CustomBlocks.get(id);
   CustomBlocks.add({
     id,

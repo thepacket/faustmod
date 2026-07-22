@@ -55,7 +55,7 @@ export function ModulePanel({ disabled, onEdit }: Props) {
     let outputs: ComponentDef["outputs"] = [{ label: "out" }];
     try {
       const compiled = await FaustService.compile(`${id}-new`, NEW_MODULE_CODE);
-      ({ inputs, outputs } = derivePorts(compiled.generator.getJSON()));
+      ({ inputs, outputs } = derivePorts(compiled.generator.getJSON(), NEW_MODULE_CODE));
     } catch {
       /* keep the in/out fallback */
     }

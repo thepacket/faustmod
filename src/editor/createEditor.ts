@@ -184,7 +184,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     const base = resolveComponent(componentId);
     if (!base || !code) return base ?? null;
     const compiled = await FaustService.compile(`${componentId}-edit`, code);
-    const { inputs, outputs } = derivePorts(compiled.generator.getJSON());
+    const { inputs, outputs } = derivePorts(compiled.generator.getJSON(), code);
     return { ...base, code, inputs, outputs };
   };
 
