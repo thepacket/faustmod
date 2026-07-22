@@ -189,7 +189,16 @@ export function ThemedNode(props: Props) {
                 minH={90}
               />
             ) : (
-              <ResizeHandle node={props.data as unknown as WidgetNode} />
+              <ResizeHandle
+                node={props.data as unknown as WidgetNode}
+                axis={
+                  props.data.widgetConfig?.orientation === "v"
+                    ? "y"
+                    : props.data.widgetConfig?.orientation === "h"
+                      ? "x"
+                      : "both"
+                }
+              />
             ))}
         </div>
       )}

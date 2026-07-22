@@ -1,17 +1,23 @@
 import type { PointerEvent } from "react";
 import { WidgetBridge, type WidgetNode } from "./WidgetBridge";
 
-/** Bottom-right resize grip for resizable widget nodes. `square` locks a 1:1 ratio. */
+/**
+ * Bottom-right resize grip for resizable widget nodes. `square` locks a 1:1 ratio.
+ * `axis` restricts resizing to a single dimension: "x" = width only (horizontal
+ * slider), "y" = height only (vertical slider), "both" (default) = free.
+ */
 export function ResizeHandle({
   node,
   minW = 160,
   minH = 90,
   square = false,
+  axis = "both",
 }: {
   node: WidgetNode;
   minW?: number;
   minH?: number;
   square?: boolean;
+  axis?: "x" | "y" | "both";
 }) {
   const onDown = (e: PointerEvent) => {
     e.stopPropagation(); // don't let rete start dragging the node
@@ -39,8 +45,8 @@ export function ResizeHandle({
         node.width = size;
         node.height = size;
       } else {
-        node.width = Math.max(minW, Math.round(w0 + dx));
-        node.height = Math.max(minH, Math.round(h0 + dy));
+        if (axis !== "y") node.width = Math.max(minW, Math.round(w0 + dx));
+        if (axis !== "x") node.height = Math.max(minH, Math.round(h0 + dy));
       }
       WidgetBridge.updateNode(node.id);
     };
