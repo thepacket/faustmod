@@ -11,13 +11,14 @@ interface Props {
   onEdit: (def: ComponentDef, readOnly: boolean) => void;
 }
 
-// A new DSP that demonstrates the connector convention: audio flows through
-// `process`; a slider DECLARES a named control-input connector (with default + range)
-// — in FaustMod it becomes an input port, not an on-screen knob.
+// A functional starter DSP that demonstrates the connector convention: the signal
+// args of `process` are audio-input connectors; a slider DECLARES a named control-input
+// connector (with default + range) — in FaustMod it's an input port, not a knob.
+// This one sums two audio inputs (a, b) and scales them by the control input `m`.
 const NEW_MODULE_CODE = `import("stdfaust.lib");
-// Sliders declare control-input connectors (not knobs):
-gain = hslider("gain", 1.0, 0, 2, 0.001);
-process = _ * gain;`;
+// Signal args = audio inputs; a slider declares a control-input connector:
+m = hslider("m", 1.0, 0, 2, 0.001);
+process(a, b) = (a + b) * m;`;
 const FAUST_DOCS = "https://faustdoc.grame.fr/manual/syntax/";
 
 /**
