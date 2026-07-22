@@ -63,7 +63,7 @@ npm run build      # type-check + production build
 Drag a component from the left palette onto the canvas, drag between sockets to patch,
 then **Start**. Use **+ New DSP** (right panel) to write your own Faust DSP, the **File**
 menu to save/open `.faustmod` patches, **Block → Import DSP Block…** to import a Faust
-block, and **Help → Copy Catalog for AI** to drive an external AI.
+block, and **File → Export Catalog for AI…** to drive an external AI.
 
 ### Building the block catalog
 
@@ -237,10 +237,11 @@ blocks embedded** so a patch is self-contained. Save/Open use the File System Ac
 ## Using an external AI
 
 Rather than pay per-token for an in-app LLM (which would need the whole ~400-block catalog
-in context), FaustMod is **bring-your-own-AI**: **Help → Copy Catalog for AI** copies a
+in context), FaustMod is **bring-your-own-AI**: **File → Export Catalog for AI…** downloads a
 brief (the `.faustmod`/block file formats + the DSP-block catalog + the control/instrument
-widget nodes) to your clipboard. Paste it into an external AI, ask for a patch or a DSP
-block, and paste the result back via **Open** (patch) or **Block → Import DSP Block…**.
+widget nodes) as a Markdown file. Give it to an external AI (e.g. as Project knowledge), ask
+for a patch or a DSP block, and paste the result back via **Open** (patch) or
+**Block → Import DSP Block…**.
 Patches that use custom blocks are self-contained, so the AI can write those without any
 catalog at all.
 

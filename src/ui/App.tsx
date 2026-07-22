@@ -147,13 +147,14 @@ export function App() {
     }
   };
 
-  const copyBrief = async () => {
-    try {
-      await navigator.clipboard.writeText(buildAiBrief());
-      setStatus("Catalog + format copied — paste it into your AI");
-    } catch {
-      setStatus("Clipboard blocked — allow clipboard access");
-    }
+  const exportBrief = () => {
+    const url = URL.createObjectURL(new Blob([buildAiBrief()], { type: "text/markdown" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "faustmod-catalog-for-ai.md";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setStatus("Exported catalog for AI");
   };
 
   // Global keyboard shortcuts (rete handles ⌘Z/⌘Y on the canvas itself).
@@ -206,6 +207,7 @@ export function App() {
         { label: "Save As…", shortcut: "⇧⌘S", onClick: () => void pm()?.saveAs() },
         { separator: true },
         { label: "Export a copy…", onClick: () => pm()?.export() },
+        { label: "Export Catalog for AI…", onClick: () => exportBrief() },
       ],
     },
     {
@@ -239,7 +241,6 @@ export function App() {
       label: "Help",
       items: [
         { label: "About FaustMod", onClick: () => setModal("about") },
-        { label: "Copy Catalog for AI", onClick: () => void copyBrief() },
         { separator: true },
         { label: "Audio Devices…", onClick: () => setModal("audio-devices") },
       ],
