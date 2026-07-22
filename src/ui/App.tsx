@@ -13,8 +13,9 @@ import { ModulePanel } from "./ModulePanel";
 import { ImportBlockModal } from "./ImportBlockModal";
 import { AboutModal } from "./AboutModal";
 import { AudioSettingsModal } from "./AudioSettingsModal";
+import { PresetModal } from "./PresetModal";
 
-type ModalKind = null | "about" | "import-block" | "audio-devices";
+type ModalKind = null | "about" | "import-block" | "audio-devices" | "presets";
 
 export function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -166,6 +167,7 @@ export function App() {
       items: [
         { label: "New Tab", shortcut: "⌘N", onClick: () => void tb()?.newTab() },
         { label: "Open…", shortcut: "⌘O", onClick: () => void tb()?.openFile() },
+        { label: "Presets…", onClick: () => setModal("presets") },
         { separator: true },
         { label: "Save", shortcut: "⌘S", onClick: () => void pm()?.save() },
         { label: "Save As…", shortcut: "⇧⌘S", onClick: () => void pm()?.saveAs() },
@@ -242,6 +244,15 @@ export function App() {
         <ImportBlockModal
           onClose={() => setModal(null)}
           onImported={(title) => setStatus(`Added block "${title}"`)}
+        />
+      )}
+      {modal === "presets" && (
+        <PresetModal
+          onClose={() => setModal(null)}
+          onOpen={(p) => {
+            void tb()?.openPatch(structuredClone(p.patch));
+            setStatus(`Opened preset "${p.name}"`);
+          }}
         />
       )}
       {modal === "about" && <AboutModal onClose={() => setModal(null)} />}

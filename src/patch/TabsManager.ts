@@ -101,6 +101,22 @@ export class TabsManager {
     await this.pm.open(); // updates identity (name/handle) → syncActive refreshes the tab
   }
 
+  /** Open an in-memory patch (e.g. a bundled preset) into a new tab. */
+  async openPatch(patch: PatchFile): Promise<void> {
+    this.captureActive();
+    const t: Tab = {
+      id: newId(),
+      name: patch.name || "Untitled",
+      dirty: false,
+      handle: null,
+      patch,
+    };
+    this.tabs.push(t);
+    this.active = this.tabs.length - 1;
+    await this.load(t);
+    this.onChange?.();
+  }
+
   async closeTab(index: number): Promise<void> {
     const t = this.tabs[index];
     if (!t) return;

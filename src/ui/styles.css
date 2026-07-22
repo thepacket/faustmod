@@ -467,6 +467,40 @@ body {
   gap: 8px;
   margin-top: 16px;
 }
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0 4px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.preset-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.preset-item:hover {
+  border-color: var(--accent, #6ea8fe);
+  background: #20242c;
+}
+.preset-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+.preset-meta {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
 .code-input {
   width: 100%;
   box-sizing: border-box;
