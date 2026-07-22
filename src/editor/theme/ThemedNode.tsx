@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { Presets as ReactPresets } from "rete-react-plugin";
 import type { ClassicPreset } from "rete";
 import { accentFor } from "./accents";
 import { WidgetBody } from "../widgets/WidgetBody";
 import { ResizeHandle } from "../widgets/ResizeHandle";
-import type { WidgetNode } from "../widgets/WidgetBridge";
+import { WidgetBridge, type WidgetNode } from "../widgets/WidgetBridge";
 
 // Ref components from the classic preset — they register each socket/control with
 // the render pipeline so connection positions are tracked. Using them keeps node
@@ -52,6 +53,16 @@ export function ThemedNode(props: Props) {
   const hasOutputs = outputEntries.some(([, v]) => v);
   const isWidget = !!props.data.widget;
 
+  // Inline title rename: click the title (a click, not a drag) to edit it.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(label ?? "");
+  const commitRename = () => {
+    (props.data as { label?: string }).label = draft.trim() || label || "";
+    setEditing(false);
+    WidgetBridge.updateNode(id);
+    WidgetBridge.onChange();
+  };
+
   const inputPort = ([key, input]: Entry<any>) =>
     input && (
       <div className="dsp-port dsp-input" key={key} data-testid={`input-${key}`} title={tip(key)}>
@@ -92,11 +103,35 @@ export function ThemedNode(props: Props) {
       title={isConstant ? tooltip : undefined}
       style={{ ["--accent" as string]: accentFor(category ?? "") }}
     >
-      {!isConstant && (
-        <div className="dsp-title" data-testid="title" title={tooltip}>
-          {label}
-        </div>
-      )}
+      {!isConstant &&
+        (editing ? (
+          <input
+            className="dsp-title dsp-title-edit"
+            value={draft}
+            autoFocus
+            spellCheck={false}
+            onChange={(e) => setDraft(e.target.value)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Enter") commitRename();
+              else if (e.key === "Escape") setEditing(false);
+            }}
+          />
+        ) : (
+          <div
+            className="dsp-title"
+            data-testid="title"
+            title={tooltip}
+            onClick={() => {
+              setDraft(label ?? "");
+              setEditing(true);
+            }}
+          >
+            {label}
+          </div>
+        ))}
 
       {/* Constant: a small titleless box — value field beside its output socket. */}
       {isConstant && (

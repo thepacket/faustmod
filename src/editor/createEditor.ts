@@ -180,10 +180,12 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       const valueCtrl = n.controls.value as ClassicPreset.InputControl<"number"> | undefined;
       const isWidget = !!n.widget;
       const hasState = Object.keys(n.widgetState).length > 0;
+      const def = resolveComponent(n.componentId);
       return {
         id: n.id,
         componentId: n.componentId,
         position: view ? { x: view.position.x, y: view.position.y } : { x: 0, y: 0 },
+        label: def && n.label !== def.title ? n.label : undefined,
         value: valueCtrl ? Number(valueCtrl.value) : undefined,
         size:
           isWidget && n.width != null && n.height != null
@@ -218,6 +220,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         ctrl?.setValue(n.value);
         AudioGraph.setValue(node.id, n.value);
       }
+      if (n.label) (node as unknown as { label: string }).label = n.label;
       if (n.size) {
         node.width = n.size.w;
         node.height = n.size.h;
@@ -249,6 +252,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       id: string;
       componentId: string;
       position: { x: number; y: number };
+      label?: string;
       value?: number;
       size?: { w: number; h: number };
       state?: Record<string, unknown>;
@@ -268,6 +272,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         id: n.id,
         componentId: n.componentId,
         position: view ? { x: view.position.x, y: view.position.y } : { x: 0, y: 0 },
+        label: n.label,
         value: n.componentId === "constant" && ctrl ? Number(ctrl.value) : undefined,
         size: n.width && n.height ? { w: n.width, h: n.height } : undefined,
         state:
@@ -296,6 +301,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       if (!def) continue;
       const copy = await addComponent(def, { x: n.position.x + dx, y: n.position.y + dy });
       idMap.set(n.id, copy.id);
+      if (n.label) (copy as unknown as { label: string }).label = n.label;
       if (n.value !== undefined) {
         const dstCtrl = copy.controls.value as ClassicPreset.InputControl<"number"> | undefined;
         dstCtrl?.setValue(n.value);

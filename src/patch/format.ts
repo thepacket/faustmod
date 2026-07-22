@@ -11,6 +11,8 @@ export interface PatchNode {
   id: string;
   componentId: string;
   position: { x: number; y: number };
+  /** User-renamed node title (absent = the component's default title). */
+  label?: string;
   value?: number;
   /** Widget node size (resizable widgets). */
   size?: { w: number; h: number };
