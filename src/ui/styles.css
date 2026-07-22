@@ -635,9 +635,6 @@ body {
 .settings-ai select {
   font-size: 14px;
 }
-.settings-ai select[size] {
-  height: auto;
-}
 .preset-list {
   display: flex;
   flex-direction: column;

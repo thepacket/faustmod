@@ -8,9 +8,15 @@ import {
   type DeviceList,
 } from "../audio/devices";
 import { AudioEngine } from "../audio/AudioEngine";
-import { OPENROUTER_KEY, OPENROUTER_MODEL, DEFAULT_MODEL } from "../ai/openrouter";
+import {
+  OPENROUTER_KEY,
+  OPENROUTER_MODEL,
+  DEFAULT_MODEL,
+  fetchModels,
+} from "../ai/openrouter";
 
-const MODEL_SUGGESTIONS = [
+// Fallback list used only if the OpenRouter models endpoint can't be reached.
+const MODEL_FALLBACK = [
   "anthropic/claude-3.5-sonnet",
   "anthropic/claude-3.7-sonnet",
   "openai/gpt-4o",
@@ -26,12 +32,31 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [note, setNote] = useState("");
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(OPENROUTER_KEY) ?? "");
   const [model, setModel] = useState(() => localStorage.getItem(OPENROUTER_MODEL) ?? DEFAULT_MODEL);
+  const [models, setModels] = useState<string[]>(MODEL_FALLBACK);
+  const [modelsLoading, setModelsLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       await requestDevicePermission();
       setDevices(await listAudioDevices());
     })();
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    fetchModels()
+      .then((ids) => {
+        if (alive && ids.length) setModels(ids);
+      })
+      .catch(() => {
+        /* keep fallback */
+      })
+      .finally(() => {
+        if (alive) setModelsLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const outputSupported = canSelectOutput();
@@ -44,9 +69,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     onClose();
   };
 
-  const modelOptions = MODEL_SUGGESTIONS.includes(model)
-    ? MODEL_SUGGESTIONS
-    : [model, ...MODEL_SUGGESTIONS];
+  const modelOptions = models.includes(model) ? models : [model, ...models];
 
   return (
     <Modal title="Settings" onClose={onClose} width={480}>
@@ -72,8 +95,8 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           />
         </label>
         <label style={{ marginTop: 12 }}>
-          Model
-          <select value={model} size={6} onChange={(e) => setModel(e.target.value)}>
+          Model {modelsLoading && <span className="hint" style={{ display: "inline" }}>(loading…)</span>}
+          <select value={model} onChange={(e) => setModel(e.target.value)}>
             {modelOptions.map((m) => (
               <option key={m} value={m}>
                 {m}

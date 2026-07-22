@@ -19,6 +19,21 @@ Rules:
 - Must be self-contained and real-time safe for an AudioWorklet: NO soundfile, NO ffunction/foreign functions, NO file or OS access. Use only stdfaust.lib.
 - Keep it stable (bounded feedback, no NaN/blow-ups).`;
 
+/**
+ * Fetch the full list of model IDs available on OpenRouter (public endpoint, no key
+ * required). Returns them sorted; throws on network/HTTP error so the caller can fall
+ * back to a small built-in list.
+ */
+export async function fetchModels(): Promise<string[]> {
+  const res = await fetch("https://openrouter.ai/api/v1/models");
+  if (!res.ok) throw new Error(`OpenRouter models ${res.status}`);
+  const data = await res.json();
+  const ids: string[] = (data?.data ?? [])
+    .map((m: { id?: string }) => m?.id)
+    .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
+  return ids.sort((a, b) => a.localeCompare(b));
+}
+
 function stripFences(s: string): string {
   const m = s.match(/```(?:faust|dsp|cpp)?\s*\n?([\s\S]*?)```/i);
   return (m ? m[1] : s).trim();
