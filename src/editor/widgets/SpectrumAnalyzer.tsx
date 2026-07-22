@@ -2,12 +2,11 @@ import { useEffect, useRef } from "react";
 import { Monitors, type SpectrumMonitor } from "../../audio/monitors";
 import type { WidgetNode } from "./WidgetBridge";
 
-const F_MIN = 20;
 const F_MAX = 20000;
 
 /**
  * Real-time spectrum analyzer (RTA): instantaneous FFT magnitude vs. frequency on a
- * log axis from 20 Hz to 20 kHz, with a decaying peak-hold trace. Reads the shared
+ * linear axis from 0 to 20 kHz, with a decaying peak-hold trace. Reads the shared
  * SpectrumMonitor (an AnalyserNode tap). Imperative canvas drawing (no setState).
  */
 export function SpectrumAnalyzer({ node }: { node: WidgetNode }) {
@@ -32,7 +31,7 @@ export function SpectrumAnalyzer({ node }: { node: WidgetNode }) {
       const m = Monitors.get(node.id) as SpectrumMonitor | undefined;
       const nyquist = m ? m.sampleRate() / 2 : 22050;
       const fMax = Math.min(F_MAX, nyquist);
-      const xForFreq = (f: number) => (Math.log(f / F_MIN) / Math.log(fMax / F_MIN)) * w;
+      const xForFreq = (f: number) => (f / fMax) * w; // linear frequency scale
 
       ctx.fillStyle = "#0a0c10";
       ctx.fillRect(0, 0, w, h);
@@ -50,9 +49,9 @@ export function SpectrumAnalyzer({ node }: { node: WidgetNode }) {
       ctx.fillStyle = "rgba(255,255,255,0.35)";
       ctx.font = "9px system-ui, sans-serif";
       for (const [f, label] of [
-        [100, "100"],
-        [1000, "1k"],
+        [5000, "5k"],
         [10000, "10k"],
+        [15000, "15k"],
       ] as const) {
         if (f > fMax) continue;
         const x = xForFreq(f);
@@ -71,7 +70,7 @@ export function SpectrumAnalyzer({ node }: { node: WidgetNode }) {
         m.readFreq(buf);
 
         for (let x = 0; x < w; x++) {
-          const f = F_MIN * Math.pow(fMax / F_MIN, x / w);
+          const f = (x / w) * fMax; // linear
           const bin = Math.min(bins - 1, Math.round((f / nyquist) * bins));
           const v = buf[bin] / 255;
           ys[x] = h - v * h;
