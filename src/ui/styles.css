@@ -761,7 +761,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: 12.5px;
   outline: none;
 }
 .fe-prompt:focus {
