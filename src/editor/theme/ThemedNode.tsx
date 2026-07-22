@@ -5,6 +5,8 @@ import { accentFor } from "./accents";
 import { WidgetBody } from "../widgets/WidgetBody";
 import { ResizeHandle } from "../widgets/ResizeHandle";
 import { WidgetBridge, type WidgetNode } from "../widgets/WidgetBridge";
+import { ModuleEditBridge } from "../widgets/ModuleEditBridge";
+import { resolveComponent } from "../../components/customBlocks";
 
 // Ref components from the classic preset — they register each socket/control with
 // the render pipeline so connection positions are tracked. Using them keeps node
@@ -52,6 +54,9 @@ export function ThemedNode(props: Props) {
   const hasInputs = inputEntries.some(([, v]) => v);
   const hasOutputs = outputEntries.some(([, v]) => v);
   const isWidget = !!props.data.widget;
+  // Modules (and edited/custom Faust blocks) carry editable source; double-click opens
+  // the floating code editor for them.
+  const editable = !!(componentId && resolveComponent(componentId)?.code);
 
   // Inline title rename: click the title (a click, not a drag) to edit it.
   const [editing, setEditing] = useState(false);
@@ -103,6 +108,7 @@ export function ThemedNode(props: Props) {
       data-selected={selected ? "true" : undefined}
       title={isConstant ? tooltip : undefined}
       style={{ ["--accent" as string]: accentFor(category ?? "") }}
+      onDoubleClick={editable ? () => ModuleEditBridge.open(id) : undefined}
     >
       {!isConstant &&
         (editing ? (

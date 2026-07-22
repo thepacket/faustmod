@@ -17,7 +17,13 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.10.4",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.6",
     "@grame/faustwasm": "^0.16.6",
+    "@lezer/highlight": "^1.2.3",
+    "codemirror": "^6.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "rete": "^2.0.6",

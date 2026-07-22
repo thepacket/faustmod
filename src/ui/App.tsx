@@ -16,8 +16,15 @@ import { ImportBlockModal } from "./ImportBlockModal";
 import { AboutModal } from "./AboutModal";
 import { AudioSettingsModal } from "./AudioSettingsModal";
 import { PresetModal } from "./PresetModal";
+import { FaustEditor } from "./FaustEditor";
+import { ModuleEditBridge } from "../editor/widgets/ModuleEditBridge";
 
 type ModalKind = null | "about" | "import-block" | "audio-devices" | "presets";
+interface ModuleEditState {
+  nodeId: string;
+  title: string;
+  code: string;
+}
 
 export function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -34,6 +41,7 @@ export function App() {
   const [tabs, setTabs] = useState<TabInfo[]>([]);
   const [activeTab, setActiveTab] = useState(0);
   const [modal, setModal] = useState<ModalKind>(null);
+  const [moduleEdit, setModuleEdit] = useState<ModuleEditState | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -48,6 +56,16 @@ export function App() {
         return;
       }
       editorRef.current = handle;
+
+      // Double-clicking a module node opens the floating Faust source editor.
+      ModuleEditBridge.open = (nodeId) => {
+        const h = editorRef.current;
+        if (!h) return;
+        const code = h.getModuleCode(nodeId);
+        if (code == null) return;
+        setModuleEdit({ nodeId, title: h.getNodeTitle(nodeId), code });
+      };
+
       const mgr = new PatchManager(handle);
       const tabsMgr = new TabsManager(mgr);
       mgr.onChange = () => {
@@ -285,6 +303,20 @@ export function App() {
       )}
       {modal === "about" && <AboutModal onClose={() => setModal(null)} />}
       {modal === "audio-devices" && <AudioSettingsModal onClose={() => setModal(null)} />}
+
+      {moduleEdit && (
+        <FaustEditor
+          key={moduleEdit.nodeId}
+          title={moduleEdit.title}
+          initialCode={moduleEdit.code}
+          onCancel={() => setModuleEdit(null)}
+          onApply={async (code) => {
+            await editorRef.current!.applyModuleCode(moduleEdit.nodeId, code);
+            setModuleEdit(null);
+            setStatus(`Recompiled "${moduleEdit.title}"`);
+          }}
+        />
+      )}
     </div>
   );
 }

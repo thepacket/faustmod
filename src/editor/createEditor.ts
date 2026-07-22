@@ -20,6 +20,8 @@ import { DspNode, indexFromKey } from "./DspNode";
 import { ThemedNode } from "./theme/ThemedNode";
 import { ThemedSocket } from "./theme/ThemedSocket";
 import { AudioGraph } from "../audio/AudioGraph";
+import { FaustService } from "../audio/FaustService";
+import { derivePorts } from "../audio/faustIO";
 import { type ComponentDef } from "../components/library";
 import { resolveComponent } from "../components/customBlocks";
 import type { GraphSnapshot } from "../patch/format";
@@ -39,6 +41,12 @@ export interface EditorHandle {
   addComponent(def: ComponentDef, position?: { x: number; y: number }): Promise<DspNode>;
   /** Convert a viewport (client) point to editor world coordinates (for drops). */
   screenToWorld(clientX: number, clientY: number): { x: number; y: number };
+  /** Current Faust source of a module node (edited override, else stock), or null. */
+  getModuleCode(nodeId: string): string | null;
+  /** Display label of a node (for the editor title). */
+  getNodeTitle(nodeId: string): string;
+  /** Recompile a module node with edited source and rebuild it in place. Throws on error. */
+  applyModuleCode(nodeId: string, code: string): Promise<void>;
   removeSelected(): Promise<void>;
   duplicateSelected(): Promise<void>;
   copySelection(): void;
@@ -135,14 +143,27 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
 
   let spawnOffset = 0;
 
-  const addComponent: EditorHandle["addComponent"] = async (def, position) => {
-    const node = new DspNode(def, (nodeId, value) => {
-      AudioGraph.setValue(nodeId, value);
-      notifyChange();
-    });
+  const onValueChange = (nodeId: string, value: number) => {
+    AudioGraph.setValue(nodeId, value);
+    notifyChange();
+  };
+
+  // Instantiate a node from a def, optionally with an edited-source override (module
+  // editor). The override compiles `code` instead of loading the stock factory, and
+  // `def` must already carry ports derived from that code.
+  const instantiate = async (
+    def: ComponentDef,
+    position?: { x: number; y: number },
+    overrideCode?: string,
+  ): Promise<DspNode> => {
+    const node = new DspNode(def, onValueChange);
     await editor.addNode(node);
 
     AudioGraph.setNode(node.id, def.id);
+    if (overrideCode) {
+      node.code = overrideCode;
+      AudioGraph.setOverride(node.id, overrideCode, def.inputs);
+    }
     if (def.kind === "constant") AudioGraph.setValue(node.id, def.value ?? 0);
 
     const pos = position ?? {
@@ -152,6 +173,74 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     spawnOffset++;
     await area.translate(node.id, pos);
     return node;
+  };
+
+  const addComponent: EditorHandle["addComponent"] = (def, position) =>
+    instantiate(def, position);
+
+  // Resolve a component id to a def; if edited `code` is supplied, compile it (throws
+  // on error) and rebuild the def's ports from the compiled program.
+  const resolveDef = async (componentId: string, code?: string): Promise<ComponentDef | null> => {
+    const base = resolveComponent(componentId);
+    if (!base || !code) return base ?? null;
+    const compiled = await FaustService.compile(`${componentId}-edit`, code);
+    const { inputs, outputs } = derivePorts(compiled.generator.getJSON());
+    return { ...base, code, inputs, outputs };
+  };
+
+  const getModuleCode: EditorHandle["getModuleCode"] = (nodeId) => {
+    const node = editor.getNode(nodeId) as DspNode | undefined;
+    if (!node) return null;
+    return node.code ?? resolveComponent(node.componentId)?.code ?? null;
+  };
+
+  const getNodeTitle: EditorHandle["getNodeTitle"] = (nodeId) => {
+    const node = editor.getNode(nodeId) as DspNode | undefined;
+    return node?.label ?? "Module";
+  };
+
+  const applyModuleCode: EditorHandle["applyModuleCode"] = async (nodeId, code) => {
+    const node = editor.getNode(nodeId) as DspNode | undefined;
+    if (!node) throw new Error("Node not found");
+    // Compile + derive the new ports (throws → surfaced in the editor).
+    const derived = await resolveDef(node.componentId, code);
+    if (!derived) throw new Error("Unknown component");
+
+    // Capture identity + wiring so we can rebuild the node with the new signature.
+    const view = area.nodeViews.get(nodeId);
+    const position = view ? { x: view.position.x, y: view.position.y } : undefined;
+    const label = node.label;
+    const attached = (editor.getConnections() as unknown as Conn[])
+      .filter((c) => c.source === nodeId || c.target === nodeId)
+      .map((c) => ({
+        id: c.id,
+        source: c.source,
+        sourceOutput: c.sourceOutput as string,
+        target: c.target,
+        targetInput: c.targetInput as string,
+      }));
+
+    for (const c of attached) await editor.removeConnection(c.id);
+    await selectable.unselect(nodeId).catch(() => {});
+    await editor.removeNode(nodeId);
+
+    const fresh = await instantiate(derived, position, code);
+    (fresh as unknown as { label: string }).label = label;
+    await area.update("node", fresh.id);
+
+    // Re-wire connections that still have both endpoints on the (possibly reshaped) node.
+    for (const c of attached) {
+      const srcId = c.source === nodeId ? fresh.id : c.source;
+      const dstId = c.target === nodeId ? fresh.id : c.target;
+      const src = editor.getNode(srcId);
+      const dst = editor.getNode(dstId);
+      if (!src || !dst) continue;
+      if (!src.outputs[c.sourceOutput] || !dst.inputs[c.targetInput]) continue;
+      await editor.addConnection(
+        new ClassicPreset.Connection(src, c.sourceOutput as never, dst, c.targetInput as never),
+      );
+    }
+    notifyChange();
   };
 
   const removeSelected: EditorHandle["removeSelected"] = async () => {
@@ -192,6 +281,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
             ? { w: n.width, h: n.height }
             : undefined,
         state: isWidget && hasState ? { ...n.widgetState } : undefined,
+        code: n.code, // edited module source, if any
       };
     });
     const connections = editor.getConnections().map((c) => ({
@@ -208,12 +298,19 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     await clear();
     const idMap = new Map<string, string>();
     for (const n of snap.nodes) {
-      const def = resolveComponent(n.componentId);
+      // Edited modules carry their source; rebuild the def (ports) from it.
+      let def: ComponentDef | null;
+      try {
+        def = await resolveDef(n.componentId, n.code);
+      } catch (err) {
+        console.warn(`Edited module "${n.componentId}" failed to compile on load — ${err}`);
+        def = resolveComponent(n.componentId) ?? null;
+      }
       if (!def) {
         console.warn(`Unknown component "${n.componentId}" in snapshot — skipped`);
         continue;
       }
-      const node = await addComponent(def, n.position);
+      const node = await instantiate(def, n.position, n.code || undefined);
       idMap.set(n.id, node.id);
       if (def.kind === "constant" && typeof n.value === "number") {
         const ctrl = node.controls.value as ClassicPreset.InputControl<"number">;
@@ -256,6 +353,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       value?: number;
       size?: { w: number; h: number };
       state?: Record<string, unknown>;
+      code?: string;
     }[];
     connections: { source: string; sourceOutput: string; target: string; targetInput: string }[];
   }
@@ -279,6 +377,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
           n.widgetState && Object.keys(n.widgetState).length
             ? (structuredClone(n.widgetState) as Record<string, unknown>)
             : undefined,
+        code: n.code,
       };
     });
     const connections = (editor.getConnections() as unknown as Conn[])
@@ -297,9 +396,14 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     await selector.unselectAll();
     const idMap = new Map<string, string>();
     for (const n of spec.nodes) {
-      const def = resolveComponent(n.componentId);
+      let def: ComponentDef | null;
+      try {
+        def = await resolveDef(n.componentId, n.code);
+      } catch {
+        def = resolveComponent(n.componentId) ?? null;
+      }
       if (!def) continue;
-      const copy = await addComponent(def, { x: n.position.x + dx, y: n.position.y + dy });
+      const copy = await instantiate(def, { x: n.position.x + dx, y: n.position.y + dy }, n.code || undefined);
       idMap.set(n.id, copy.id);
       if (n.label) (copy as unknown as { label: string }).label = n.label;
       if (n.value !== undefined) {
@@ -464,6 +568,9 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   return {
     addComponent,
     screenToWorld,
+    getModuleCode,
+    getNodeTitle,
+    applyModuleCode,
     removeSelected,
     duplicateSelected,
     copySelection,

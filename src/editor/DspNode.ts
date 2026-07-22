@@ -52,6 +52,8 @@ export class DspNode extends ClassicPreset.Node {
   width?: number;
   height?: number;
   widgetState: Record<string, unknown> = {};
+  /** Edited Faust source (module editor override); undefined = stock module source. */
+  code?: string;
 
   constructor(
     def: ComponentDef,

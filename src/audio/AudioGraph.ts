@@ -14,7 +14,7 @@ import {
   NullUnit,
   Monitors,
 } from "./monitors";
-import type { AudioUnit } from "./types";
+import type { AudioUnit, InputSpec } from "./types";
 import { resolveComponent } from "../components/customBlocks";
 
 interface Conn {
@@ -33,6 +33,9 @@ class AudioGraphImpl {
   private desiredNodes = new Map<string, string>(); // nodeId -> componentId
   private conns = new Map<string, Conn>(); // connId -> Conn
   private values = new Map<string, number>(); // nodeId -> constant value
+  // Per-node edited Faust source (module editor). When present, the node compiles
+  // this source instead of loading its precompiled factory.
+  private overrides = new Map<string, { code: string; inputs: InputSpec[] }>();
 
   private live = false;
   private units = new Map<string, Promise<AudioUnit | null>>();
@@ -53,9 +56,32 @@ class AudioGraphImpl {
     if (this.live) void this.realizeNode(nodeId);
   }
 
+  /** Set (or replace) a node's edited Faust source. Re-realizes it if live. */
+  setOverride(nodeId: string, code: string, inputs: InputSpec[]) {
+    this.overrides.set(nodeId, { code, inputs });
+    if (this.live) void this.reRealize(nodeId);
+  }
+
+  clearOverride(nodeId: string) {
+    this.overrides.delete(nodeId);
+  }
+
+  /** Dispose and rebuild a single node's audio unit (e.g. after an edit). */
+  private async reRealize(nodeId: string) {
+    const u = this.units.get(nodeId);
+    this.units.delete(nodeId);
+    if (u) (await u)?.dispose();
+    await this.realizeNode(nodeId);
+    // Reconnect any live connections touching this node.
+    for (const conn of this.conns.values()) {
+      if (conn.src === nodeId || conn.dst === nodeId) await this.realizeConn(conn);
+    }
+  }
+
   async removeNode(nodeId: string) {
     this.desiredNodes.delete(nodeId);
     this.values.delete(nodeId);
+    this.overrides.delete(nodeId);
     Monitors.delete(nodeId);
     for (const [id, c] of this.conns) {
       if (c.src === nodeId || c.dst === nodeId) this.conns.delete(id);
@@ -114,6 +140,7 @@ class AudioGraphImpl {
     this.desiredNodes.clear();
     this.conns.clear();
     this.values.clear();
+    this.overrides.clear();
   }
 
   // ---- realization -------------------------------------------------------
@@ -129,6 +156,13 @@ class AudioGraphImpl {
     const promise = (async (): Promise<AudioUnit | null> => {
       const ctx = AudioEngine.context!;
       try {
+        // Edited module: compile the overridden source rather than the stock factory.
+        const override = this.overrides.get(nodeId);
+        if (override) {
+          const compiled = await FaustService.compile(`${componentId}-edit`, override.code);
+          const worklet = await FaustService.createNode(compiled, ctx);
+          return new FaustUnit(ctx, worklet, override.inputs);
+        }
         switch (def.kind) {
           case "output":
             return new OutputUnit(ctx, AudioEngine.masterNode!);

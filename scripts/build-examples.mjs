@@ -173,6 +173,7 @@ async function main() {
         title,
         category: prettyCat(cat),
         kind: "module",
+        code: src, // embed the Faust source so modules are viewable / editable in-app
         inputs: [
           ...audioInputs(meta.inputs),
           ...params.map((p) => ({

@@ -18,6 +18,8 @@ export interface PatchNode {
   size?: { w: number; h: number };
   /** Widget node state (e.g. sequencer notes). */
   state?: Record<string, unknown>;
+  /** Edited Faust source for a module node (module editor override). */
+  code?: string;
 }
 
 export interface PatchConnection {
