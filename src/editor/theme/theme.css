@@ -141,7 +141,9 @@
   gap: 0;
 }
 .dsp-node[data-constant] input {
-  width: 60px;
+  /* Fit 7 digits + a decimal point + a leading minus, with tabular digits. */
+  width: 112px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- Socket disc: metallic ---- */
