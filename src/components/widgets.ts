@@ -200,6 +200,7 @@ export const WIDGETS: ComponentDef[] = [
     category: "Controls",
     kind: "widget",
     widget: "xypad",
+    widgetConfig: { square: true },
     tooltip: "2D macro control — drag the pad. Outputs X and Y (0..1). Wire into control inputs.",
     inputs: [],
     outputs: [{ label: "x" }, { label: "y" }],

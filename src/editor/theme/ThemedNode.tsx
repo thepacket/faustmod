@@ -144,7 +144,17 @@ export function ThemedNode(props: Props) {
             <WidgetBody node={props.data as unknown as WidgetNode} />
           </div>
           {hasOutputs && <div className="dsp-col dsp-outputs">{outputEntries.map(outputPort)}</div>}
-          {props.data.resizable && <ResizeHandle node={props.data as unknown as WidgetNode} />}
+          {props.data.resizable &&
+            (props.data.widgetConfig?.square ? (
+              <ResizeHandle
+                node={props.data as unknown as WidgetNode}
+                square
+                minW={90}
+                minH={90}
+              />
+            ) : (
+              <ResizeHandle node={props.data as unknown as WidgetNode} />
+            ))}
         </div>
       )}
 

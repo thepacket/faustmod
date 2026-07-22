@@ -52,8 +52,17 @@ export function XYPad({ node }: { node: WidgetNode }) {
     window.addEventListener("pointerup", up);
   };
 
+  // Square, sized from the node (kept 1:1 by the resize handle).
+  const size = node.width ?? 120;
+
   return (
-    <div className="xypad" ref={padRef} onPointerDown={onDown} title="Drag to set X / Y">
+    <div
+      className="xypad"
+      ref={padRef}
+      onPointerDown={onDown}
+      title="Drag to set X / Y"
+      style={{ width: size, height: size }}
+    >
       <div className="xypad-cross-h" style={{ top: `${(1 - xy[1]) * 100}%` }} />
       <div className="xypad-cross-v" style={{ left: `${xy[0] * 100}%` }} />
       <div
