@@ -152,6 +152,12 @@ export function App() {
       } else if (!inField && mod && k === "d") {
         e.preventDefault();
         void ed()?.duplicateSelected();
+      } else if (!inField && mod && k === "c") {
+        e.preventDefault();
+        ed()?.copySelection();
+      } else if (!inField && mod && k === "v") {
+        e.preventDefault();
+        void ed()?.paste();
       } else if (!inField && mod && k === "a") {
         e.preventDefault();
         void ed()?.selectAll();
@@ -183,6 +189,8 @@ export function App() {
         { label: "Undo", shortcut: "⌘Z", onClick: () => ed()?.undo() },
         { label: "Redo", shortcut: "⇧⌘Z", onClick: () => ed()?.redo() },
         { separator: true },
+        { label: "Copy", shortcut: "⌘C", onClick: () => ed()?.copySelection() },
+        { label: "Paste", shortcut: "⌘V", onClick: () => void ed()?.paste() },
         { label: "Duplicate", shortcut: "⌘D", onClick: () => void ed()?.duplicateSelected() },
         { label: "Delete", shortcut: "⌫", onClick: () => void ed()?.removeSelected() },
         { label: "Select All", shortcut: "⌘A", onClick: () => void ed()?.selectAll() },

@@ -41,6 +41,8 @@ export interface EditorHandle {
   screenToWorld(clientX: number, clientY: number): { x: number; y: number };
   removeSelected(): Promise<void>;
   duplicateSelected(): Promise<void>;
+  copySelection(): void;
+  paste(): Promise<void>;
   selectAll(): Promise<void>;
   clear(): Promise<void>;
   snapshot(): GraphSnapshot;
@@ -240,25 +242,103 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     await zoomToFit();
   };
 
-  const duplicateSelected: EditorHandle["duplicateSelected"] = async () => {
+  // A self-contained group of nodes + the connections among them (positions in world
+  // coordinates). Used by duplicate and copy/paste.
+  interface GroupSpec {
+    nodes: {
+      id: string;
+      componentId: string;
+      position: { x: number; y: number };
+      value?: number;
+      size?: { w: number; h: number };
+      state?: Record<string, unknown>;
+    }[];
+    connections: { source: string; sourceOutput: string; target: string; targetInput: string }[];
+  }
+
+  /** Capture the current selection (nodes + internal connections) as a GroupSpec. */
+  const snapshotSelection = (): GroupSpec | null => {
     const selected = (editor.getNodes() as DspNode[]).filter((n) => (n as any).selected);
-    for (const node of selected) {
-      const def = resolveComponent(node.componentId);
+    if (!selected.length) return null;
+    const ids = new Set(selected.map((n) => n.id));
+    const nodes = selected.map((n) => {
+      const view = area.nodeViews.get(n.id);
+      const ctrl = n.controls.value as ClassicPreset.InputControl<"number"> | undefined;
+      return {
+        id: n.id,
+        componentId: n.componentId,
+        position: view ? { x: view.position.x, y: view.position.y } : { x: 0, y: 0 },
+        value: n.componentId === "constant" && ctrl ? Number(ctrl.value) : undefined,
+        size: n.width && n.height ? { w: n.width, h: n.height } : undefined,
+        state:
+          n.widgetState && Object.keys(n.widgetState).length
+            ? (structuredClone(n.widgetState) as Record<string, unknown>)
+            : undefined,
+      };
+    });
+    const connections = (editor.getConnections() as unknown as Conn[])
+      .filter((c) => ids.has(c.source) && ids.has(c.target))
+      .map((c) => ({
+        source: c.source,
+        sourceOutput: c.sourceOutput as string,
+        target: c.target,
+        targetInput: c.targetInput as string,
+      }));
+    return { nodes, connections };
+  };
+
+  /** Recreate a GroupSpec at an offset and leave the new nodes selected as a group. */
+  const instantiateGroup = async (spec: GroupSpec, dx: number, dy: number) => {
+    await selector.unselectAll();
+    const idMap = new Map<string, string>();
+    for (const n of spec.nodes) {
+      const def = resolveComponent(n.componentId);
       if (!def) continue;
-      const view = area.nodeViews.get(node.id);
-      const pos = view
-        ? { x: view.position.x + 40, y: view.position.y + 40 }
-        : undefined;
-      const copy = await addComponent(def, pos);
-      const srcCtrl = node.controls.value as ClassicPreset.InputControl<"number"> | undefined;
-      if (def.kind === "constant" && srcCtrl) {
-        const dstCtrl = copy.controls.value as ClassicPreset.InputControl<"number">;
-        dstCtrl?.setValue(Number(srcCtrl.value));
-        AudioGraph.setValue(copy.id, Number(srcCtrl.value));
-        await area.update("node", copy.id);
+      const copy = await addComponent(def, { x: n.position.x + dx, y: n.position.y + dy });
+      idMap.set(n.id, copy.id);
+      if (n.value !== undefined) {
+        const dstCtrl = copy.controls.value as ClassicPreset.InputControl<"number"> | undefined;
+        dstCtrl?.setValue(n.value);
+        AudioGraph.setValue(copy.id, n.value);
       }
+      if (n.size) {
+        copy.width = n.size.w;
+        copy.height = n.size.h;
+      }
+      if (n.state) copy.widgetState = structuredClone(n.state);
+      await area.update("node", copy.id);
     }
+    for (const c of spec.connections) {
+      const src = editor.getNode(idMap.get(c.source)!);
+      const dst = editor.getNode(idMap.get(c.target)!);
+      if (!src || !dst) continue;
+      await editor.addConnection(
+        new ClassicPreset.Connection(src, c.sourceOutput as never, dst, c.targetInput as never),
+      );
+    }
+    for (const newId of idMap.values()) await selectable.select(newId, true);
     notifyChange();
+  };
+
+  const duplicateSelected: EditorHandle["duplicateSelected"] = async () => {
+    const spec = snapshotSelection();
+    if (spec) await instantiateGroup(spec, 40, 40);
+  };
+
+  // In-memory clipboard for copy/paste; each paste cascades a little further.
+  let clipboard: GroupSpec | null = null;
+  let pasteCount = 0;
+  const copySelection: EditorHandle["copySelection"] = () => {
+    const spec = snapshotSelection();
+    if (spec) {
+      clipboard = spec;
+      pasteCount = 0;
+    }
+  };
+  const paste: EditorHandle["paste"] = async () => {
+    if (!clipboard) return;
+    pasteCount++;
+    await instantiateGroup(clipboard, 30 * pasteCount, 30 * pasteCount);
   };
 
   const selectAll: EditorHandle["selectAll"] = async () => {
@@ -380,6 +460,8 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     screenToWorld,
     removeSelected,
     duplicateSelected,
+    copySelection,
+    paste,
     selectAll,
     clear,
     snapshot,
