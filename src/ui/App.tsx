@@ -210,6 +210,16 @@ export function App() {
     }
   };
 
+  const runAddKnob = () => {
+    const ed = editorRef.current;
+    if (!ed || !ctxMenu) return;
+    if (ctxMenu.nodeId && ctxMenu.inputKey) {
+      void ed.addKnobForInput(ctxMenu.nodeId, ctxMenu.inputKey);
+    } else {
+      void ed.addKnob(ed.screenToWorld(ctxMenu.x, ctxMenu.y));
+    }
+  };
+
   const exportBrief = () => {
     const url = URL.createObjectURL(new Blob([buildAiBrief()], { type: "text/markdown" }));
     const a = document.createElement("a");
@@ -432,6 +442,12 @@ export function App() {
                 ? `Add H Slider → ${ctxMenu.inputLabel ?? "input"}`
                 : "Add H Slider",
               onClick: () => runAddSlider("h"),
+            },
+            {
+              label: ctxMenu.inputKey
+                ? `Add Knob → ${ctxMenu.inputLabel ?? "input"}`
+                : "Add Knob",
+              onClick: runAddKnob,
             },
           ]}
         />

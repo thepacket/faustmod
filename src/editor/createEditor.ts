@@ -47,6 +47,10 @@ export interface EditorHandle {
    * wire it into that input. Placed just to the left of the target node.
    */
   addSliderForInput(nodeId: string, inputKey: string, orientation: "v" | "h"): Promise<void>;
+  /** Add a knob (world position); range defaults to 0–1. Unconnected. */
+  addKnob(position?: { x: number; y: number }): Promise<void>;
+  /** Add a knob configured from an input port's declared range and wire it in. */
+  addKnobForInput(nodeId: string, inputKey: string): Promise<void>;
   /** Convert a viewport (client) point to editor world coordinates (for drops). */
   screenToWorld(clientX: number, clientY: number): { x: number; y: number };
   /** Current Faust source of a module node (edited override, else stock), or null. */
@@ -186,17 +190,23 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   const addComponent: EditorHandle["addComponent"] = (def, position) =>
     instantiate(def, position);
 
-  // Create a vertical slider node with a per-instance range (stored in widgetState so
-  // it persists across save/load), optionally wired into a target control input.
-  const spawnSlider = async (
-    orientation: "v" | "h",
+  // Create a control widget (slider/knob) with a per-instance range (stored in
+  // widgetState so it persists across save/load), optionally wired into a target input.
+  const spawnControl = async (
+    componentId: string,
     range: { min: number; max: number; value: number },
     position?: { x: number; y: number },
     connectTo?: { node: DspNode; inputKey: string },
   ): Promise<void> => {
-    const def = resolveComponent(orientation === "h" ? "slider-h" : "slider-v");
+    const def = resolveComponent(componentId);
     if (!def) return;
-    const node = await instantiate(def, position);
+    // Tune the config so the widget mounts with the right range/value immediately;
+    // also mirror it into widgetState so it survives save/load.
+    const tuned: ComponentDef = {
+      ...def,
+      widgetConfig: { ...def.widgetConfig, min: range.min, max: range.max, default: range.value },
+    };
+    const node = await instantiate(tuned, position);
     node.widgetState = { min: range.min, max: range.max, value: range.value };
     await area.update("node", node.id);
     if (connectTo) {
@@ -211,25 +221,42 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     notifyChange();
   };
 
+  // The range/placement for a control wired into a given input port.
+  const controlForInput = (nodeId: string, inputKey: string) => {
+    const target = editor.getNode(nodeId) as DspNode | undefined;
+    if (!target) return null;
+    const spec = target.inputSpecs[inputKey];
+    const min = spec?.min ?? 0;
+    const max = spec?.max ?? 1;
+    const value = spec?.default ?? (min + max) / 2;
+    const view = area.nodeViews.get(nodeId);
+    const pos = view ? { x: view.position.x - 70, y: view.position.y + 10 } : undefined;
+    return { target, range: { min, max, value }, pos };
+  };
+
   const addSlider: EditorHandle["addSlider"] = (orientation, position) =>
-    spawnSlider(orientation, { min: 0, max: 1, value: 0.5 }, position);
+    spawnControl(orientation === "h" ? "slider-h" : "slider-v", { min: 0, max: 1, value: 0.5 }, position);
 
   const addSliderForInput: EditorHandle["addSliderForInput"] = async (
     nodeId,
     inputKey,
     orientation,
   ) => {
-    const target = editor.getNode(nodeId) as DspNode | undefined;
-    if (!target) return;
-    const spec = target.inputSpecs[inputKey];
-    const min = spec?.min ?? 0;
-    const max = spec?.max ?? 1;
-    const value = spec?.default ?? (min + max) / 2;
-    const view = area.nodeViews.get(nodeId);
-    const pos = view
-      ? { x: view.position.x - 70, y: view.position.y + 10 }
-      : undefined;
-    await spawnSlider(orientation, { min, max, value }, pos, { node: target, inputKey });
+    const c = controlForInput(nodeId, inputKey);
+    if (!c) return;
+    await spawnControl(orientation === "h" ? "slider-h" : "slider-v", c.range, c.pos, {
+      node: c.target,
+      inputKey,
+    });
+  };
+
+  const addKnob: EditorHandle["addKnob"] = (position) =>
+    spawnControl("knob", { min: 0, max: 1, value: 0.5 }, position);
+
+  const addKnobForInput: EditorHandle["addKnobForInput"] = async (nodeId, inputKey) => {
+    const c = controlForInput(nodeId, inputKey);
+    if (!c) return;
+    await spawnControl("knob", c.range, c.pos, { node: c.target, inputKey });
   };
 
   // Resolve a component id to a def; if edited `code` is supplied, compile it (throws
@@ -633,6 +660,8 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     addComponent,
     addSlider,
     addSliderForInput,
+    addKnob,
+    addKnobForInput,
     screenToWorld,
     getModuleCode,
     getNodeTitle,
