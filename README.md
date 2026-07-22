@@ -45,12 +45,14 @@ runs as WebAssembly AudioWorklets in the browser.
   port metadata) via **Block → Import DSP Block…**; compiled in-browser and added to your
   DSP. See *Custom DSP blocks*.
 - **Multiple tabs** — one patch per tab; only the active tab plays.
-- **Recording + devices** — record the master output (Rec button → `.webm`); pick audio
-  input/output devices (Help → Audio Devices).
+- **Recording + devices** — record the master output (Rec button → `.webm`, or a
+  **Record** node driven from the patch); pick audio input/output devices (File → Settings).
 - **File management** — a top menu (File / Edit / View / Block / Help) with New, Open,
   Save, Save As, Export, undo/redo, and the `.faustmod` patch format.
-- **Bring-your-own-AI** — instead of an LLM baked into the app, use an external AI to
-  write blocks/patches and paste them in. See *Using an external AI* below.
+- **AI DSP authoring** — the New DSP editor has a **Make** button that generates Faust from
+  a prompt via **your own OpenRouter key** (File → Settings). See *Using an external AI*.
+- **Bring-your-own-AI** — or drive an external chat: **File → Export Catalog for AI…**
+  gives it the formats + catalog to write whole patches. See *Using an external AI* below.
 
 ## Getting started
 
@@ -234,10 +236,17 @@ Patches save as `.faustmod` (JSON): metadata, `nodes`, `connections`, and any **
 blocks embedded** so a patch is self-contained. Save/Open use the File System Access API
 (with download/upload fallback). See [`src/patch/format.ts`](src/patch/format.ts).
 
-## Using an external AI
+## Using AI
 
-Rather than pay per-token for an in-app LLM (which would need the whole ~400-block catalog
-in context), FaustMod is **bring-your-own-AI**: **File → Export Catalog for AI…** downloads a
+**In-app (DSP blocks):** the New DSP editor has a **Make** button. It sends your prompt (and
+the current code) to **OpenRouter** with a small Faust/FaustMod coding-guidelines system prompt
+and drops the generated program into the editor. It uses **your own OpenRouter key** (set it,
+with the model, in **File → Settings**); the key stays in your browser and is sent only to
+openrouter.ai, so FaustMod pays no tokens. No catalog/patch context is sent — the models already
+know Faust; they just need the connector conventions.
+
+**External chat (whole patches):** rather than pay per-token for a built-in LLM (which would need
+the whole ~400-block catalog in context), **File → Export Catalog for AI…** downloads a
 brief (the `.faustmod`/block file formats + the DSP-block catalog + the control/instrument
 widget nodes) as a Markdown file. Give it to an external AI (e.g. as Project knowledge), ask
 for a patch or a DSP block, and paste the result back via **Open** (patch) or
