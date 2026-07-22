@@ -6,6 +6,16 @@ export function ResizeHandle({ node, minW = 160, minH = 90 }: { node: WidgetNode
   const onDown = (e: PointerEvent) => {
     e.stopPropagation(); // don't let rete start dragging the node
     e.preventDefault();
+    // Capture the pointer so the drag keeps tracking regardless of what's under the
+    // cursor or node re-renders — essential on trackpads/touch, where an uncaptured
+    // drag gets hijacked as a scroll gesture and cancelled.
+    const el = e.currentTarget as HTMLElement;
+    const pointerId = e.pointerId;
+    try {
+      el.setPointerCapture(pointerId);
+    } catch {
+      /* capture unsupported */
+    }
     const startX = e.clientX;
     const startY = e.clientY;
     const w0 = node.width ?? 240;
@@ -19,6 +29,11 @@ export function ResizeHandle({ node, minW = 160, minH = 90 }: { node: WidgetNode
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      try {
+        el.releasePointerCapture(pointerId);
+      } catch {
+        /* already released */
+      }
       WidgetBridge.onChange();
     };
     window.addEventListener("pointermove", move);

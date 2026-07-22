@@ -212,6 +212,7 @@
   width: 14px;
   height: 14px;
   cursor: nwse-resize;
+  touch-action: none;
   background: repeating-linear-gradient(
     -45deg,
     transparent 0 2px,
