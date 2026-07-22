@@ -383,6 +383,62 @@ body {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
+.library-head .head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-collapse {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.panel-collapse:hover {
+  color: var(--accent);
+}
+
+/* Collapsed side panel: a thin strip with a vertical label that expands on click. */
+.panel.collapsed {
+  width: 30px;
+  min-width: 30px;
+  padding: 0;
+  overflow: hidden;
+}
+.panel-expand {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.panel-expand:hover {
+  color: var(--text);
+}
+.panel-expand .chev {
+  font-size: 15px;
+  line-height: 1;
+}
+.panel-expand .vlabel {
+  writing-mode: vertical-rl;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.7px;
+  font-weight: 600;
+}
+/* On the left panel, read the label bottom-to-top. */
+.panel.library.collapsed .vlabel {
+  transform: rotate(180deg);
+}
 .search {
   width: 100%;
   box-sizing: border-box;

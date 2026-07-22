@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { LibraryService } from "../components/LibraryService";
 import { COMPONENT_DND_TYPE, type ComponentDef } from "../components/library";
+import { usePanelCollapsed, CollapsedStrip, PanelCollapseButton } from "./PanelCollapse";
 
 interface Props {
   disabled: boolean;
@@ -12,6 +13,7 @@ interface Group {
 }
 
 export function LibraryPanel({ disabled }: Props) {
+  const [panelCollapsed, togglePanel] = usePanelCollapsed("faustmod.panel.components");
   const [query, setQuery] = useState("");
   // Start with every category collapsed.
   const [collapsed, setCollapsed] = useState<Set<string>>(
@@ -55,11 +57,18 @@ export function LibraryPanel({ disabled }: Props) {
   const collapseAll = () => setCollapsed(new Set(allCategories));
   const expandAll = () => setCollapsed(new Set());
 
+  if (panelCollapsed) {
+    return <CollapsedStrip label="Components" side="left" onExpand={togglePanel} />;
+  }
+
   return (
     <aside className="panel library">
       <div className="library-head">
         <h2>Components</h2>
-        <span className="count">{searching ? `${shown}/${total}` : total}</span>
+        <div className="head-right">
+          <span className="count">{searching ? `${shown}/${total}` : total}</span>
+          <PanelCollapseButton side="left" onClick={togglePanel} />
+        </div>
       </div>
       <input
         className="search"

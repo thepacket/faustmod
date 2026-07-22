@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState, type PointerEvent } f
 import { MODULES } from "../components/modules";
 import { CustomBlocks } from "../components/customBlocks";
 import { COMPONENT_DND_TYPE, type ComponentDef } from "../components/library";
+import { usePanelCollapsed, CollapsedStrip, PanelCollapseButton } from "./PanelCollapse";
 
 interface Props {
   disabled: boolean;
@@ -22,6 +23,7 @@ const sanitize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").repl
  * splitter sizes the two. Examples can be duplicated into My Modules (then edited).
  */
 export function ModulePanel({ disabled }: Props) {
+  const [panelCollapsed, togglePanel] = usePanelCollapsed("faustmod.panel.modules");
   const [query, setQuery] = useState("");
   const [rev, bump] = useReducer((x) => x + 1, 0);
   useEffect(() => CustomBlocks.subscribe(bump), []);
@@ -130,11 +132,18 @@ export function ModulePanel({ disabled }: Props) {
     window.addEventListener("pointerup", up);
   };
 
+  if (panelCollapsed) {
+    return <CollapsedStrip label="Modules" side="right" onExpand={togglePanel} />;
+  }
+
   return (
     <aside className="panel modules">
       <div className="library-head">
         <h2>Modules</h2>
-        <span className="count">{searching ? `${shown}/${total}` : total}</span>
+        <div className="head-right">
+          <span className="count">{searching ? `${shown}/${total}` : total}</span>
+          <PanelCollapseButton side="right" onClick={togglePanel} />
+        </div>
       </div>
       <input
         className="search"
