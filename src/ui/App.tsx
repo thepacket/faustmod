@@ -200,13 +200,13 @@ export function App() {
     ContextMenuBridge.open = (t) => setCtxMenu(t);
   }, []);
 
-  const runAddSlider = () => {
+  const runAddSlider = (orientation: "v" | "h") => {
     const ed = editorRef.current;
     if (!ed || !ctxMenu) return;
     if (ctxMenu.nodeId && ctxMenu.inputKey) {
-      void ed.addSliderForInput(ctxMenu.nodeId, ctxMenu.inputKey);
+      void ed.addSliderForInput(ctxMenu.nodeId, ctxMenu.inputKey, orientation);
     } else {
-      void ed.addSlider(ed.screenToWorld(ctxMenu.x, ctxMenu.y));
+      void ed.addSlider(orientation, ed.screenToWorld(ctxMenu.x, ctxMenu.y));
     }
   };
 
@@ -423,9 +423,15 @@ export function App() {
           items={[
             {
               label: ctxMenu.inputKey
-                ? `Add Slider → ${ctxMenu.inputLabel ?? "input"}`
-                : "Add Slider",
-              onClick: runAddSlider,
+                ? `Add V Slider → ${ctxMenu.inputLabel ?? "input"}`
+                : "Add V Slider",
+              onClick: () => runAddSlider("v"),
+            },
+            {
+              label: ctxMenu.inputKey
+                ? `Add H Slider → ${ctxMenu.inputLabel ?? "input"}`
+                : "Add H Slider",
+              onClick: () => runAddSlider("h"),
             },
           ]}
         />
