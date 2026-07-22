@@ -46,7 +46,7 @@
 /* ---- Header: glowing accent bar ---- */
 .dsp-title {
   position: relative;
-  padding: 5px 12px;
+  padding: 5px 9px;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.2px;
@@ -622,15 +622,23 @@
 .slider {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px;
+  gap: 3px;
+  padding: 2px;
 }
 .slider-v {
   flex-direction: column;
 }
+/* Horizontal: value sits inline to the right of the track so the node stays
+   as short as possible (no readout row stacked below). */
 .slider-h {
-  flex-direction: column;
+  flex-direction: row;
   justify-content: center;
+}
+/* Sliders have no output label — collapse the widget-row so the node hugs the
+   control with only the standard node margins. */
+.dsp-node[data-widget-kind="slider"] .dsp-widget-row {
+  gap: 0;
+  padding: 5px 8px 6px;
 }
 .slider-track {
   position: relative;
@@ -646,7 +654,7 @@
 }
 .slider-h .slider-track {
   height: 8px;
-  width: 100%;
+  flex: 1;
 }
 .slider-fill {
   position: absolute;
@@ -686,6 +694,9 @@
   color: #cfd4e0;
   font-variant-numeric: tabular-nums;
   text-align: center;
+}
+.slider-h .slider-val {
+  min-width: 30px;
 }
 .slider-unit {
   color: var(--muted);

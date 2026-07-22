@@ -71,8 +71,8 @@ export function Slider({ node }: { node: WidgetNode }) {
   const frac = (value - min) / (max - min || 1);
   const pct = `${(frac * 100).toFixed(1)}%`;
   const disp = Math.abs(value) >= 100 ? value.toFixed(0) : value.toFixed(2);
-  const w = node.width ?? (horizontal ? 180 : 44);
-  const h = node.height ?? (horizontal ? 44 : 150);
+  const w = node.width ?? (horizontal ? 180 : 34);
+  const h = node.height ?? (horizontal ? 20 : 150);
 
   return (
     <div

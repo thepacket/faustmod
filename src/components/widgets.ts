@@ -141,9 +141,9 @@ export const WIDGETS: ComponentDef[] = [
     widgetConfig: { default: 0.5, min: 0, max: 1, orientation: "v" },
     tooltip: "Vertical slider — drag to set its value. Resizable length. Wire into a control input.",
     inputs: [],
-    outputs: [{ label: "value" }],
+    outputs: [{ label: "" }],
     resizable: true,
-    defaultSize: { w: 46, h: 150 },
+    defaultSize: { w: 34, h: 150 },
   },
   {
     id: "slider-h",
@@ -154,9 +154,9 @@ export const WIDGETS: ComponentDef[] = [
     widgetConfig: { default: 0.5, min: 0, max: 1, orientation: "h" },
     tooltip: "Horizontal slider — drag to set its value. Resizable length. Wire into a control input.",
     inputs: [],
-    outputs: [{ label: "value" }],
+    outputs: [{ label: "" }],
     resizable: true,
-    defaultSize: { w: 180, h: 46 },
+    defaultSize: { w: 180, h: 20 },
   },
   {
     id: "keyboard",
