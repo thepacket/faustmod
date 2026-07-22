@@ -5,8 +5,10 @@ import { WidgetBridge, type WidgetNode } from "./WidgetBridge";
 /** A vertical or horizontal slider outputting a value (backed by a ConstantUnit). */
 export function Slider({ node }: { node: WidgetNode }) {
   const cfg = node.widgetConfig ?? {};
-  const min = Number(cfg.min ?? 0);
-  const max = Number(cfg.max ?? 1);
+  // Per-instance range (from "Add Slider" on an input) lives in widgetState so it
+  // persists across save/load; fall back to the component's default config.
+  const min = Number(node.widgetState.min ?? cfg.min ?? 0);
+  const max = Number(node.widgetState.max ?? cfg.max ?? 1);
   const horizontal = (cfg.orientation as string) === "h";
   const init = Number(node.widgetState.value ?? cfg.default ?? min);
   const [value, setValue] = useState(init);

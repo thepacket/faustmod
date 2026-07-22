@@ -16,7 +16,7 @@ import {
 } from "rete-history-plugin";
 import { createRoot } from "react-dom/client";
 
-import { DspNode, indexFromKey } from "./DspNode";
+import { DspNode, indexFromKey, outKey } from "./DspNode";
 import { ThemedNode } from "./theme/ThemedNode";
 import { ThemedSocket } from "./theme/ThemedSocket";
 import { AudioGraph } from "../audio/AudioGraph";
@@ -26,6 +26,7 @@ import { type ComponentDef } from "../components/library";
 import { resolveComponent } from "../components/customBlocks";
 import type { GraphSnapshot } from "../patch/format";
 import { WidgetBridge } from "./widgets/WidgetBridge";
+import { ContextMenuBridge } from "./widgets/ContextMenuBridge";
 import "./theme/theme.css";
 
 export type { GraphSnapshot } from "../patch/format";
@@ -39,6 +40,13 @@ type AreaExtra = ReactArea2D<Schemes>;
 
 export interface EditorHandle {
   addComponent(def: ComponentDef, position?: { x: number; y: number }): Promise<DspNode>;
+  /** Add a slider (world position); range defaults to 0–1. Unconnected. */
+  addSlider(position?: { x: number; y: number }): Promise<void>;
+  /**
+   * Add a slider configured from an input port's declared range (default/min/max) and
+   * wire it into that input. Placed just to the left of the target node.
+   */
+  addSliderForInput(nodeId: string, inputKey: string): Promise<void>;
   /** Convert a viewport (client) point to editor world coordinates (for drops). */
   screenToWorld(clientX: number, clientY: number): { x: number; y: number };
   /** Current Faust source of a module node (edited override, else stock), or null. */
@@ -177,6 +185,47 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
 
   const addComponent: EditorHandle["addComponent"] = (def, position) =>
     instantiate(def, position);
+
+  // Create a vertical slider node with a per-instance range (stored in widgetState so
+  // it persists across save/load), optionally wired into a target control input.
+  const spawnSlider = async (
+    range: { min: number; max: number; value: number },
+    position?: { x: number; y: number },
+    connectTo?: { node: DspNode; inputKey: string },
+  ): Promise<void> => {
+    const def = resolveComponent("slider-v");
+    if (!def) return;
+    const node = await instantiate(def, position);
+    node.widgetState = { min: range.min, max: range.max, value: range.value };
+    await area.update("node", node.id);
+    if (connectTo) {
+      const conn = new ClassicPreset.Connection(
+        node as Node,
+        outKey(0) as never,
+        connectTo.node as Node,
+        connectTo.inputKey as never,
+      );
+      await editor.addConnection(conn as Conn);
+    }
+    notifyChange();
+  };
+
+  const addSlider: EditorHandle["addSlider"] = (position) =>
+    spawnSlider({ min: 0, max: 1, value: 0.5 }, position);
+
+  const addSliderForInput: EditorHandle["addSliderForInput"] = async (nodeId, inputKey) => {
+    const target = editor.getNode(nodeId) as DspNode | undefined;
+    if (!target) return;
+    const spec = target.inputSpecs[inputKey];
+    const min = spec?.min ?? 0;
+    const max = spec?.max ?? 1;
+    const value = spec?.default ?? (min + max) / 2;
+    const view = area.nodeViews.get(nodeId);
+    const pos = view
+      ? { x: view.position.x - 70, y: view.position.y + 10 }
+      : undefined;
+    await spawnSlider({ min, max, value }, pos, { node: target, inputKey });
+  };
 
   // Resolve a component id to a def; if edited `code` is supplied, compile it (throws
   // on error) and rebuild the def's ports from the compiled program.
@@ -558,15 +607,27 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   };
   container.addEventListener("pointerdown", onCanvasPointerDown, true); // capture, before rete
 
+  // Right-click anywhere that isn't an input port → generic context menu (Add Slider
+  // at that spot). Input ports open their own menu via ThemedNode's React handler.
+  const onContextMenu = (e: MouseEvent) => {
+    if ((e.target as HTMLElement).closest(".dsp-port.dsp-input")) return;
+    e.preventDefault();
+    ContextMenuBridge.open({ x: e.clientX, y: e.clientY });
+  };
+  container.addEventListener("contextmenu", onContextMenu);
+
   const destroy = () => {
     window.removeEventListener("keydown", onSpace);
     window.removeEventListener("keyup", onSpace);
     container.removeEventListener("pointerdown", onCanvasPointerDown, true);
+    container.removeEventListener("contextmenu", onContextMenu);
     area.destroy();
   };
 
   return {
     addComponent,
+    addSlider,
+    addSliderForInput,
     screenToWorld,
     getModuleCode,
     getNodeTitle,

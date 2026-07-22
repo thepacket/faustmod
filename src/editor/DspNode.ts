@@ -44,6 +44,8 @@ export class DspNode extends ClassicPreset.Node {
   readonly category: string;
   readonly tooltip?: string;
   readonly tips: Record<string, string> = {};
+  /** The declared spec (label/default/range/tooltip) per input socket key. */
+  readonly inputSpecs: Record<string, InputSpec> = {};
 
   // Widget nodes (scope, meters, sequencer…) render a custom body.
   readonly widget?: string;
@@ -75,6 +77,7 @@ export class DspNode extends ClassicPreset.Node {
       const key = inKey(i);
       this.addInput(key, new ClassicPreset.Input(audioSocket, spec.label));
       this.tips[key] = inputTip(spec);
+      this.inputSpecs[key] = spec;
     });
     def.outputs.forEach((spec, i) => {
       const key = outKey(i);

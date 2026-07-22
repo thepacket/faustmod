@@ -19,6 +19,9 @@ import { PresetModal } from "./PresetModal";
 import { FaustEditor } from "./FaustEditor";
 import { ModuleEditBridge } from "../editor/widgets/ModuleEditBridge";
 import { RecordBridge } from "../editor/widgets/RecordBridge";
+import { ContextMenuBridge, type ContextMenuTarget } from "../editor/widgets/ContextMenuBridge";
+import { TooltipLayer } from "./TooltipLayer";
+import { ContextMenu } from "./ContextMenu";
 import { CustomBlocks } from "../components/customBlocks";
 import { FaustService } from "../audio/FaustService";
 import { derivePorts } from "../audio/faustIO";
@@ -54,6 +57,7 @@ export function App() {
   };
   const [modal, setModal] = useState<ModalKind>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<ContextMenuTarget | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -92,6 +96,7 @@ export function App() {
       patchRef.current = mgr;
       tabsRef.current = tabsMgr;
       setTabs(tabsMgr.list());
+      await tabsMgr.init(); // seed the first patch (Audio Input + Stereo Output)
 
       AudioGraph.onNodeError = (msg) => setStatus(msg);
       if (import.meta.env.DEV) {
@@ -189,6 +194,21 @@ export function App() {
       else if (recSourceRef.current === "node") void stopRec();
     };
   });
+
+  // Right-click contextual menu (canvas + input ports).
+  useEffect(() => {
+    ContextMenuBridge.open = (t) => setCtxMenu(t);
+  }, []);
+
+  const runAddSlider = () => {
+    const ed = editorRef.current;
+    if (!ed || !ctxMenu) return;
+    if (ctxMenu.nodeId && ctxMenu.inputKey) {
+      void ed.addSliderForInput(ctxMenu.nodeId, ctxMenu.inputKey);
+    } else {
+      void ed.addSlider(ed.screenToWorld(ctxMenu.x, ctxMenu.y));
+    }
+  };
 
   const exportBrief = () => {
     const url = URL.createObjectURL(new Blob([buildAiBrief()], { type: "text/markdown" }));
@@ -390,6 +410,24 @@ export function App() {
                   setStatus(`Recompiled "${editTarget.title}"`);
                 }
           }
+        />
+      )}
+
+      <TooltipLayer />
+
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          items={[
+            {
+              label: ctxMenu.inputKey
+                ? `Add Slider → ${ctxMenu.inputLabel ?? "input"}`
+                : "Add Slider",
+              onClick: runAddSlider,
+            },
+          ]}
         />
       )}
     </div>

@@ -36,6 +36,12 @@ export class TabsManager {
     ];
   }
 
+  /** Load the initial tab into the editor (starter nodes on a fresh patch). */
+  async init(): Promise<void> {
+    await this.load(this.tabs[this.active]);
+    this.onChange?.();
+  }
+
   list(): TabInfo[] {
     return this.tabs.map((t) => ({ id: t.id, name: t.name, dirty: t.dirty }));
   }

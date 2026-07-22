@@ -6,7 +6,9 @@ import { WidgetBody } from "../widgets/WidgetBody";
 import { ResizeHandle } from "../widgets/ResizeHandle";
 import { WidgetBridge, type WidgetNode } from "../widgets/WidgetBridge";
 import { ModuleEditBridge } from "../widgets/ModuleEditBridge";
+import { ContextMenuBridge } from "../widgets/ContextMenuBridge";
 import { resolveComponent } from "../../components/customBlocks";
+import type { MouseEvent } from "react";
 
 // Ref components from the classic preset — they register each socket/control with
 // the render pipeline so connection positions are tracked. Using them keeps node
@@ -43,6 +45,13 @@ export function ThemedNode(props: Props) {
   const { id, label, inputs, outputs, controls, componentId, category, selected, tooltip, tips } =
     props.data;
   const tip = (key: string) => tips?.[key];
+  // Right-click on an input port → contextual menu (Add Slider, configured from this
+  // input's declared range). Stop propagation so the canvas menu doesn't also fire.
+  const onInputContext = (key: string, inputLabel: string) => (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    ContextMenuBridge.open({ x: e.clientX, y: e.clientY, nodeId: id, inputKey: key, inputLabel });
+  };
   const isConstant = componentId === "constant";
   const inputEntries = Object.entries(inputs) as Entry<any>[];
   const outputEntries = Object.entries(outputs) as Entry<any>[];
@@ -70,7 +79,13 @@ export function ThemedNode(props: Props) {
 
   const inputPort = ([key, input]: Entry<any>) =>
     input && (
-      <div className="dsp-port dsp-input" key={key} data-testid={`input-${key}`} title={tip(key)}>
+      <div
+        className="dsp-port dsp-input"
+        key={key}
+        data-testid={`input-${key}`}
+        data-tip={tip(key)}
+        onContextMenu={onInputContext(key, input.label)}
+      >
         <RefSocket
           name="input-socket"
           side="input"
@@ -84,7 +99,7 @@ export function ThemedNode(props: Props) {
     );
   const outputPort = ([key, output]: Entry<any>) =>
     output && (
-      <div className="dsp-port dsp-output" key={key} data-testid={`output-${key}`} title={tip(key)}>
+      <div className="dsp-port dsp-output" key={key} data-testid={`output-${key}`} data-tip={tip(key)}>
         <span className="dsp-port-label">{output.label}</span>
         <RefSocket
           name="output-socket"
@@ -106,7 +121,7 @@ export function ThemedNode(props: Props) {
       data-widget={isWidget ? "true" : undefined}
       data-widget-kind={props.data.widget || undefined}
       data-selected={selected ? "true" : undefined}
-      title={isConstant ? tooltip : undefined}
+      data-tip={isConstant ? tooltip : undefined}
       style={{ ["--accent" as string]: accentFor(category ?? "") }}
       onDoubleClick={editable ? () => ModuleEditBridge.open(id) : undefined}
     >
@@ -130,7 +145,7 @@ export function ThemedNode(props: Props) {
           <div
             className="dsp-title"
             data-testid="title"
-            title={tooltip}
+            data-tip={tooltip}
             onClick={() => {
               setDraft(label ?? "");
               setEditing(true);
@@ -162,7 +177,7 @@ export function ThemedNode(props: Props) {
                   className="dsp-port dsp-output"
                   key={key}
                   data-testid={`output-${key}`}
-                  title={tip(key)}
+                  data-tip={tip(key)}
                 >
                   <RefSocket
                     name="output-socket"
@@ -220,7 +235,8 @@ export function ThemedNode(props: Props) {
                       className="dsp-port dsp-input"
                       key={key}
                       data-testid={`input-${key}`}
-                      title={tip(key)}
+                      data-tip={tip(key)}
+                      onContextMenu={onInputContext(key, input.label)}
                     >
                       <RefSocket
                         name="input-socket"
@@ -246,7 +262,7 @@ export function ThemedNode(props: Props) {
                       className="dsp-port dsp-output"
                       key={key}
                       data-testid={`output-${key}`}
-                      title={tip(key)}
+                      data-tip={tip(key)}
                     >
                       <span className="dsp-port-label">{output.label}</span>
                       <RefSocket
