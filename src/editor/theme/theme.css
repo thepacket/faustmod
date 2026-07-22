@@ -383,6 +383,31 @@
   color: var(--muted);
 }
 
+/* ---- Record node ---- */
+.record-widget {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+}
+.record-widget .rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4a4f5c;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.record-widget .rec-dot.on {
+  background: var(--danger);
+  box-shadow: 0 0 8px var(--danger);
+}
+.record-widget .rec-state {
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- LEDs ---- */
 .led-wrap {
   padding: 6px 10px;

@@ -752,19 +752,3 @@ body {
   margin-top: 4px;
   font-size: 13px;
 }
-
-/* ---- Record button ---- */
-.rec-btn {
-  color: #ff6b6b;
-}
-.rec-btn.recording {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: #fff;
-  animation: rec-pulse 1.2s ease-in-out infinite;
-}
-@keyframes rec-pulse {
-  50% {
-    box-shadow: 0 0 0 3px rgba(255, 91, 110, 0.35);
-  }
-}

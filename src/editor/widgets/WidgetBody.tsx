@@ -15,6 +15,7 @@ import { MidiIn } from "./MidiIn";
 import { Comment } from "./Comment";
 import { XYPad } from "./XYPad";
 import { Sampler } from "./Sampler";
+import { RecordWidget } from "./RecordWidget";
 
 /** Renders the custom body for a widget node, dispatched by its `widget` type. */
 export function WidgetBody({ node }: { node: WidgetNode }) {
@@ -52,6 +53,8 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
     case "sampler":
     case "granular":
       return <Sampler node={node} />;
+    case "record":
+      return <RecordWidget node={node} />;
     default:
       return null;
   }

@@ -76,6 +76,7 @@ class AudioEngineImpl {
   }
 
   async startRecording(): Promise<void> {
+    if (this.recorder?.state === "recording") return;
     await this.ensure();
     if (!this.recDest) {
       this.recDest = this.ctx!.createMediaStreamDestination();

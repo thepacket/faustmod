@@ -223,6 +223,9 @@ class AudioGraphImpl {
               case "comment":
                 widgetUnit = new NullUnit();
                 break;
+              case "record":
+                widgetUnit = new MeterUnit(ctx); // taps the "on" input; body drives the recorder
+                break;
               default:
                 widgetUnit = new MeterUnit(ctx); // meters + LEDs
             }

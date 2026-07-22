@@ -18,6 +18,7 @@ import { AudioSettingsModal } from "./AudioSettingsModal";
 import { PresetModal } from "./PresetModal";
 import { FaustEditor } from "./FaustEditor";
 import { ModuleEditBridge } from "../editor/widgets/ModuleEditBridge";
+import { RecordBridge } from "../editor/widgets/RecordBridge";
 import { CustomBlocks } from "../components/customBlocks";
 import { FaustService } from "../audio/FaustService";
 import { derivePorts } from "../audio/faustIO";
@@ -103,6 +104,7 @@ export function App() {
     return () => {
       disposed = true;
       handle?.destroy();
+      if (AudioEngine.recording) void AudioEngine.stopRecording();
       void AudioGraph.stop();
     };
   }, []);
@@ -110,6 +112,7 @@ export function App() {
   const togglePlay = async () => {
     try {
       if (playing) {
+        await stopRec(); // the run is over — stop (and save) any recording unconditionally
         await AudioGraph.stop();
         setPlaying(false);
         setStatus("Stopped");
@@ -129,28 +132,63 @@ export function App() {
   const pm = () => patchRef.current;
   const tb = () => tabsRef.current;
 
-  const toggleRecord = async () => {
+  // Recording can be driven from the Rec button or a Record node; track which so the
+  // node never stops a recording the button started, and guard against overlap.
+  const recSourceRef = useRef<null | "node" | "button">(null);
+  const recBusyRef = useRef(false);
+
+  const startRec = async (source: "node" | "button") => {
+    if (AudioEngine.recording || recBusyRef.current) return;
+    recBusyRef.current = true;
     try {
-      if (recording) {
-        const blob = await AudioEngine.stopRecording();
-        setRecording(false);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${patchName || "recording"}.webm`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        setStatus("Recording saved");
-      } else {
-        if (!playing) await togglePlay();
-        await AudioEngine.startRecording();
-        setRecording(true);
-        setStatus("● Recording…");
+      recSourceRef.current = source;
+      if (!AudioGraph.isLive) {
+        await AudioGraph.start();
+        setPlaying(true);
       }
+      await AudioEngine.startRecording();
+      setRecording(true);
+      setStatus("● Recording…");
     } catch (err) {
       setStatus(`Recording error: ${(err as Error).message}`);
+    } finally {
+      recBusyRef.current = false;
     }
   };
+
+  const stopRec = async () => {
+    if (!AudioEngine.recording || recBusyRef.current) {
+      setRecording(false);
+      return;
+    }
+    recBusyRef.current = true;
+    try {
+      recSourceRef.current = null;
+      const blob = await AudioEngine.stopRecording();
+      setRecording(false);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${patchName || "recording"}.webm`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setStatus("Recording saved");
+    } catch (err) {
+      setStatus(`Recording error: ${(err as Error).message}`);
+    } finally {
+      recBusyRef.current = false;
+    }
+  };
+
+  const toggleRecord = () => void (recording ? stopRec() : startRec("button"));
+
+  // Record node → recorder. Non-zero starts; 0 stops only what the node itself started.
+  useEffect(() => {
+    RecordBridge.set = (on: boolean) => {
+      if (on) void startRec("node");
+      else if (recSourceRef.current === "node") void stopRec();
+    };
+  });
 
   const exportBrief = () => {
     const url = URL.createObjectURL(new Blob([buildAiBrief()], { type: "text/markdown" }));

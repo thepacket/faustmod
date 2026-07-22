@@ -104,6 +104,18 @@ export const WIDGETS: ComponentDef[] = [
     inputs: [{ label: "in" }],
     outputs: [],
   },
+  {
+    id: "record",
+    title: "Record",
+    category: "I/O",
+    kind: "widget",
+    widget: "record",
+    tooltip:
+      "Records the master output while its 'on' input is non-zero; 0 stops (and saves). " +
+      "Recording also stops when playback stops.",
+    inputs: [{ label: "on" }],
+    outputs: [],
+  },
 
   // ---- LEDs ---------------------------------------------------------------
   ...(["red", "green", "blue", "yellow"] as const).map(

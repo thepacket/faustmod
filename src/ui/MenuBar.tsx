@@ -96,7 +96,7 @@ export function MenuBar({
         />
       </label>
       <button
-        className={`btn rec-btn ${recording ? "recording" : ""}`}
+        className={recording ? "btn danger" : "btn"}
         onClick={onToggleRecord}
         title={recording ? "Stop recording & download" : "Record master output"}
       >
