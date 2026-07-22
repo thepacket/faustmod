@@ -65,6 +65,17 @@ export interface GraphSnapshot {
   connections: PatchConnection[];
 }
 
+/**
+ * Every new patch starts with an Audio Input and a Stereo Output already placed, so
+ * the user never has to add the endpoints by hand. They're left unconnected.
+ */
+export function starterNodes(): PatchNode[] {
+  return [
+    { id: "audio-input", componentId: "input", position: { x: 80, y: 160 } },
+    { id: "stereo-output", componentId: "output", position: { x: 520, y: 160 } },
+  ];
+}
+
 export function emptyPatch(name = "Untitled"): PatchFile {
   return {
     format: PATCH_FORMAT,
@@ -72,7 +83,7 @@ export function emptyPatch(name = "Untitled"): PatchFile {
     name,
     createdAt: new Date().toISOString(),
     customBlocks: [],
-    nodes: [],
+    nodes: starterNodes(),
     connections: [],
   };
 }
