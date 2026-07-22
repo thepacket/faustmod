@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { CustomBlocks } from "../components/customBlocks";
 import { COMPONENT_DND_TYPE, type ComponentDef } from "../components/library";
+import { FaustService } from "../audio/FaustService";
+import { derivePorts } from "../audio/faustIO";
 import { usePanelCollapsed, CollapsedStrip, PanelCollapseButton } from "./PanelCollapse";
 
 interface Props {
@@ -9,7 +11,13 @@ interface Props {
   onEdit: (def: ComponentDef, readOnly: boolean) => void;
 }
 
-const NEW_MODULE_CODE = 'import("stdfaust.lib");\n// New DSP — edit me.\nprocess = _;';
+// A new DSP that demonstrates the connector convention: audio flows through
+// `process`; a slider DECLARES a named control-input connector (with default + range)
+// — in FaustMod it becomes an input port, not an on-screen knob.
+const NEW_MODULE_CODE = `import("stdfaust.lib");
+// Sliders declare control-input connectors (not knobs):
+gain = hslider("gain", 1.0, 0, 2, 0.001);
+process = _ * gain;`;
 const FAUST_DOCS = "https://faustdoc.grame.fr/manual/syntax/";
 
 /**
@@ -35,18 +43,22 @@ export function ModulePanel({ disabled, onEdit }: Props) {
     [mods, q],
   );
 
-  const createNew = () => {
+  const createNew = async () => {
     const taken = new Set(mods.map((m) => m.title));
     let n = 1;
     while (taken.has(`Untitled ${n}`)) n++;
-    CustomBlocks.add({
-      id: `user-untitled-${Date.now().toString(36)}`,
-      title: `Untitled ${n}`,
-      category: "Custom",
-      inputs: [{ label: "in" }],
-      outputs: [{ label: "out" }],
-      code: NEW_MODULE_CODE,
-    });
+    const id = `user-untitled-${Date.now().toString(36)}`;
+    // Compile the template so the new module's connectors match its code (audio in +
+    // the declared "gain" control input + audio out). Falls back to in/out on failure.
+    let inputs: ComponentDef["inputs"] = [{ label: "in" }];
+    let outputs: ComponentDef["outputs"] = [{ label: "out" }];
+    try {
+      const compiled = await FaustService.compile(`${id}-new`, NEW_MODULE_CODE);
+      ({ inputs, outputs } = derivePorts(compiled.generator.getJSON()));
+    } catch {
+      /* keep the in/out fallback */
+    }
+    CustomBlocks.add({ id, title: `Untitled ${n}`, category: "Custom", inputs, outputs, code: NEW_MODULE_CODE });
   };
 
   const commitRename = (id: string, value: string) => {
