@@ -25,6 +25,8 @@ export interface ComponentDef {
   code?: string;
   /** True for user-authored blocks in the custom-block registry. */
   custom?: boolean;
+  /** User module saved but not yet successfully compiled (draft). */
+  dirty?: boolean;
   /** For kind "widget": which React widget body renders this node. */
   widget?: string;
   /** Widget-specific config (LED colour, meter mode, sequencer step count…). */

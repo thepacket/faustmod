@@ -12,6 +12,8 @@ interface Props {
   initialCode: string;
   /** Recompile + apply the edited source. Rejects (with a message) on failure. Omitted when read-only. */
   onApply?: (code: string) => Promise<void>;
+  /** Save the source WITHOUT compiling (draft). When present, adds a Save button. */
+  onSaveDraft?: (code: string) => void;
   onCancel: () => void;
   /** View-only (example modules): no Compile/OK, editor is not editable. */
   readOnly?: boolean;
@@ -22,7 +24,14 @@ interface Props {
  * colouring, undo/redo, find, multi-cursor, bracket matching, indent). No menu —
  * just Cancel / Compile / OK (or a single Close when read-only).
  */
-export function FaustEditor({ title, initialCode, onApply, onCancel, readOnly = false }: Props) {
+export function FaustEditor({
+  title,
+  initialCode,
+  onApply,
+  onSaveDraft,
+  onCancel,
+  readOnly = false,
+}: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [status, setStatus] = useState<{ msg: string; err: boolean } | null>(null);
@@ -136,6 +145,16 @@ export function FaustEditor({ title, initialCode, onApply, onCancel, readOnly = 
             <button className="btn" disabled={busy} onClick={compile}>
               Compile
             </button>
+            {onSaveDraft && (
+              <button
+                className="btn"
+                disabled={busy}
+                title="Save the source without compiling — the module is marked uncompiled"
+                onClick={() => onSaveDraft(code())}
+              >
+                Save
+              </button>
+            )}
             <button className="btn primary" disabled={busy} onClick={ok}>
               OK
             </button>

@@ -325,6 +325,15 @@ export function App() {
           initialCode={editTarget.code}
           readOnly={editTarget.kind === "example"}
           onCancel={() => setEditTarget(null)}
+          onSaveDraft={
+            editTarget.kind === "user"
+              ? (code) => {
+                  CustomBlocks.saveDraft(editTarget.id, code);
+                  setEditTarget(null);
+                  setStatus(`Saved "${editTarget.title}" (not compiled)`);
+                }
+              : undefined
+          }
           onApply={
             editTarget.kind === "example"
               ? undefined
@@ -356,5 +365,6 @@ async function updateUserModule(id: string, code: string): Promise<void> {
     inputs,
     outputs,
     code,
+    dirty: false, // compiled cleanly
   });
 }

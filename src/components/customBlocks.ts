@@ -14,6 +14,7 @@ function toComponentDef(b: CustomBlockDef): ComponentDef {
     code: b.code,
     inputs: b.inputs,
     outputs: b.outputs,
+    dirty: b.dirty,
   };
 }
 
@@ -25,6 +26,7 @@ function toBlockDef(d: ComponentDef): CustomBlockDef {
     inputs: d.inputs,
     outputs: d.outputs,
     code: d.code!,
+    dirty: d.dirty,
   };
 }
 
@@ -81,6 +83,15 @@ class CustomBlocksImpl {
     const d = this.map.get(id);
     if (!d || !title.trim()) return;
     this.map.set(id, { ...d, title: title.trim() });
+    this.persist();
+    this.emit();
+  }
+
+  /** Save edited source WITHOUT compiling: keeps existing ports, marks it dirty. */
+  saveDraft(id: string, code: string) {
+    const d = this.map.get(id);
+    if (!d) return;
+    this.map.set(id, { ...d, code, dirty: true });
     this.persist();
     this.emit();
   }

@@ -559,6 +559,12 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.dirty-dot {
+  color: #e0a33a;
+  font-size: 9px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
 .comp-act {
   flex: 0 0 auto;
   visibility: hidden;

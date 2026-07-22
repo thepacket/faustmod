@@ -42,6 +42,8 @@ export interface CustomBlockDef {
   inputs: InputSpec[];
   outputs: OutputSpec[];
   code: string;
+  /** Saved but not yet successfully compiled (draft). */
+  dirty?: boolean;
 }
 
 /** The `.faustmod` patch file. */

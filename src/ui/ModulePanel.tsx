@@ -230,7 +230,14 @@ export function ModulePanel({ disabled, onEdit }: Props) {
                     }}
                   />
                 ) : (
-                  <span className="comp-name">{def.title}</span>
+                  <span className="comp-name">
+                    {def.dirty && (
+                      <span className="dirty-dot" title="Modified — not compiled yet">
+                        ●
+                      </span>
+                    )}
+                    {def.title}
+                  </span>
                 )}
                 <button
                   className="comp-act"
