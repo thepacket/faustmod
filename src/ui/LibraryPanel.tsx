@@ -54,6 +54,9 @@ export function LibraryPanel({ disabled }: Props) {
       next.has(cat) ? next.delete(cat) : next.add(cat);
       return next;
     });
+  const allCategories = useMemo(() => new Set(all.map((c) => c.category)), [all]);
+  const collapseAll = () => setCollapsed(new Set(allCategories));
+  const expandAll = () => setCollapsed(new Set());
 
   return (
     <aside className="panel library">
@@ -69,6 +72,14 @@ export function LibraryPanel({ disabled }: Props) {
         disabled={disabled}
         onChange={(e) => setQuery(e.target.value)}
       />
+      <div className="palette-actions">
+        <button className="palette-btn" onClick={collapseAll} disabled={disabled}>
+          Collapse
+        </button>
+        <button className="palette-btn" onClick={expandAll} disabled={disabled}>
+          Expand All
+        </button>
+      </div>
 
       {groups.length === 0 && <p className="hint">No matches.</p>}
 

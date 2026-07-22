@@ -327,6 +327,29 @@ body {
 .search:focus {
   border-color: var(--accent);
 }
+.palette-actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.palette-btn {
+  flex: 1;
+  background: var(--panel-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.palette-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.palette-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 .cat-header {
   display: flex;
   align-items: center;
