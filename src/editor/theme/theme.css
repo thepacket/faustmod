@@ -580,14 +580,21 @@
 
 /* ---- Knob ---- */
 .knob {
-  width: 62px;
-  padding: 4px 6px;
+  width: max-content;
+  padding: 0;
   text-align: center;
   cursor: ns-resize;
 }
 .knob svg {
-  width: 52px;
-  height: 52px;
+  display: block;
+  width: 46px;
+  height: 46px;
+}
+/* Knob has no output label — collapse the widget-row so the node shrink-wraps
+   the dial with only the standard node margins around it. */
+.dsp-node[data-widget-kind="knob"] .dsp-widget-row {
+  gap: 0;
+  padding: 6px 8px 8px;
 }
 .knob-body {
   fill: radial-gradient(#3a3f4b, #23262e);

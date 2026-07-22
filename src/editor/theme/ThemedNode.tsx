@@ -99,6 +99,7 @@ export function ThemedNode(props: Props) {
       data-category={category ?? ""}
       data-constant={isConstant ? "true" : undefined}
       data-widget={isWidget ? "true" : undefined}
+      data-widget-kind={props.data.widget || undefined}
       data-selected={selected ? "true" : undefined}
       title={isConstant ? tooltip : undefined}
       style={{ ["--accent" as string]: accentFor(category ?? "") }}
