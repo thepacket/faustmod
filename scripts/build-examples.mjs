@@ -151,6 +151,13 @@ async function main() {
     const id = `ex-${sanitize(rel.replace(/\.dsp$/, ""))}`;
     try {
       const src = await loadSource(path);
+      // Drop the GRAME "demo GUI" programs — their last line is a `*_demo` process
+      // (e.g. `process = dm.spectral_level_demo;`). Useless as composable modules.
+      const lastLine = src.trimEnd().split("\n").pop() ?? "";
+      if (lastLine.includes("_demo")) {
+        failures.push({ id, error: "demo GUI — skipped" });
+        continue;
+      }
       const gen = new FaustMonoDspGenerator();
       const ok = await gen.compile(compiler, id, src, "");
       if (!ok) throw new Error("compile returned null");
