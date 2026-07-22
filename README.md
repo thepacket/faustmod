@@ -1,9 +1,12 @@
 # FaustMod
 
+> ⚠️ **FaustMod is in its initial development phase.** Expect rough edges, breaking
+> changes, and features that are still landing or being reworked. Not yet production-ready.
+
 A browser-based **modular audio synthesis IDE**. Patch DSP components together on a
-node canvas, hear the result live, author your own DSP blocks, and save/open patches.
-DSP is written in the [Faust](https://faust.grame.fr/) language and runs as WebAssembly
-AudioWorklets in the browser.
+node canvas, hear the result live, write your own DSP in the built-in Faust editor, and
+save/open patches. DSP is written in the [Faust](https://faust.grame.fr/) language and
+runs as WebAssembly AudioWorklets in the browser.
 
 ## Stack
 
@@ -33,12 +36,14 @@ AudioWorklets in the browser.
   and stereo output.
 - **Granular** — load a file and get a continuous windowed grain cloud with position,
   grain size, density, pitch and spray control inputs (scan/modulate them for textures).
-- **Modules palette** — a right-hand palette of larger, self-contained modules: the
-  GRAME **Faust example programs** (filters, reverbs, physical models, generators…),
-  ported so each example's audio channels become ports and its Faust UI params become
-  control inputs. Grouped by category (the example directory). See *Example modules* below.
-- **Custom blocks** — paste Faust source (with port metadata), compiled in-browser and
-  added to the palette (also shown in the right Modules palette). See *Custom DSP blocks*.
+- **User Defined DSP** — a right-hand palette of your own Faust modules. Create one with
+  **+ New DSP**, edit it in a floating **CodeMirror editor** (Faust syntax highlighting,
+  Compile to check, Save as a draft, or Done to apply), double-click to edit, rename/delete,
+  and drag onto the canvas. A slider in your code (`hslider(...)`) *declares a control-input
+  connector* (not an on-screen knob). Stored in `localStorage`. See *User Defined DSP* below.
+- **Custom blocks (import)** — paste a self-describing block definition (Faust source +
+  port metadata) via **Block → Import DSP Block…**; compiled in-browser and added to your
+  DSP. See *Custom DSP blocks*.
 - **Multiple tabs** — one patch per tab; only the active tab plays.
 - **Recording + devices** — record the master output (Rec button → `.webm`); pick audio
   input/output devices (Help → Audio Devices).
@@ -55,10 +60,10 @@ npm run dev        # http://localhost:5173
 npm run build      # type-check + production build
 ```
 
-Click a component in the left panel to add it, drag between sockets to patch, then
-**Start**. Use the **File** menu to save/open `.faustmod` patches, **Block → Import DSP
-Block…** to add your own Faust blocks, and **Help → Copy Catalog for AI** to drive an
-external AI.
+Drag a component from the left palette onto the canvas, drag between sockets to patch,
+then **Start**. Use **+ New DSP** (right panel) to write your own Faust DSP, the **File**
+menu to save/open `.faustmod` patches, **Block → Import DSP Block…** to import a Faust
+block, and **Help → Copy Catalog for AI** to drive an external AI.
 
 ### Building the block catalog
 
@@ -70,13 +75,12 @@ blocks:
 ```bash
 npm run catalog            # compile all blocks → public/factories/ + src/generated/catalog.json
 npm run catalog -- --force # force a full rebuild (skips the up-to-date check)
-npm run examples           # fetch + compile the GRAME Faust examples → modules (see below)
 ```
 
 You normally don't run this by hand — it's wired to run automatically:
 
-- **`npm run dev`** → `predev` runs `npm run catalog` then `npm run examples`
-- **`npm run build`** → `prebuild` runs `npm run catalog` then `npm run examples`
+- **`npm run dev`** → `predev` runs `npm run catalog`
+- **`npm run build`** → `prebuild` runs `npm run catalog`
 
 The step **skips when already fresh** (catalog newer than `scripts/blocks.mjs`), so it
 only pays the compile cost when the block definitions change. Requires no external tools —
@@ -91,10 +95,10 @@ The **audio engine** (`src/audio/`) is deliberately decoupled from the **editor*
 
 | Layer | Responsibility |
 |-------|----------------|
-| `FaustService` | Loads precompiled block factories (`createFactoryNode`) with no compiler; also owns libfaust for future user-authored DSP. |
+| `FaustService` | Loads precompiled block factories (`createFactoryNode`) with no compiler for the built-in library; also owns libfaust (`compile`) to build user-authored DSP at runtime. |
 | `AudioEngine` | Owns the `AudioContext` and master gain → speakers. Created lazily on first user gesture. |
 | `AudioGraph` | Holds the *desired* graph (nodes, connections, params). While "live", mirrors it into real Web Audio nodes. |
-| `units.ts` | `FaustUnit` / `ConstantUnit` / `OutputUnit` / `InputUnit` — each exposes Faust channels as individual mono ports via `ChannelSplitter`/`ChannelMerger`; `FaustUnit` also manages the fallback default sources for control inputs. |
+| `units.ts` | `FaustUnit` / `ConstantUnit` / `OutputUnit` / `InputUnit` — each exposes Faust channels as individual mono ports via `ChannelSplitter`/`ChannelMerger`. `FaustUnit` handles both kinds of control input: a `hslider`/`nentry` param binds to the worklet's **AudioParam**, and a plain signal input with a `default` is fed by an internal `ConstantSourceNode` until a connection detaches it. |
 
 Each Faust component runs as **its own AudioWorklet** (instantiated from a precompiled
 factory); a rete connection becomes a `splitter.connect(merger, srcCh, dstCh)` call. The editor pushes every change
@@ -121,8 +125,8 @@ So blocks are **precompiled at build time**, never in the browser:
 - A block's factory is fetched lazily (`FaustService.createFactoryNode`) only when a node
   of that type is first placed/played: `fetch` ~2 KB wasm → `WebAssembly.compile` → node.
 
-libfaust (the ~3 MB compiler) is only ever loaded for future *programmable* nodes
-(user-authored DSP), not for the built-in library.
+libfaust (the ~3 MB compiler) is only loaded for *user-authored* DSP (the New DSP editor
+and imported blocks), not for the built-in library.
 
 To add blocks: extend the families in `scripts/blocks.mjs` and run `npm run catalog`.
 The palette, audio graph, and AI all scale to the new count with no other changes.
@@ -182,33 +186,33 @@ bodies, pill controls, signal cables, line grid) lives in
 `customize` hooks (`ThemedNode`, `ThemedSocket`) plus `theme.css`. Header accents are set
 per category in [`accents.ts`](src/editor/theme/accents.ts).
 
-## Example modules
+## User Defined DSP
 
-The right-hand **Modules** palette is populated by porting the
-[GRAME Faust examples](https://github.com/grame-cncm/faust/tree/master-dev/examples).
-Unlike the core blocks (whose params are named signal inputs), these are ordinary Faust
-programs with an `hslider`/`nentry` UI. `scripts/build-examples.mjs`:
+The right-hand **User Defined DSP** palette holds your own Faust modules (stored in
+`localStorage`). **+ New DSP** creates one from a small template; double-click any entry to
+open a floating **CodeMirror** editor (Faust syntax highlighting, standard shortcuts, and
+**Cancel / Compile / Save / Done** — *Save* keeps a draft without compiling and flags it
+with an amber dot; *Done* recompiles and applies). Rename (✎) and delete (×) inline, and
+drag the entry onto the canvas.
 
-- fetches each `.dsp` from the Faust repo into a gitignored cache (`.examples-cache/`),
-- compiles it once with libfaust to a WASM factory (`public/factories/ex-*`), and
-- reads the compiled JSON to turn its **audio channels into ports** and each **UI param
-  into a control input** (default/range/unit from the slider), writing
-  `src/generated/examples.json`.
+Ports come straight from your code, read from the compiled Faust JSON (`derivePorts` in
+`src/audio/faustIO.ts`): **audio channels become signal ports**, and a **UI param
+(`hslider`/`nentry`/`button`) declares a named control-input connector** — with its default
+and range — rather than an on-screen knob. At runtime the module compiles via libfaust and
+is wrapped in the same `FaustUnit` as everything else, so a param control input binds to the
+worklet's **AudioParam** (a wired signal drives it; unconnected, the declared default holds).
 
-At runtime a `ModuleUnit` wires the audio channels like a normal block and routes each
-param control input to the worklet's matching **AudioParam** (a signal wired in replaces
-the slider default; unconnected, the default holds). Categories are the example
-directories; only the musical ones are included (hardware/mobile/research dirs are
-skipped), and any example that fails to compile is pruned. Nothing from the Faust repo is
-committed — the cache, factories and `examples.json` are all generated (gitignored), the
-same posture as the core catalog. Run `npm run examples` (or let `predev`/`prebuild` do it).
+> Note: the built-in catalog blocks instead declare their control values as **named signal
+> inputs** with metadata in `scripts/blocks.mjs`. A user module gets the same treatment via
+> `hslider`, since the editor only has the code to work from. New to Faust? See the
+> [Faust manual](https://faustdoc.grame.fr/manual/syntax/).
 
 ## Custom DSP blocks
 
 **Block → Import DSP Block…** takes a self-describing block definition — Faust source plus
 the port metadata the control-input model needs (labels + defaults). It's compiled
-in-browser with libfaust to verify (and to read the I/O count), then added to the palette
-under its category and persisted in `localStorage`:
+in-browser with libfaust to verify (and to read the I/O count), then added to your
+**User Defined DSP** and persisted in `localStorage`:
 
 ```json
 {
@@ -234,10 +238,11 @@ blocks embedded** so a patch is self-contained. Save/Open use the File System Ac
 
 Rather than pay per-token for an in-app LLM (which would need the whole ~400-block catalog
 in context), FaustMod is **bring-your-own-AI**: **Help → Copy Catalog for AI** copies a
-brief (file formats + the full component catalog) to your clipboard. Paste it into an
-external AI, ask for a patch or a DSP block, and paste the result back via **Open** (patch)
-or **Block → Import DSP Block…**. Patches that use custom blocks are self-contained, so the
-AI can write those without any catalog at all.
+brief (the `.faustmod`/block file formats + the DSP-block catalog + the control/instrument
+widget nodes) to your clipboard. Paste it into an external AI, ask for a patch or a DSP
+block, and paste the result back via **Open** (patch) or **Block → Import DSP Block…**.
+Patches that use custom blocks are self-contained, so the AI can write those without any
+catalog at all.
 
 ## Project layout
 
@@ -253,15 +258,20 @@ src/
 
 ## Roadmap
 
-Things an electronic musician would expect that aren't built yet (rough priority):
+Not built yet (rough priority):
 
+- **Nested patches (patches-as-components)** — use a whole patch as a node inside another
+  patch, with arbitrary embedding depth (à la Reaktor ensembles/macros). The key enabler
+  for genuinely complex patches, and the planned next major step.
 - **Polyphony** — voice allocation (Faust supports poly DSP); poly Keyboard/MIDI.
 - **Global transport / master clock** — one BPM synced across sequencers; play/stop.
-- **MIDI out** and **MIDI clock** sync; **MIDI CC → control** node.
-- **Preset / example-patch browser** (bundled `.faustmod` demos) + patch thumbnails.
-- **Node editing** — copy/paste nodes, grouping / sub-patches (macros), alignment.
+- **MIDI** — in/out, MIDI clock sync, MIDI CC → control node. Deferred to the very end;
+  FaustMod is a patching/composition tool, not a real-time performance instrument.
+- **Example patches** — a browser of bundled `.faustmod` demos (user-authored).
 - **Recording** — WAV export (currently `.webm`), loop/overdub.
 - **Sharing** — export/import patch links; a small gallery.
+
+Copy/paste, duplicate, marquee selection and group-drag already work.
 
 ## Widget nodes
 
