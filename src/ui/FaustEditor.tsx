@@ -55,6 +55,14 @@ export function FaustEditor({ title, initialCode, onApply, onCancel, readOnly = 
 
   const code = () => viewRef.current?.state.doc.toString() ?? initialCode;
 
+  // libfaust errors read like "edit-1784…:5 : ERROR : syntax error…" — strip the
+  // internal compile-unit name and surface the line number as "Line 5: …".
+  const formatError = (message: string): string => {
+    const first = message.split("\n")[0].trim();
+    const m = first.match(/^[^\s:]+:(\d+)\s*:\s*ERROR\s*:\s*(.*)$/i);
+    return m ? `Line ${m[1]}: ${m[2]}` : first;
+  };
+
   const compile = async (): Promise<boolean> => {
     setBusy(true);
     setStatus({ msg: "Compiling…", err: false });
@@ -63,7 +71,7 @@ export function FaustEditor({ title, initialCode, onApply, onCancel, readOnly = 
       setStatus({ msg: `✓ Compiled — ${c.numInputs} in · ${c.numOutputs} out`, err: false });
       return true;
     } catch (e) {
-      setStatus({ msg: `✗ ${(e as Error).message.split("\n")[0]}`, err: true });
+      setStatus({ msg: `✗ ${formatError((e as Error).message)}`, err: true });
       return false;
     } finally {
       setBusy(false);
@@ -78,7 +86,7 @@ export function FaustEditor({ title, initialCode, onApply, onCancel, readOnly = 
       await onApply(code());
       // onApply resolving means the parent tears this panel down.
     } catch (e) {
-      setStatus({ msg: `✗ ${(e as Error).message.split("\n")[0]}`, err: true });
+      setStatus({ msg: `✗ ${formatError((e as Error).message)}`, err: true });
       setBusy(false);
     }
   };
