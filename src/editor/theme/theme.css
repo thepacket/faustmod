@@ -6,7 +6,8 @@
 
 /* ---- Canvas: fine line grid (higher specificity than the base .canvas rule) ---- */
 .body .canvas {
-  background-color: #16181e;
+  /* Darker than the node bodies so nodes read clearly against the canvas. */
+  background-color: #0d0f14;
   background-image: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
     linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
