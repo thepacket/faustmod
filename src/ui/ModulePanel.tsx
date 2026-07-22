@@ -6,7 +6,11 @@ import { usePanelCollapsed, CollapsedStrip, PanelCollapseButton } from "./PanelC
 
 interface Props {
   disabled: boolean;
+  /** Open the Faust editor for a module (readOnly for examples). */
+  onEdit: (def: ComponentDef, readOnly: boolean) => void;
 }
+
+const NEW_MODULE_CODE = 'import("stdfaust.lib");\n// New module — edit me.\nprocess = _;';
 
 interface Group {
   category: string;
@@ -22,9 +26,10 @@ const sanitize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").repl
  * CustomBlocks) and the read-only GRAME example modules below. A draggable horizontal
  * splitter sizes the two. Examples can be duplicated into My Modules (then edited).
  */
-export function ModulePanel({ disabled }: Props) {
+export function ModulePanel({ disabled, onEdit }: Props) {
   const [panelCollapsed, togglePanel] = usePanelCollapsed("faustmod.panel.modules");
   const [query, setQuery] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
   const [rev, bump] = useReducer((x) => x + 1, 0);
   useEffect(() => CustomBlocks.subscribe(bump), []);
 
@@ -94,6 +99,26 @@ export function ModulePanel({ disabled }: Props) {
       outputs: def.outputs,
       code: def.code,
     });
+  };
+
+  const createNew = () => {
+    const taken = new Set(userMods.map((m) => m.title));
+    let n = 1;
+    while (taken.has(`Untitled ${n}`)) n++;
+    const title = `Untitled ${n}`;
+    CustomBlocks.add({
+      id: `user-untitled-${Date.now().toString(36)}`,
+      title,
+      category: "Custom",
+      inputs: [{ label: "in" }],
+      outputs: [{ label: "out" }],
+      code: NEW_MODULE_CODE,
+    });
+  };
+
+  const commitRename = (id: string, value: string) => {
+    CustomBlocks.rename(id, value);
+    setRenamingId(null);
   };
 
   const dragProps = (def: ComponentDef) => ({
@@ -166,19 +191,57 @@ export function ModulePanel({ disabled }: Props) {
         {/* ---- My Modules (user-defined, editable) ---- */}
         <section className="modules-section" style={{ height: topPx }}>
           <div className="modules-section-head">
-            My Modules<span className="cat-count">{userMods.length}</span>
+            My Modules
+            <button className="section-new" onClick={createNew} disabled={disabled} title="Create an empty module">
+              + New
+            </button>
+            <span className="cat-count">{userMods.length}</span>
           </div>
           <div className="modules-section-body">
             {userList.length === 0 && (
               <p className="hint sm">
                 {userMods.length === 0
-                  ? "Duplicate an example (below) or import a block to add your own."
+                  ? "Click + New, or duplicate an example below, to add your own."
                   : "No matches."}
               </p>
             )}
             {userList.map((def) => (
-              <div key={def.id} className="comp" {...dragProps(def)}>
-                <span className="comp-name">{def.title}</span>
+              <div
+                key={def.id}
+                className="comp"
+                {...dragProps(def)}
+                draggable={!disabled && renamingId !== def.id}
+                onDoubleClick={() => onEdit(def, false)}
+                title={`${portSummary(def)}\nDouble-click to edit · drag onto the canvas`}
+              >
+                {renamingId === def.id ? (
+                  <input
+                    className="comp-rename"
+                    autoFocus
+                    defaultValue={def.title}
+                    spellCheck={false}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                    onBlur={(e) => commitRename(def.id, e.currentTarget.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitRename(def.id, e.currentTarget.value);
+                      else if (e.key === "Escape") setRenamingId(null);
+                    }}
+                  />
+                ) : (
+                  <span className="comp-name">{def.title}</span>
+                )}
+                <button
+                  className="comp-act"
+                  title="Rename this module"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRenamingId(def.id);
+                  }}
+                >
+                  ✎
+                </button>
                 <button
                   className="comp-act"
                   title="Delete this module"
@@ -225,7 +288,13 @@ export function ModulePanel({ disabled }: Props) {
                   </button>
                   {open &&
                     items.map((def) => (
-                      <div key={def.id} className="comp" {...dragProps(def)}>
+                      <div
+                        key={def.id}
+                        className="comp"
+                        {...dragProps(def)}
+                        onDoubleClick={() => onEdit(def, true)}
+                        title={`${portSummary(def)}\nDouble-click to view · drag onto the canvas`}
+                      >
                         <span className="comp-name">{def.title}</span>
                         <button
                           className="comp-act"

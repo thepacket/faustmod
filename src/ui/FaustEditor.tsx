@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { EditorView, keymap } from "@codemirror/view";
+import { EditorState } from "@codemirror/state";
 import { indentWithTab } from "@codemirror/commands";
 import { basicSetup } from "codemirror";
 import { FaustService } from "../audio/FaustService";
@@ -9,17 +10,19 @@ import { faustEditorTheme, faustHighlighting } from "./editor/faustTheme";
 interface Props {
   title: string;
   initialCode: string;
-  /** Recompile + apply the edited source to the node. Rejects (with a message) on failure. */
-  onApply: (code: string) => Promise<void>;
+  /** Recompile + apply the edited source. Rejects (with a message) on failure. Omitted when read-only. */
+  onApply?: (code: string) => Promise<void>;
   onCancel: () => void;
+  /** View-only (example modules): no Compile/OK, editor is not editable. */
+  readOnly?: boolean;
 }
 
 /**
- * Floating, draggable Faust source editor for a module node. A full CodeMirror 6
- * instance (syntax colouring, undo/redo, find, multi-cursor, bracket matching,
- * indent). No menu — just Cancel / Compile / OK.
+ * Floating, draggable Faust source editor. A full CodeMirror 6 instance (syntax
+ * colouring, undo/redo, find, multi-cursor, bracket matching, indent). No menu —
+ * just Cancel / Compile / OK (or a single Close when read-only).
  */
-export function FaustEditor({ title, initialCode, onApply, onCancel }: Props) {
+export function FaustEditor({ title, initialCode, onApply, onCancel, readOnly = false }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [status, setStatus] = useState<{ msg: string; err: boolean } | null>(null);
@@ -41,6 +44,7 @@ export function FaustEditor({ title, initialCode, onApply, onCancel }: Props) {
         faustLanguage,
         faustEditorTheme,
         faustHighlighting,
+        ...(readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []),
       ],
     });
     viewRef.current = view;
@@ -67,6 +71,7 @@ export function FaustEditor({ title, initialCode, onApply, onCancel }: Props) {
   };
 
   const ok = async () => {
+    if (!onApply) return;
     setBusy(true);
     setStatus({ msg: "Compiling…", err: false });
     try {
@@ -103,20 +108,31 @@ export function FaustEditor({ title, initialCode, onApply, onCancel }: Props) {
   return (
     <div className="faust-editor" style={{ left: pos.x, top: pos.y }}>
       <div className="fe-header" onPointerDown={onHeaderDown}>
-        <span className="fe-title">{title}</span>
+        <span className="fe-title">
+          {title}
+          {readOnly && <span className="fe-ro"> — read-only</span>}
+        </span>
       </div>
       <div className="fe-body" ref={hostRef} />
       <div className={`fe-status ${status?.err ? "err" : ""}`}>{status?.msg ?? ""}</div>
       <div className="fe-actions">
-        <button className="btn" disabled={busy} onClick={onCancel}>
-          Cancel
-        </button>
-        <button className="btn" disabled={busy} onClick={compile}>
-          Compile
-        </button>
-        <button className="btn primary" disabled={busy} onClick={ok}>
-          OK
-        </button>
+        {readOnly ? (
+          <button className="btn primary" onClick={onCancel}>
+            Close
+          </button>
+        ) : (
+          <>
+            <button className="btn" disabled={busy} onClick={onCancel}>
+              Cancel
+            </button>
+            <button className="btn" disabled={busy} onClick={compile}>
+              Compile
+            </button>
+            <button className="btn primary" disabled={busy} onClick={ok}>
+              OK
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

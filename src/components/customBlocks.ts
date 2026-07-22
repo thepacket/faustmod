@@ -76,6 +76,15 @@ class CustomBlocksImpl {
     }
   }
 
+  /** Rename a block, keeping its id (so placed nodes still resolve). */
+  rename(id: string, title: string) {
+    const d = this.map.get(id);
+    if (!d || !title.trim()) return;
+    this.map.set(id, { ...d, title: title.trim() });
+    this.persist();
+    this.emit();
+  }
+
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);

@@ -328,6 +328,36 @@ body {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+.section-new {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-size: 10.5px;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.section-new:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.section-new:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.comp-rename {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-size: 12px;
+  outline: none;
+}
 .modules-section-body {
   flex: 1;
   min-height: 0;
@@ -745,6 +775,11 @@ body {
   font-size: 13px;
   font-weight: 600;
   color: #e6e8ee;
+}
+.fe-ro {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 12px;
 }
 .fe-body {
   flex: 1;

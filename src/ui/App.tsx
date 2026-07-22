@@ -18,13 +18,18 @@ import { AudioSettingsModal } from "./AudioSettingsModal";
 import { PresetModal } from "./PresetModal";
 import { FaustEditor } from "./FaustEditor";
 import { ModuleEditBridge } from "../editor/widgets/ModuleEditBridge";
+import { CustomBlocks } from "../components/customBlocks";
+import { FaustService } from "../audio/FaustService";
+import { derivePorts } from "../audio/faustIO";
+import type { ComponentDef } from "../components/library";
 
 type ModalKind = null | "about" | "import-block" | "audio-devices" | "presets";
-interface ModuleEditState {
-  nodeId: string;
-  title: string;
-  code: string;
-}
+// The floating Faust editor targets one of: a placed canvas node, a saved user
+// module (edits the stored library block), or an example (read-only view).
+type EditTarget =
+  | { kind: "node"; nodeId: string; title: string; code: string }
+  | { kind: "user"; id: string; title: string; code: string }
+  | { kind: "example"; title: string; code: string };
 
 export function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -41,7 +46,7 @@ export function App() {
   const [tabs, setTabs] = useState<TabInfo[]>([]);
   const [activeTab, setActiveTab] = useState(0);
   const [modal, setModal] = useState<ModalKind>(null);
-  const [moduleEdit, setModuleEdit] = useState<ModuleEditState | null>(null);
+  const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -63,7 +68,7 @@ export function App() {
         if (!h) return;
         const code = h.getModuleCode(nodeId);
         if (code == null) return;
-        setModuleEdit({ nodeId, title: h.getNodeTitle(nodeId), code });
+        setEditTarget({ kind: "node", nodeId, title: h.getNodeTitle(nodeId), code });
       };
 
       const mgr = new PatchManager(handle);
@@ -87,7 +92,7 @@ export function App() {
         (window as unknown as Record<string, unknown>).editor = handle;
       }
       setReady(true);
-      setStatus(`${LibraryService.components.length} components`);
+      setStatus("");
     })();
 
     return () => {
@@ -106,7 +111,9 @@ export function App() {
       } else {
         const errors = await AudioGraph.start();
         setPlaying(true);
-        setStatus(errors.length ? `⚠ ${errors.length} node(s) failed — ${errors[0]}` : "Playing");
+        // Don't show "Playing" — the Start/Stop button already conveys it (and it
+        // read awkwardly as "Playing Master" next to the volume label).
+        setStatus(errors.length ? `⚠ ${errors.length} node(s) failed — ${errors[0]}` : "");
       }
     } catch (err) {
       setStatus(`Audio error: ${(err as Error).message}`);
@@ -283,7 +290,14 @@ export function App() {
             void editor.addComponent(def, editor.screenToWorld(e.clientX, e.clientY));
           }}
         />
-        <ModulePanel disabled={!ready} />
+        <ModulePanel
+          disabled={!ready}
+          onEdit={(def: ComponentDef, readOnly: boolean) => {
+            if (!def.code) return;
+            if (readOnly) setEditTarget({ kind: "example", title: def.title, code: def.code });
+            else setEditTarget({ kind: "user", id: def.id, title: def.title, code: def.code });
+          }}
+        />
       </div>
 
       {modal === "import-block" && (
@@ -304,19 +318,43 @@ export function App() {
       {modal === "about" && <AboutModal onClose={() => setModal(null)} />}
       {modal === "audio-devices" && <AudioSettingsModal onClose={() => setModal(null)} />}
 
-      {moduleEdit && (
+      {editTarget && (
         <FaustEditor
-          key={moduleEdit.nodeId}
-          title={moduleEdit.title}
-          initialCode={moduleEdit.code}
-          onCancel={() => setModuleEdit(null)}
-          onApply={async (code) => {
-            await editorRef.current!.applyModuleCode(moduleEdit.nodeId, code);
-            setModuleEdit(null);
-            setStatus(`Recompiled "${moduleEdit.title}"`);
-          }}
+          key={editTarget.kind === "node" ? editTarget.nodeId : editTarget.title}
+          title={editTarget.title}
+          initialCode={editTarget.code}
+          readOnly={editTarget.kind === "example"}
+          onCancel={() => setEditTarget(null)}
+          onApply={
+            editTarget.kind === "example"
+              ? undefined
+              : async (code) => {
+                  if (editTarget.kind === "node") {
+                    await editorRef.current!.applyModuleCode(editTarget.nodeId, code);
+                  } else {
+                    await updateUserModule(editTarget.id, code);
+                  }
+                  setEditTarget(null);
+                  setStatus(`Recompiled "${editTarget.title}"`);
+                }
+          }
         />
       )}
     </div>
   );
+}
+
+/** Recompile a saved user module's edited source and persist it (ports re-derived). */
+async function updateUserModule(id: string, code: string): Promise<void> {
+  const compiled = await FaustService.compile(`${id}-edit`, code);
+  const { inputs, outputs } = derivePorts(compiled.generator.getJSON());
+  const base = CustomBlocks.get(id);
+  CustomBlocks.add({
+    id,
+    title: base?.title ?? "Module",
+    category: base?.category ?? "Custom",
+    inputs,
+    outputs,
+    code,
+  });
 }
