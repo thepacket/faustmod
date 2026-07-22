@@ -4,6 +4,7 @@ import { EditorState } from "@codemirror/state";
 import { indentWithTab } from "@codemirror/commands";
 import { basicSetup } from "codemirror";
 import { FaustService } from "../audio/FaustService";
+import { generateDsp } from "../ai/openrouter";
 import { faustLanguage } from "./editor/faustLanguage";
 import { faustEditorTheme, faustHighlighting } from "./editor/faustTheme";
 
@@ -36,6 +37,7 @@ export function FaustEditor({
   const viewRef = useRef<EditorView | null>(null);
   const [status, setStatus] = useState<{ msg: string; err: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [prompt, setPrompt] = useState("");
   const [pos, setPos] = useState(() => ({
     x: Math.max(24, Math.round(window.innerWidth / 2 - 340)),
     y: 84,
@@ -63,6 +65,25 @@ export function FaustEditor({
   }, []);
 
   const code = () => viewRef.current?.state.doc.toString() ?? initialCode;
+  const setCode = (text: string) => {
+    const view = viewRef.current;
+    if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+  };
+
+  const make = async () => {
+    if (!prompt.trim()) return;
+    setBusy(true);
+    setStatus({ msg: "Generating…", err: false });
+    try {
+      const generated = await generateDsp(prompt, code());
+      setCode(generated);
+      setStatus({ msg: "✓ Generated — Compile to check", err: false });
+    } catch (e) {
+      setStatus({ msg: `✗ ${(e as Error).message.split("\n")[0]}`, err: true });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // libfaust errors read like "edit-1784…:5 : ERROR : syntax error…" — strip the
   // internal compile-unit name and surface the line number as "Line 5: …".
@@ -131,6 +152,24 @@ export function FaustEditor({
         </span>
       </div>
       <div className="fe-body" ref={hostRef} />
+      {!readOnly && (
+        <div className="fe-ai">
+          <input
+            className="fe-prompt"
+            placeholder="Describe the DSP to make… (uses your OpenRouter key — set it in File → Settings)"
+            value={prompt}
+            disabled={busy}
+            spellCheck={false}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void make();
+            }}
+          />
+          <button className="btn" disabled={busy || !prompt.trim()} onClick={make}>
+            Make
+          </button>
+        </div>
+      )}
       <div className={`fe-status ${status?.err ? "err" : ""}`}>{status?.msg ?? ""}</div>
       <div className="fe-actions">
         {readOnly ? (

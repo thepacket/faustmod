@@ -595,6 +595,13 @@ body {
 .modal h2 {
   margin: 0 0 16px;
 }
+.modal h3 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+}
 .modal label {
   display: block;
   margin-bottom: 6px;
@@ -738,6 +745,27 @@ body {
   gap: 8px;
   padding: 10px 12px;
   border-top: 1px solid var(--border);
+}
+/* AI "make" row under the editor */
+.fe-ai {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+.fe-prompt {
+  flex: 1;
+  min-width: 0;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  outline: none;
+}
+.fe-prompt:focus {
+  border-color: var(--accent);
 }
 .modal a {
   color: var(--accent);

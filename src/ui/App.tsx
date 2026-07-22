@@ -14,7 +14,7 @@ import { LibraryPanel } from "./LibraryPanel";
 import { ModulePanel } from "./ModulePanel";
 import { ImportBlockModal } from "./ImportBlockModal";
 import { AboutModal } from "./AboutModal";
-import { AudioSettingsModal } from "./AudioSettingsModal";
+import { SettingsModal } from "./SettingsModal";
 import { PresetModal } from "./PresetModal";
 import { FaustEditor } from "./FaustEditor";
 import { ModuleEditBridge } from "../editor/widgets/ModuleEditBridge";
@@ -24,7 +24,7 @@ import { FaustService } from "../audio/FaustService";
 import { derivePorts } from "../audio/faustIO";
 import type { ComponentDef } from "../components/library";
 
-type ModalKind = null | "about" | "import-block" | "audio-devices" | "presets";
+type ModalKind = null | "about" | "import-block" | "settings" | "presets";
 // The floating Faust editor targets one of: a placed canvas node, a saved user
 // module (edits the stored library block), or an example (read-only view).
 type EditTarget =
@@ -251,6 +251,8 @@ export function App() {
         { separator: true },
         { label: "Export a copy…", onClick: () => pm()?.export() },
         { label: "Export Catalog for AI…", onClick: () => exportBrief() },
+        { separator: true },
+        { label: "Settings…", onClick: () => setModal("settings") },
       ],
     },
     {
@@ -285,11 +287,7 @@ export function App() {
     },
     {
       label: "Help",
-      items: [
-        { label: "About FaustMod", onClick: () => setModal("about") },
-        { separator: true },
-        { label: "Audio Devices…", onClick: () => setModal("audio-devices") },
-      ],
+      items: [{ label: "About FaustMod", onClick: () => setModal("about") }],
     },
   ];
 
@@ -361,7 +359,7 @@ export function App() {
         />
       )}
       {modal === "about" && <AboutModal onClose={() => setModal(null)} />}
-      {modal === "audio-devices" && <AudioSettingsModal onClose={() => setModal(null)} />}
+      {modal === "settings" && <SettingsModal onClose={() => setModal(null)} />}
 
       {editTarget && (
         <FaustEditor
