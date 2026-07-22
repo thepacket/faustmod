@@ -505,6 +505,20 @@ body {
   cursor: default;
 }
 
+/* Brighter palette text (near-white) for clarity — panel titles, category headers,
+   palette buttons and counts, instead of the dim muted gray. */
+.panel h2,
+.panel h3,
+.panel .cat-header,
+.panel .palette-btn {
+  color: #e6e8ee;
+}
+.panel .count,
+.panel .cat-count {
+  color: #c4cad6;
+  opacity: 1;
+}
+
 .marquee {
   position: absolute;
   z-index: 20;
