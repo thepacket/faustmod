@@ -71,6 +71,56 @@ export class MeterUnit implements AudioUnit, MeterMonitor {
   }
 }
 
+// ---- Chromatic tuner -----------------------------------------------------
+export interface TunerMonitor {
+  readTime(buf: Float32Array): void;
+  sampleRate(): number;
+}
+
+export class TunerUnit implements AudioUnit, TunerMonitor {
+  readonly numInputs = 1;
+  readonly numOutputs = 0;
+  private merger: ChannelMergerNode;
+  private analyser: AnalyserNode;
+  private mute: GainNode;
+
+  constructor(private ctx: BaseAudioContext) {
+    this.merger = ctx.createChannelMerger(1);
+    this.analyser = ctx.createAnalyser();
+    this.analyser.fftSize = 8192; // enough samples for low-note autocorrelation
+    this.merger.connect(this.analyser);
+    // Pull the input path to the destination (muted) so the source still renders
+    // even when it's only wired into the tuner and not to the output.
+    this.mute = ctx.createGain();
+    this.mute.gain.value = 0;
+    this.analyser.connect(this.mute);
+    this.mute.connect(ctx.destination);
+  }
+  input(i: number) {
+    return i === 0 ? { node: this.merger as AudioNode, channel: 0 } : null;
+  }
+  output() {
+    return null;
+  }
+  readTime(buf: Float32Array) {
+    this.analyser.getFloatTimeDomainData(buf as Float32Array<ArrayBuffer>);
+  }
+  sampleRate() {
+    return this.ctx.sampleRate;
+  }
+  setValue() {}
+  onInputConnected() {}
+  dispose() {
+    try {
+      this.merger.disconnect();
+      this.analyser.disconnect();
+      this.mute.disconnect();
+    } catch {
+      /* noop */
+    }
+  }
+}
+
 // ---- Oscilloscope (signal + trigger inputs) ------------------------------
 export class ScopeUnit implements AudioUnit, ScopeMonitor {
   readonly numInputs = 2;

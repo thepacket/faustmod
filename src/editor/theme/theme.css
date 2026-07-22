@@ -236,6 +236,73 @@
   box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.6);
 }
 
+/* ---- Chromatic tuner ---- */
+.tuner {
+  width: 150px;
+  padding: 6px 8px 8px;
+  text-align: center;
+  --tune: #e0a03a;
+}
+.tuner.in-tune {
+  --tune: #4ade80;
+}
+.tuner-note {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--tune);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--tune) 45%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.tuner-meter {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 5px 0 4px;
+}
+.tuner-tick {
+  font-size: 11px;
+  color: var(--muted);
+}
+.tuner-bar {
+  position: relative;
+  flex: 1;
+  height: 12px;
+  background: #16181e;
+  border: 1px solid #0b0c10;
+  border-radius: 6px;
+}
+.tuner-center {
+  position: absolute;
+  left: 50%;
+  top: 1px;
+  bottom: 1px;
+  width: 1px;
+  margin-left: -0.5px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.tuner-needle {
+  position: absolute;
+  top: -2px;
+  width: 3px;
+  height: 16px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--tune);
+  box-shadow: 0 0 6px var(--tune);
+  transition: left 0.08s linear;
+}
+.tuner-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #cfd4e0;
+  font-variant-numeric: tabular-nums;
+}
+.tuner-cents {
+  color: var(--tune);
+}
+
 /* ---- LEDs ---- */
 .led-wrap {
   padding: 6px 10px;

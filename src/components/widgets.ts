@@ -46,6 +46,19 @@ export const WIDGETS: ComponentDef[] = [
 
   // ---- Meters -------------------------------------------------------------
   {
+    id: "tuner",
+    title: "Chromatic Tuner",
+    category: "Instruments",
+    kind: "widget",
+    widget: "tuner",
+    tooltip:
+      "Chromatic tuner. Feed an oscillator / voltage source to read its note, " +
+      "frequency and cents deviation (for calibration).",
+    inputs: [{ label: "in" }],
+    outputs: [],
+  },
+
+  {
     id: "meter-analog",
     title: "VU Meter",
     category: "Meters",

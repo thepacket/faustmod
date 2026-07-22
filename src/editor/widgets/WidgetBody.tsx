@@ -2,6 +2,7 @@ import type { WidgetNode } from "./WidgetBridge";
 import { Scope } from "./Scope";
 import { Spectrogram } from "./Spectrogram";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
+import { Tuner } from "./Tuner";
 import { AnalogMeter } from "./AnalogMeter";
 import { DigitalMeter } from "./DigitalMeter";
 import { Led } from "./Led";
@@ -22,6 +23,8 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
       return <Spectrogram node={node} />;
     case "spectrum":
       return <SpectrumAnalyzer node={node} />;
+    case "tuner":
+      return <Tuner node={node} />;
     case "meter-analog":
       return <AnalogMeter node={node} />;
     case "meter-digital":

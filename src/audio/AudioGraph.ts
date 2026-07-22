@@ -10,6 +10,7 @@ import {
   Vec2Unit,
   SamplerUnit,
   GranularUnit,
+  TunerUnit,
   NullUnit,
   Monitors,
 } from "./monitors";
@@ -156,6 +157,9 @@ class AudioGraphImpl {
               case "spectrogram":
               case "spectrum":
                 widgetUnit = new SpectrumUnit(ctx);
+                break;
+              case "tuner":
+                widgetUnit = new TunerUnit(ctx);
                 break;
               case "sequencer": {
                 const steps = Number(def.widgetConfig?.steps ?? 8);
