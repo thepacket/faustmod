@@ -74,6 +74,8 @@ export class MeterUnit implements AudioUnit, MeterMonitor {
 // ---- Chromatic tuner -----------------------------------------------------
 export interface TunerMonitor {
   readTime(buf: Float32Array): void;
+  readFreqDb(buf: Float32Array): void;
+  binCount(): number;
   sampleRate(): number;
 }
 
@@ -87,7 +89,10 @@ export class TunerUnit implements AudioUnit, TunerMonitor {
   constructor(private ctx: BaseAudioContext) {
     this.merger = ctx.createChannelMerger(1);
     this.analyser = ctx.createAnalyser();
-    this.analyser.fftSize = 8192; // enough samples for low-note autocorrelation
+    // ~186 ms window (8192 / 44.1k ≈ 3.7 periods at 20 Hz) — enough for the frequency
+    // meter's reciprocal counting down to 20 Hz while staying responsive. The tuner
+    // reads the most recent 4096 of this for YIN.
+    this.analyser.fftSize = 8192;
     this.merger.connect(this.analyser);
     // Pull the input path to the destination (muted) so the source still renders
     // even when it's only wired into the tuner and not to the output.
@@ -104,6 +109,12 @@ export class TunerUnit implements AudioUnit, TunerMonitor {
   }
   readTime(buf: Float32Array) {
     this.analyser.getFloatTimeDomainData(buf as Float32Array<ArrayBuffer>);
+  }
+  readFreqDb(buf: Float32Array) {
+    this.analyser.getFloatFrequencyData(buf as Float32Array<ArrayBuffer>);
+  }
+  binCount() {
+    return this.analyser.frequencyBinCount;
   }
   sampleRate() {
     return this.ctx.sampleRate;

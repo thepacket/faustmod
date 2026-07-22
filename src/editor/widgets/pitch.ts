@@ -1,4 +1,81 @@
 /**
+ * Reciprocal period counting (like a hardware frequency counter): measure the exact,
+ * sub-sample-interpolated span across every complete period in the window and divide
+ * — f = (edges − 1) · sampleRate / span. A software Schmitt trigger (hysteresis around
+ * the DC-removed zero level) yields exactly one rising edge per period, robust for
+ * oscillator/VCO signals. Averaging over all periods in the window makes it accurate
+ * and stable across ~20 Hz – 20 kHz. Returns Hz, or null if silent / < 2 edges.
+ */
+export function detectFrequency(buf: Float32Array, sampleRate: number): number | null {
+  const n = buf.length;
+  let mean = 0;
+  for (let i = 0; i < n; i++) mean += buf[i];
+  mean /= n; // remove any DC offset so crossings sit at zero
+
+  let peak = 0;
+  let sumsq = 0;
+  for (let i = 0; i < n; i++) {
+    const d = buf[i] - mean;
+    sumsq += d * d;
+    const a = Math.abs(d);
+    if (a > peak) peak = a;
+  }
+  if (Math.sqrt(sumsq / n) < 0.005 || peak < 0.01) return null; // silent / DC
+  const hyst = 0.25 * peak; // Schmitt-trigger hysteresis
+
+  let armed = false;
+  let firstEdge = -1;
+  let lastEdge = -1;
+  let count = 0;
+  let prev = buf[0] - mean;
+  for (let i = 1; i < n; i++) {
+    const v = buf[i] - mean;
+    if (v < -hyst) {
+      armed = true; // dipped low enough to re-arm
+    } else if (armed && prev < 0 && v >= 0) {
+      // Rising zero-crossing — linear-interpolate the fractional sample position.
+      const frac = prev !== v ? -prev / (v - prev) : 0;
+      const edge = i - 1 + frac;
+      if (firstEdge < 0) firstEdge = edge;
+      lastEdge = edge;
+      count++;
+      armed = false;
+    }
+    prev = v;
+  }
+  if (count < 2) return null; // need at least one full period
+  const span = lastEdge - firstEdge;
+  return span > 0 ? ((count - 1) * sampleRate) / span : null;
+}
+
+/**
+ * Dominant-frequency estimate from an FFT magnitude spectrum (dB per bin, e.g.
+ * AnalyserNode.getFloatFrequencyData), refined with parabolic interpolation for
+ * sub-bin accuracy. Robust across the whole range — in particular at high audio
+ * frequencies where reciprocal counting fails (too few samples per period at the
+ * sample-rate "clock"). `binHz` = sampleRate / fftSize. Returns Hz or null.
+ */
+export function detectFrequencyFFT(fdDb: Float32Array, binHz: number): number | null {
+  const minBin = Math.max(2, Math.round(20 / binHz)); // ignore DC / sub-20 Hz
+  const maxBin = fdDb.length - 2;
+  let peakBin = -1;
+  let peakVal = -Infinity;
+  for (let i = minBin; i <= maxBin; i++) {
+    if (fdDb[i] > peakVal) {
+      peakVal = fdDb[i];
+      peakBin = i;
+    }
+  }
+  if (peakBin < 0 || peakVal < -80) return null; // silent / no clear peak
+  const a = fdDb[peakBin - 1];
+  const b = fdDb[peakBin];
+  const c = fdDb[peakBin + 1];
+  const denom = a - 2 * b + c;
+  const p = denom !== 0 ? Math.max(-0.5, Math.min(0.5, (0.5 * (a - c)) / denom)) : 0;
+  return (peakBin + p) * binHz;
+}
+
+/**
  * YIN pitch detection (de Cheveigné & Kawahara). The cumulative-mean-normalized
  * difference function robustly picks the fundamental period of a windowed
  * time-domain buffer, avoiding the octave errors that plain autocorrelation
