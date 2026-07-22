@@ -130,7 +130,7 @@ export const WIDGETS: ComponentDef[] = [
     widgetConfig: { default: 0.5, min: 0, max: 1 },
     tooltip: "A rotary control — drag to set its value. Wire into a control input.",
     inputs: [],
-    outputs: [{ label: "value" }],
+    outputs: [{ label: "" }],
   },
   {
     id: "slider-v",
