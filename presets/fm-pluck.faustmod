@@ -1,0 +1,32 @@
+{
+  "format": "faustmod-patch",
+  "version": 1,
+  "name": "FM Pluck",
+  "masterVolume": 0.8,
+  "customBlocks": [],
+  "nodes": [
+    { "id": "clk",   "componentId": "clock-bpm",           "position": { "x": 40,   "y": 40 } },
+    { "id": "seq",   "componentId": "seq8",                "position": { "x": 260,  "y": 40 },
+      "state": { "notes": [60, 63, 67, 70, 72, 70, 67, 63] } },
+    { "id": "fm",    "componentId": "osc-fm2",             "position": { "x": 540,  "y": 40 } },
+    { "id": "cdec",  "componentId": "constant",            "position": { "x": 540,  "y": 240 }, "value": 0.18 },
+    { "id": "csus",  "componentId": "constant",            "position": { "x": 540,  "y": 340 }, "value": 0.0 },
+    { "id": "vca",   "componentId": "adsr-vca",            "position": { "x": 760,  "y": 60 } },
+    { "id": "split", "componentId": "route-split",         "position": { "x": 980,  "y": 60 } },
+    { "id": "verb",  "componentId": "re-stereo-freeverb",  "position": { "x": 1160, "y": 60 } },
+    { "id": "out",   "componentId": "output",              "position": { "x": 1400, "y": 60 } }
+  ],
+  "connections": [
+    { "id": "n1", "source": "clk",   "sourceOutput": "out-0", "target": "seq",   "targetInput": "in-0" },
+    { "id": "n2", "source": "seq",   "sourceOutput": "out-0", "target": "fm",    "targetInput": "in-0" },
+    { "id": "n3", "source": "seq",   "sourceOutput": "out-1", "target": "vca",   "targetInput": "in-1" },
+    { "id": "n4", "source": "fm",    "sourceOutput": "out-0", "target": "vca",   "targetInput": "in-0" },
+    { "id": "n5", "source": "cdec",  "sourceOutput": "out-0", "target": "vca",   "targetInput": "in-3" },
+    { "id": "n6", "source": "csus",  "sourceOutput": "out-0", "target": "vca",   "targetInput": "in-4" },
+    { "id": "n7", "source": "vca",   "sourceOutput": "out-0", "target": "split", "targetInput": "in-0" },
+    { "id": "n8", "source": "split", "sourceOutput": "out-0", "target": "verb",  "targetInput": "in-0" },
+    { "id": "n9", "source": "split", "sourceOutput": "out-1", "target": "verb",  "targetInput": "in-1" },
+    { "id": "n10","source": "verb",  "sourceOutput": "out-0", "target": "out",   "targetInput": "in-0" },
+    { "id": "n11","source": "verb",  "sourceOutput": "out-1", "target": "out",   "targetInput": "in-1" }
+  ]
+}

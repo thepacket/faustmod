@@ -44,9 +44,46 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     onClose();
   };
 
+  const modelOptions = MODEL_SUGGESTIONS.includes(model)
+    ? MODEL_SUGGESTIONS
+    : [model, ...MODEL_SUGGESTIONS];
+
   return (
     <Modal title="Settings" onClose={onClose} width={480}>
-      <h3>Audio interfaces</h3>
+      <section className="settings-ai">
+        <h3>AI (OpenRouter)</h3>
+        <p className="hint">
+          Used by the <strong>Make</strong> button in the DSP editor. Your key stays in this
+          browser (localStorage) and is sent only to openrouter.ai. Get one at{" "}
+          <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">
+            openrouter.ai/keys
+          </a>
+          .
+        </p>
+        <label>
+          API key
+          <input
+            type="password"
+            placeholder="sk-or-…"
+            value={apiKey}
+            spellCheck={false}
+            autoComplete="off"
+            onChange={(e) => setApiKey(e.target.value)}
+          />
+        </label>
+        <label style={{ marginTop: 12 }}>
+          Model
+          <select value={model} size={6} onChange={(e) => setModel(e.target.value)}>
+            {modelOptions.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </label>
+      </section>
+
+      <h3 style={{ marginTop: 20 }}>Audio interfaces</h3>
       <label>
         Input (microphone / line in)
         <select
@@ -88,42 +125,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         <p className="hint">Output device selection isn't supported in this browser.</p>
       )}
       {note && <p className="hint">{note}</p>}
-
-      <h3 style={{ marginTop: 20 }}>AI (OpenRouter)</h3>
-      <p className="hint">
-        Used by the <strong>Make</strong> button in the DSP editor. Your key stays in this
-        browser (localStorage) and is sent only to openrouter.ai. Get one at{" "}
-        <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">
-          openrouter.ai/keys
-        </a>
-        .
-      </p>
-      <label>
-        API key
-        <input
-          type="password"
-          placeholder="sk-or-…"
-          value={apiKey}
-          spellCheck={false}
-          autoComplete="off"
-          onChange={(e) => setApiKey(e.target.value)}
-        />
-      </label>
-      <label style={{ marginTop: 12 }}>
-        Model
-        <input
-          list="or-models"
-          placeholder={DEFAULT_MODEL}
-          value={model}
-          spellCheck={false}
-          onChange={(e) => setModel(e.target.value)}
-        />
-      </label>
-      <datalist id="or-models">
-        {MODEL_SUGGESTIONS.map((m) => (
-          <option key={m} value={m} />
-        ))}
-      </datalist>
 
       <div className="modal-actions">
         <button className="btn primary" onClick={save}>

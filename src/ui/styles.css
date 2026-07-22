@@ -623,6 +623,21 @@ body {
   gap: 8px;
   margin-top: 16px;
 }
+.settings-ai label {
+  color: var(--text);
+  font-size: 14px;
+}
+.settings-ai .hint {
+  color: var(--text);
+  font-size: 14px;
+}
+.settings-ai input,
+.settings-ai select {
+  font-size: 14px;
+}
+.settings-ai select[size] {
+  height: auto;
+}
 .preset-list {
   display: flex;
   flex-direction: column;
