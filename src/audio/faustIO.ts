@@ -3,8 +3,8 @@ import type { InputSpec, OutputSpec } from "./types";
 /**
  * Derive FaustMod port specs from a compiled Faust program's JSON metadata
  * (`generator.getJSON()`). Audio channels become signal ports; UI params
- * (sliders/nentry/buttons) become control inputs — mirroring scripts/build-examples.mjs
- * so an edited module gets the same port layout it would have had at build time.
+ * (sliders/nentry/buttons) become control inputs. This is the single source of truth
+ * for how a user-defined DSP's Faust code maps to node connectors.
  */
 
 const num = (v: unknown): number => (typeof v === "number" ? v : parseFloat(String(v)));

@@ -85,7 +85,7 @@ export class FaustUnit implements AudioUnit {
 }
 
 /**
- * A ported Faust example program (see build-examples.mjs). Like FaustUnit for audio
+ * A Faust "module" unit (precompiled-factory path). Like FaustUnit for audio
  * channels, but its Faust UI params are exposed as extra CONTROL INPUTS: each param
  * input is a pass-through GainNode feeding the worklet's matching AudioParam. When
  * unconnected the param sits at its Faust default; when a signal is wired in, the

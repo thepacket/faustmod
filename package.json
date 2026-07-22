@@ -7,11 +7,10 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "predev": "npm run catalog && npm run examples",
+    "predev": "npm run catalog",
     "dev": "vite",
     "catalog": "node scripts/build-catalog.mjs",
-    "examples": "node scripts/build-examples.mjs",
-    "prebuild": "npm run catalog && npm run examples",
+    "prebuild": "npm run catalog",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit"
