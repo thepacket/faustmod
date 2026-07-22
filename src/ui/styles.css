@@ -4,7 +4,7 @@
   --panel-2: #232733;
   --border: #2e3342;
   --text: #e6e8ee;
-  --muted: #8b91a3;
+  --muted: #cfd3dd;
   --accent: #5b8cff;
   --danger: #ff5b6e;
   --ok: #46d19e;
@@ -133,7 +133,7 @@ body {
 }
 .menu-item kbd {
   font-family: inherit;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
@@ -219,7 +219,7 @@ body {
   border-radius: 7px 7px 0 0;
   cursor: pointer;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   white-space: nowrap;
 }
 .tab.active {
@@ -292,11 +292,11 @@ body {
   border: 1px solid var(--accent);
   border-radius: 4px;
   padding: 2px 5px;
-  font-size: 12px;
+  font-size: 13px;
   outline: none;
 }
 .hint.sm {
-  font-size: 11px;
+  font-size: 13px;
   margin: 4px 2px;
 }
 .panel h2 {
@@ -307,7 +307,7 @@ body {
   margin: 0 0 10px;
 }
 .panel h3 {
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   color: var(--muted);
   margin: 14px 0 6px;
@@ -319,7 +319,7 @@ body {
 }
 .library-head .count {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 .library-head .head-right {
@@ -370,7 +370,7 @@ body {
 .panel-expand .vlabel {
   writing-mode: vertical-rl;
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.7px;
   font-weight: 600;
 }
@@ -387,7 +387,7 @@ body {
   border-radius: 6px;
   padding: 7px 10px;
   margin-bottom: 10px;
-  font-size: 12px;
+  font-size: 13px;
   outline: none;
 }
 .search:focus {
@@ -405,7 +405,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 5px 8px;
-  font-size: 11px;
+  font-size: 13px;
   cursor: pointer;
 }
 .palette-btn:hover:not(:disabled) {
@@ -425,7 +425,7 @@ body {
   border: none;
   color: var(--muted);
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.4px;
   cursor: pointer;
   padding: 12px 0 6px;
@@ -545,7 +545,7 @@ body {
 }
 .hint {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   margin: 0 0 10px;
 }
 .examples {
@@ -556,7 +556,7 @@ body {
 }
 .examples span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
 }
 .chip {
@@ -567,7 +567,7 @@ body {
   border-radius: 6px;
   padding: 6px 8px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
 }
 .chip:hover:not(:disabled) {
   color: var(--text);
@@ -597,7 +597,7 @@ body {
 }
 .modal h3 {
   margin: 0 0 10px;
-  font-size: 12px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--accent);
@@ -666,7 +666,7 @@ body {
 }
 .preset-meta {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 .code-input {
@@ -678,7 +678,7 @@ body {
   border-radius: 6px;
   padding: 10px;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
   resize: vertical;
   outline: none;
@@ -688,7 +688,7 @@ body {
 }
 .err-msg {
   color: var(--danger);
-  font-size: 12px;
+  font-size: 13px;
   margin: 8px 0 0;
   white-space: pre-wrap;
 }
@@ -727,7 +727,7 @@ body {
 .fe-ro {
   color: var(--muted);
   font-weight: 400;
-  font-size: 12px;
+  font-size: 13px;
 }
 .fe-body {
   flex: 1;
@@ -739,7 +739,7 @@ body {
 }
 .fe-status {
   padding: 4px 12px;
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--muted);
   min-height: 20px;
   border-top: 1px solid var(--border);
@@ -761,6 +761,7 @@ body {
 /* AI "make" row under the editor */
 .fe-ai {
   display: flex;
+  align-items: stretch;
   gap: 8px;
   padding: 8px 12px;
   border-top: 1px solid var(--border);
@@ -773,8 +774,14 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 10px;
-  font-size: 12.5px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  resize: vertical;
   outline: none;
+}
+.fe-prompt::placeholder {
+  color: var(--muted);
 }
 .fe-prompt:focus {
   border-color: var(--accent);

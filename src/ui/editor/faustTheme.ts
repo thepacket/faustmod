@@ -8,7 +8,7 @@ export const faustEditorTheme = EditorView.theme(
     "&": {
       color: "#e6e8ee",
       backgroundColor: "#16181e",
-      fontSize: "12.5px",
+      fontSize: "14px",
       height: "100%",
     },
     ".cm-scroller": {

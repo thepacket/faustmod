@@ -8,6 +8,10 @@ import { generateDsp } from "../ai/openrouter";
 import { faustLanguage } from "./editor/faustLanguage";
 import { faustEditorTheme, faustHighlighting } from "./editor/faustTheme";
 
+// Remembered across editor opens for the lifetime of the page, so reopening the
+// editor to make corrections doesn't lose the last prompt.
+let lastPrompt = "";
+
 interface Props {
   title: string;
   initialCode: string;
@@ -37,7 +41,11 @@ export function FaustEditor({
   const viewRef = useRef<EditorView | null>(null);
   const [status, setStatus] = useState<{ msg: string; err: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPromptState] = useState(lastPrompt);
+  const setPrompt = (v: string) => {
+    lastPrompt = v;
+    setPromptState(v);
+  };
   const [pos, setPos] = useState(() => ({
     x: Math.max(24, Math.round(window.innerWidth / 2 - 340)),
     y: 84,
@@ -154,15 +162,19 @@ export function FaustEditor({
       <div className="fe-body" ref={hostRef} />
       {!readOnly && (
         <div className="fe-ai">
-          <input
+          <textarea
             className="fe-prompt"
-            placeholder="Describe the DSP to make… (uses your OpenRouter key — set it in File → Settings)"
+            rows={2}
+            placeholder="Describe the DSP to make… (uses your OpenRouter key — set it in File → Settings). ⌘/Ctrl+Enter to Make."
             value={prompt}
             disabled={busy}
             spellCheck={false}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") void make();
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                void make();
+              }
             }}
           />
           <button className="btn" disabled={busy || !prompt.trim()} onClick={make}>
