@@ -383,6 +383,33 @@
   color: var(--muted);
 }
 
+/* ---- Push / toggle button ---- */
+.btn-widget {
+  padding: 6px 8px;
+  user-select: none;
+  touch-action: none;
+}
+.btn-pad {
+  min-width: 48px;
+  text-align: center;
+  padding: 7px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #cfd4e0;
+  background: linear-gradient(180deg, #2b2f39, #20242c);
+  border: 1px solid #0b0c10;
+  border-radius: 7px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.btn-pad.on {
+  color: #fff;
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #000));
+  border-color: color-mix(in srgb, var(--accent) 60%, #000);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
 /* ---- Record node ---- */
 .record-widget {
   display: flex;
