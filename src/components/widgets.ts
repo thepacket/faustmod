@@ -31,6 +31,18 @@ export const WIDGETS: ComponentDef[] = [
     resizable: true,
     defaultSize: { w: 280, h: 150 },
   },
+  {
+    id: "spectrum",
+    title: "Spectrum Analyzer",
+    category: "Instruments",
+    kind: "widget",
+    widget: "spectrum",
+    tooltip: "Real-time frequency spectrum (20 Hz – 20 kHz, log scale) with peak-hold.",
+    inputs: [{ label: "in" }],
+    outputs: [],
+    resizable: true,
+    defaultSize: { w: 300, h: 160 },
+  },
 
   // ---- Meters -------------------------------------------------------------
   {

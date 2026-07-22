@@ -154,6 +154,7 @@ class AudioGraphImpl {
                 widgetUnit = new ScopeUnit(ctx);
                 break;
               case "spectrogram":
+              case "spectrum":
                 widgetUnit = new SpectrumUnit(ctx);
                 break;
               case "sequencer": {
