@@ -20,11 +20,6 @@
   /* Shrink-wrap: nodes are only as wide/tall as their content requires. */
   width: max-content;
   max-width: 260px;
-}
-/* Widget nodes size to their body (wide sequencers, resized scopes/spectra…),
-   so they must not be capped by the compact-node max-width. */
-.dsp-node[data-widget] {
-  max-width: none;
   border-radius: 10px;
   font-family: "Inter", system-ui, sans-serif;
   color: #e6e8ee;
@@ -35,6 +30,11 @@
     0 10px 24px rgba(0, 0, 0, 0.55);
   padding-bottom: 2px;
   transition: box-shadow 0.15s ease;
+}
+/* Widget nodes size to their body (wide sequencers, resized scopes/spectra…),
+   so they must not be capped by the compact-node max-width. */
+.dsp-node[data-widget] {
+  max-width: none;
 }
 
 .dsp-node[data-selected] {
