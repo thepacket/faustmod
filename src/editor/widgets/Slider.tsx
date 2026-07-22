@@ -8,7 +8,6 @@ export function Slider({ node }: { node: WidgetNode }) {
   const min = Number(cfg.min ?? 0);
   const max = Number(cfg.max ?? 1);
   const horizontal = (cfg.orientation as string) === "h";
-  const unit = (cfg.unit as string) || "";
   const init = Number(node.widgetState.value ?? cfg.default ?? min);
   const [value, setValue] = useState(init);
   const valueRef = useRef(value);
@@ -70,8 +69,7 @@ export function Slider({ node }: { node: WidgetNode }) {
 
   const frac = (value - min) / (max - min || 1);
   const pct = `${(frac * 100).toFixed(1)}%`;
-  const disp = Math.abs(value) >= 100 ? value.toFixed(0) : value.toFixed(2);
-  const w = node.width ?? (horizontal ? 180 : 34);
+  const w = node.width ?? (horizontal ? 180 : 20);
   const h = node.height ?? (horizontal ? 20 : 150);
 
   return (
@@ -83,10 +81,6 @@ export function Slider({ node }: { node: WidgetNode }) {
       <div className="slider-track" ref={trackRef} onPointerDown={onDown} title="Drag to set value">
         <div className="slider-fill" style={horizontal ? { width: pct } : { height: pct }} />
         <div className="slider-thumb" style={horizontal ? { left: pct } : { bottom: pct }} />
-      </div>
-      <div className="slider-val">
-        {disp}
-        {unit && <span className="slider-unit">{unit}</span>}
       </div>
     </div>
   );

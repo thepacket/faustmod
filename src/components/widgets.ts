@@ -143,7 +143,7 @@ export const WIDGETS: ComponentDef[] = [
     inputs: [],
     outputs: [{ label: "" }],
     resizable: true,
-    defaultSize: { w: 34, h: 150 },
+    defaultSize: { w: 20, h: 150 },
   },
   {
     id: "slider-h",

@@ -689,19 +689,6 @@
   width: 6px;
   margin-left: -3px;
 }
-.slider-val {
-  font-size: 10px;
-  color: #cfd4e0;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-.slider-h .slider-val {
-  min-width: 30px;
-}
-.slider-unit {
-  color: var(--muted);
-  margin-left: 2px;
-}
 
 /* ---- Keyboard ---- */
 .kbd {
