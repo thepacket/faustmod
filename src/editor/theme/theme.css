@@ -364,13 +364,15 @@
 }
 
 /* ---- Analog VU meter ---- */
-.vu {
-  width: 140px;
-}
 .vu svg {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
+}
+.vu-end {
+  fill: #6b6252;
+  font-size: 8px;
+  font-family: system-ui, sans-serif;
 }
 .vu-face {
   fill: #efe7cf;

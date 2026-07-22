@@ -51,7 +51,7 @@ export function Knob({ node }: { node: WidgetNode }) {
 
   const t = (value - min) / (max - min || 1);
   const angle = -A + t * 2 * A;
-  const disp = Math.abs(value) >= 100 ? value.toFixed(0) : value.toFixed(2);
+  const disp = value.toFixed(4);
 
   return (
     <div className="knob" onPointerDown={onDown} title="Drag up/down to change">
