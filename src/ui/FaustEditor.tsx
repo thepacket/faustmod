@@ -156,7 +156,7 @@ export function FaustEditor({
               </button>
             )}
             <button className="btn primary" disabled={busy} onClick={ok}>
-              OK
+              Done
             </button>
           </>
         )}
