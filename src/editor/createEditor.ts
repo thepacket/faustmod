@@ -63,7 +63,10 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   const render = new ReactPlugin<Schemes, AreaExtra>({ createRoot });
   const history = new HistoryPlugin<Schemes>();
 
-  AreaExtensions.selectableNodes(area, AreaExtensions.selector(), {
+  // One selector drives all selection (click, marquee, Select All) so state stays
+  // consistent. `selectable.select/unselect` go through this same selector.
+  const selector = AreaExtensions.selector();
+  const selectable = AreaExtensions.selectableNodes(area, selector, {
     accumulating: AreaExtensions.accumulateOnCtrl(),
   });
 
@@ -153,6 +156,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       )) {
         await editor.removeConnection(c.id);
       }
+      await selectable.unselect(node.id); // drop it from the selector before removal
       await editor.removeNode(node.id);
     }
   };
@@ -253,10 +257,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   };
 
   const selectAll: EditorHandle["selectAll"] = async () => {
-    for (const node of editor.getNodes()) {
-      (node as any).selected = true;
-      await area.update("node", node.id);
-    }
+    for (const node of editor.getNodes()) await selectable.select(node.id, true);
   };
 
   const zoomToFit: EditorHandle["zoomToFit"] = async () => {
@@ -284,7 +285,81 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     return { x: (clientX - rect.left - t.x) / t.k, y: (clientY - rect.top - t.y) / t.k };
   };
 
-  const destroy = () => area.destroy();
+  // --- Marquee (rubber-band) selection on empty-canvas drag ----------------
+  // View-only: goes through the shared selector, never touching graph structure.
+  const marquee = document.createElement("div");
+  marquee.className = "marquee";
+  marquee.style.display = "none";
+  container.appendChild(marquee);
+
+  let spaceHeld = false;
+  const onSpace = (e: KeyboardEvent) => {
+    if (e.code === "Space") spaceHeld = e.type === "keydown";
+  };
+  window.addEventListener("keydown", onSpace);
+  window.addEventListener("keyup", onSpace);
+
+  const onCanvasPointerDown = (e: PointerEvent) => {
+    if (e.button !== 0 || spaceHeld) return; // space / middle / right drag → pan
+    if ((e.target as HTMLElement).closest(".dsp-node")) return; // node interaction
+    // Capture-phase intercept: stop rete from starting its own canvas pan.
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    const start = { x: e.clientX, y: e.clientY };
+    const accumulate = e.shiftKey || e.metaKey || e.ctrlKey;
+    let moved = false;
+
+    const paint = (cx: number, cy: number) => {
+      const r = container.getBoundingClientRect();
+      marquee.style.left = `${Math.min(start.x, cx) - r.left}px`;
+      marquee.style.top = `${Math.min(start.y, cy) - r.top}px`;
+      marquee.style.width = `${Math.abs(cx - start.x)}px`;
+      marquee.style.height = `${Math.abs(cy - start.y)}px`;
+      marquee.style.display = "block";
+    };
+    const move = (ev: PointerEvent) => {
+      if (!moved && (Math.abs(ev.clientX - start.x) > 3 || Math.abs(ev.clientY - start.y) > 3)) {
+        moved = true;
+      }
+      if (moved) paint(ev.clientX, ev.clientY);
+    };
+    const up = async (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      marquee.style.display = "none";
+      if (moved) {
+        // Replace the selection unless accumulating (Shift/Ctrl/⌘), then add hits.
+        if (!accumulate) await selector.unselectAll();
+        const a = screenToWorld(start.x, start.y);
+        const b = screenToWorld(ev.clientX, ev.clientY);
+        const [x0, x1] = [Math.min(a.x, b.x), Math.max(a.x, b.x)];
+        const [y0, y1] = [Math.min(a.y, b.y), Math.max(a.y, b.y)];
+        for (const node of editor.getNodes()) {
+          const view = area.nodeViews.get(node.id);
+          if (!view) continue;
+          const hit =
+            view.position.x < x1 &&
+            view.position.x + view.element.offsetWidth > x0 &&
+            view.position.y < y1 &&
+            view.position.y + view.element.offsetHeight > y0;
+          if (hit) await selectable.select(node.id, true);
+        }
+      } else if (!accumulate) {
+        // A plain click on empty canvas clears the selection.
+        await selector.unselectAll();
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  container.addEventListener("pointerdown", onCanvasPointerDown, true); // capture, before rete
+
+  const destroy = () => {
+    window.removeEventListener("keydown", onSpace);
+    window.removeEventListener("keyup", onSpace);
+    container.removeEventListener("pointerdown", onCanvasPointerDown, true);
+    area.destroy();
+  };
 
   return {
     addComponent,

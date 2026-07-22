@@ -402,6 +402,14 @@ body {
   cursor: default;
 }
 
+.marquee {
+  position: absolute;
+  z-index: 20;
+  border: 1px dashed color-mix(in srgb, var(--accent, #6ea8fe) 85%, #fff);
+  background: color-mix(in srgb, var(--accent, #6ea8fe) 14%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+}
 .canvas {
   flex: 1;
   min-width: 0;
