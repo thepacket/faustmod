@@ -167,6 +167,7 @@ class AudioGraphImpl {
                 break;
               }
               case "knob":
+              case "slider":
                 widgetUnit = new ConstantUnit(ctx, Number(def.widgetConfig?.default ?? 0));
                 break;
               case "keyboard":

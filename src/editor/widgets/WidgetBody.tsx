@@ -8,6 +8,7 @@ import { DigitalMeter } from "./DigitalMeter";
 import { Led } from "./Led";
 import { Sequencer } from "./Sequencer";
 import { Knob } from "./Knob";
+import { Slider } from "./Slider";
 import { Keyboard } from "./Keyboard";
 import { MidiIn } from "./MidiIn";
 import { Comment } from "./Comment";
@@ -35,6 +36,8 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
       return <Sequencer node={node} />;
     case "knob":
       return <Knob node={node} />;
+    case "slider":
+      return <Slider node={node} />;
     case "keyboard":
       return <Keyboard node={node} />;
     case "midi":
