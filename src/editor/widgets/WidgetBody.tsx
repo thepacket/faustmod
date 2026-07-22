@@ -3,6 +3,7 @@ import { Scope } from "./Scope";
 import { Spectrogram } from "./Spectrogram";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { Tuner } from "./Tuner";
+import { FreqMeter } from "./FreqMeter";
 import { AnalogMeter } from "./AnalogMeter";
 import { DigitalMeter } from "./DigitalMeter";
 import { Led } from "./Led";
@@ -26,6 +27,8 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
       return <SpectrumAnalyzer node={node} />;
     case "tuner":
       return <Tuner node={node} />;
+    case "freqmeter":
+      return <FreqMeter node={node} />;
     case "meter-analog":
       return <AnalogMeter node={node} />;
     case "meter-digital":

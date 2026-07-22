@@ -159,6 +159,7 @@ class AudioGraphImpl {
                 widgetUnit = new SpectrumUnit(ctx);
                 break;
               case "tuner":
+              case "freqmeter":
                 widgetUnit = new TunerUnit(ctx);
                 break;
               case "sequencer": {

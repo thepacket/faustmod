@@ -78,6 +78,16 @@ export const WIDGETS: ComponentDef[] = [
     inputs: [{ label: "in" }],
     outputs: [],
   },
+  {
+    id: "freqmeter",
+    title: "Frequency Meter",
+    category: "Meters",
+    kind: "widget",
+    widget: "freqmeter",
+    tooltip: "Numeric readout of the input signal's fundamental frequency (Hz / kHz).",
+    inputs: [{ label: "in" }],
+    outputs: [],
+  },
 
   // ---- LEDs ---------------------------------------------------------------
   ...(["red", "green", "blue", "yellow"] as const).map(
