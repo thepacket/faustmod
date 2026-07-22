@@ -288,6 +288,77 @@ body {
 .panel.modules {
   border-right: none;
   border-left: 1px solid var(--border);
+  /* Fixed head + two scrollable sections managed by the splitter. */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* Two stacked module sections sharing the column. */
+.modules-split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 -12px -12px; /* bleed to the panel edges (panel has 12px padding) */
+}
+.modules-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.modules-section.grow {
+  flex: 1;
+}
+.modules-section-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text);
+  background: var(--panel-2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.modules-section-head .cat-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.modules-section-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 12px 10px;
+}
+.modules-splitter {
+  height: 8px;
+  flex: 0 0 8px;
+  cursor: row-resize;
+  background: var(--panel);
+  position: relative;
+  touch-action: none;
+}
+.modules-splitter::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34px;
+  height: 3px;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: var(--border);
+}
+.modules-splitter:hover::before {
+  background: var(--accent);
+}
+.hint.sm {
+  font-size: 11px;
+  margin: 4px 2px;
 }
 .panel h2 {
   font-size: 13px;
@@ -378,7 +449,9 @@ body {
   font-variant-numeric: tabular-nums;
 }
 .comp {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   box-sizing: border-box;
   width: 100%;
   text-align: left;
@@ -393,6 +466,30 @@ body {
 }
 .comp:hover {
   border-color: var(--accent);
+}
+.comp-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.comp-act {
+  flex: 0 0 auto;
+  visibility: hidden;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  border-radius: 4px;
+}
+.comp:hover .comp-act {
+  visibility: visible;
+}
+.comp-act:hover {
+  color: var(--accent);
 }
 .comp:active {
   cursor: grabbing;

@@ -54,9 +54,9 @@ export function ThemedNode(props: Props) {
   const hasInputs = inputEntries.some(([, v]) => v);
   const hasOutputs = outputEntries.some(([, v]) => v);
   const isWidget = !!props.data.widget;
-  // Modules (and edited/custom Faust blocks) carry editable source; double-click opens
-  // the floating code editor for them.
-  const editable = !!(componentId && resolveComponent(componentId)?.code);
+  // Only user-defined modules are editable; example modules are read-only (duplicate
+  // one into My Modules to edit it). Double-click opens the floating code editor.
+  const editable = !!(componentId && resolveComponent(componentId)?.custom);
 
   // Inline title rename: click the title (a click, not a drag) to edit it.
   const [editing, setEditing] = useState(false);

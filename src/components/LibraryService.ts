@@ -1,5 +1,4 @@
 import { LIBRARY, type ComponentDef } from "./library";
-import { CustomBlocks } from "./customBlocks";
 
 /**
  * Provides the component catalog. Components are described declaratively (ports,
@@ -17,9 +16,12 @@ class LibraryServiceImpl {
     return this.ready;
   }
 
-  /** All available components: built-ins plus user-authored custom blocks. */
+  /**
+   * The built-in component library (read-only). User-authored modules live in the
+   * MODULES palette (see ModulePanel / CustomBlocks), never here.
+   */
   get components(): ComponentDef[] {
-    return [...LIBRARY, ...CustomBlocks.all()];
+    return LIBRARY;
   }
 }
 
