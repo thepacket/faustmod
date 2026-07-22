@@ -63,8 +63,9 @@ export function ThemedNode(props: Props) {
   const hasInputs = inputEntries.some(([, v]) => v);
   const hasOutputs = outputEntries.some(([, v]) => v);
   const isWidget = !!props.data.widget;
-  // Sliders are titleless: they render as thin as possible (just the track).
-  const isSlider = props.data.widget === "slider";
+  // Sliders and buttons/toggles are titleless: they render as compact as possible
+  // (just the control, no name label, no dead space).
+  const isTitleless = props.data.widget === "slider" || props.data.widget === "button";
   // Only user-defined modules are editable; example modules are read-only (duplicate
   // one into My Modules to edit it). Double-click opens the floating code editor.
   const editable = !!(componentId && resolveComponent(componentId)?.custom);
@@ -128,7 +129,7 @@ export function ThemedNode(props: Props) {
       onDoubleClick={editable ? () => ModuleEditBridge.open(id) : undefined}
     >
       {!isConstant &&
-        !isSlider &&
+        !isTitleless &&
         (editing ? (
           <input
             className="dsp-title dsp-title-edit"

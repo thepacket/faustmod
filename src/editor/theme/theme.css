@@ -385,9 +385,17 @@
 
 /* ---- Push / toggle button ---- */
 .btn-widget {
-  padding: 6px 8px;
+  padding: 0;
   user-select: none;
   touch-action: none;
+}
+/* Titleless + minimal frame so the node hugs the pad (no dead space). */
+.dsp-node[data-widget-kind="button"] .dsp-widget-row {
+  gap: 0;
+  padding: 4px;
+}
+.dsp-node[data-widget-kind="button"] {
+  padding-bottom: 0;
 }
 .btn-pad {
   min-width: 48px;
