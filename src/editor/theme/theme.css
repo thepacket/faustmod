@@ -238,13 +238,13 @@
 /* ---- Connections: soft glowing signal cables ---- */
 .body .canvas svg[data-testid="connection"] path {
   stroke: #7bd0a8;
-  stroke-width: 3px;
+  stroke-width: 1px;
   fill: none;
   transition: stroke 0.12s ease;
 }
 .body .canvas svg[data-testid="connection"] path:hover {
   stroke: #9ff0c6;
-  stroke-width: 3px;
+  stroke-width: 1px;
 }
 
 /* ============================================================================
