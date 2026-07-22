@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { LibraryService } from "../components/LibraryService";
 import { CustomBlocks } from "../components/customBlocks";
-import type { ComponentDef } from "../components/library";
+import { COMPONENT_DND_TYPE, type ComponentDef } from "../components/library";
 
 interface Props {
   disabled: boolean;
-  onAdd: (def: ComponentDef) => void;
 }
 
 interface Group {
@@ -13,7 +12,7 @@ interface Group {
   items: ComponentDef[];
 }
 
-export function LibraryPanel({ disabled, onAdd }: Props) {
+export function LibraryPanel({ disabled }: Props) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [rev, bump] = useReducer((x) => x + 1, 0);
@@ -84,15 +83,19 @@ export function LibraryPanel({ disabled, onAdd }: Props) {
             </button>
             {open &&
               items.map((def) => (
-                <button
+                <div
                   key={def.id}
                   className="comp"
-                  disabled={disabled}
-                  onClick={() => onAdd(def)}
-                  title={`${def.tooltip ?? ""}  (${def.inputs.length} in / ${def.outputs.length} out)`.trim()}
+                  draggable={!disabled}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(COMPONENT_DND_TYPE, def.id);
+                    e.dataTransfer.setData("text/plain", def.title);
+                    e.dataTransfer.effectAllowed = "copy";
+                  }}
+                  title={`${def.tooltip ?? ""}  (${def.inputs.length} in / ${def.outputs.length} out)\nDrag onto the canvas`.trim()}
                 >
                   {def.title}
-                </button>
+                </div>
               ))}
           </section>
         );

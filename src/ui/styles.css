@@ -356,6 +356,7 @@ body {
 }
 .comp {
   display: block;
+  box-sizing: border-box;
   width: 100%;
   text-align: left;
   background: var(--panel-2);
@@ -364,13 +365,18 @@ body {
   border-radius: 6px;
   padding: 7px 10px;
   margin-bottom: 6px;
-  cursor: pointer;
+  cursor: grab;
+  user-select: none;
 }
-.comp:hover:not(:disabled) {
+.comp:hover {
   border-color: var(--accent);
 }
-.comp:disabled {
+.comp:active {
+  cursor: grabbing;
+}
+.comp[draggable="false"] {
   opacity: 0.4;
+  cursor: default;
 }
 
 .canvas {

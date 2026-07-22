@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createEditor, type EditorHandle } from "../editor/createEditor";
 import { LibraryService } from "../components/LibraryService";
+import { COMPONENT_DND_TYPE } from "../components/library";
+import { resolveComponent } from "../components/customBlocks";
 import { AudioGraph } from "../audio/AudioGraph";
 import { AudioEngine } from "../audio/AudioEngine";
 import { PatchManager } from "../patch/PatchManager";
@@ -235,9 +237,27 @@ export function App() {
         onNew={() => void tb()?.newTab()}
       />
       <div className="body">
-        <LibraryPanel disabled={!ready} onAdd={(def) => ed()?.addComponent(def)} />
-        <div className="canvas" ref={canvasRef} />
-        <ModulePanel disabled={!ready} onAdd={(def) => ed()?.addComponent(def)} />
+        <LibraryPanel disabled={!ready} />
+        <div
+          className="canvas"
+          ref={canvasRef}
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes(COMPONENT_DND_TYPE)) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "copy";
+            }
+          }}
+          onDrop={(e) => {
+            const id = e.dataTransfer.getData(COMPONENT_DND_TYPE);
+            if (!id) return;
+            e.preventDefault();
+            const def = resolveComponent(id);
+            const editor = ed();
+            if (!def || !editor) return;
+            void editor.addComponent(def, editor.screenToWorld(e.clientX, e.clientY));
+          }}
+        />
+        <ModulePanel disabled={!ready} />
       </div>
 
       {modal === "import-block" && (

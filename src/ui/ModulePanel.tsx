@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { MODULES } from "../components/modules";
 import { CustomBlocks } from "../components/customBlocks";
-import type { ComponentDef } from "../components/library";
+import { COMPONENT_DND_TYPE, type ComponentDef } from "../components/library";
 
 interface Props {
   disabled: boolean;
-  onAdd: (def: ComponentDef) => void;
 }
 
 interface Group {
@@ -18,7 +17,7 @@ interface Group {
  * any DSP blocks the user has imported. Grouped by category (the example directory),
  * searchable and collapsible — mirrors the left component palette.
  */
-export function ModulePanel({ disabled, onAdd }: Props) {
+export function ModulePanel({ disabled }: Props) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [rev, bump] = useReducer((x) => x + 1, 0);
@@ -98,15 +97,19 @@ export function ModulePanel({ disabled, onAdd }: Props) {
             </button>
             {open &&
               items.map((def) => (
-                <button
+                <div
                   key={def.id}
                   className="comp"
-                  disabled={disabled}
-                  onClick={() => onAdd(def)}
-                  title={portSummary(def)}
+                  draggable={!disabled}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(COMPONENT_DND_TYPE, def.id);
+                    e.dataTransfer.setData("text/plain", def.title);
+                    e.dataTransfer.effectAllowed = "copy";
+                  }}
+                  title={`${portSummary(def)}\nDrag onto the canvas`}
                 >
                   {def.title}
-                </button>
+                </div>
               ))}
           </section>
         );

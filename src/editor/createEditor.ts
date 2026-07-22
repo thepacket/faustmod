@@ -37,6 +37,8 @@ type AreaExtra = ReactArea2D<Schemes>;
 
 export interface EditorHandle {
   addComponent(def: ComponentDef, position?: { x: number; y: number }): Promise<DspNode>;
+  /** Convert a viewport (client) point to editor world coordinates (for drops). */
+  screenToWorld(clientX: number, clientY: number): { x: number; y: number };
   removeSelected(): Promise<void>;
   duplicateSelected(): Promise<void>;
   selectAll(): Promise<void>;
@@ -276,10 +278,17 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     changeCb = cb;
   };
 
+  const screenToWorld: EditorHandle["screenToWorld"] = (clientX, clientY) => {
+    const rect = container.getBoundingClientRect();
+    const t = area.area.transform;
+    return { x: (clientX - rect.left - t.x) / t.k, y: (clientY - rect.top - t.y) / t.k };
+  };
+
   const destroy = () => area.destroy();
 
   return {
     addComponent,
+    screenToWorld,
     removeSelected,
     duplicateSelected,
     selectAll,

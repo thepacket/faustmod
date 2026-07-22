@@ -2,6 +2,9 @@ import type { InputSpec, OutputSpec } from "../audio/types";
 import generatedCatalog from "../generated/catalog.json";
 import { WIDGETS } from "./widgets";
 
+/** DataTransfer MIME type carrying a component id when dragging from a palette. */
+export const COMPONENT_DND_TYPE = "application/x-faustmod-component";
+
 /** What kind of audio unit a component realizes into. */
 export type ComponentKind = "faust" | "output" | "input" | "constant" | "widget" | "module";
 
