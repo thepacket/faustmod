@@ -334,7 +334,8 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       if (node) ids.push(node.id);
     }
     const cols = isKnob ? Math.max(1, Math.ceil(Math.sqrt(ids.length))) : 1;
-    const cell = gridCell(ids);
+    // Knobs pack flush like the Knobs N×N bank components; sliders keep a small gap.
+    const cell = gridCell(ids, isKnob ? 0 : undefined);
     // Sit the grid just left of the node; its right column ends ~40px before it.
     const originX = nodeX - 40 - cols * cell.w;
     await placeGrid(ids, cols, originX, nodeY, cell);
