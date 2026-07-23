@@ -45,17 +45,26 @@ function channelsOf(args: string[]): number[] {
 export function parsePdPorts(pd: string): { inputs: InputSpec[]; outputs: OutputSpec[] } {
   let maxIn = 0;
   let maxOut = 0;
+  // Optional port names from `@in ...` / `@out ...` comments (Pd has no native audio
+  // port names). Channel i's name is the i-th word after the marker.
+  let inNames: string[] = [];
+  let outNames: string[] = [];
   for (const rec of pdRecords(pd)) {
     const t = rec.split(/\s+/);
     if (t[0] === "#X" && t[1] === "obj") {
       if (t[4] === "adc~") maxIn = Math.max(maxIn, ...channelsOf(t.slice(5)));
       else if (t[4] === "dac~") maxOut = Math.max(maxOut, ...channelsOf(t.slice(5)));
+    } else if (t[0] === "#X" && t[1] === "text") {
+      const words = t.slice(4); // after `#X text X Y`
+      if (words[0] === "@in") inNames = words.slice(1);
+      else if (words[0] === "@out") outNames = words.slice(1);
     }
   }
   maxOut = Math.min(maxOut, 2); // WebPd output is stereo
-  // Labels are just the channel number — left = inputs, right = outputs by position.
-  const ports = (n: number) => Array.from({ length: n }, (_, i) => ({ label: `${i + 1}` }));
-  return { inputs: ports(maxIn), outputs: ports(maxOut) };
+  // Use the declared name for a channel, else its number (left = in, right = out).
+  const ports = (n: number, names: string[]) =>
+    Array.from({ length: n }, (_, i) => ({ label: names[i] || `${i + 1}` }));
+  return { inputs: ports(maxIn, inNames), outputs: ports(maxOut, outNames) };
 }
 
 /** Palette/canvas view of a Pd module — it looks like any component node. */
