@@ -15,6 +15,8 @@ export function PdPanel({ disabled }: { disabled: boolean }) {
   const [note, setNote] = useState("");
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null); // last generated .pd that failed to compile
+  const [draftErr, setDraftErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => PdModules.subscribe(bump), []);
   void rev;
@@ -29,15 +31,53 @@ export function PdPanel({ disabled }: { disabled: boolean }) {
     return `${title} — ${inputs.length} in / ${outputs.length} out`;
   };
 
-  // Generate a Pd module from a prompt (uses the Pd system prompt + your OpenRouter key).
+  // Compile the generated .pd with WebPd. On success, add it as a module. On failure,
+  // keep it as a draft with its error so the user can click Fix to retry.
+  const validateAndAdd = async (code: string): Promise<void> => {
+    const { compilePd } = await import("../audio/PdEngine");
+    const channelCountIn = Math.max(2, parsePdPorts(code).inputs.length);
+    try {
+      await compilePd(code, channelCountIn); // throws on unsupported objects / bad syntax
+      setNote(`Made "${addPd(code, "Pd Module")}"`);
+      setDraft(null);
+      setDraftErr("");
+      setPrompt("");
+    } catch (e) {
+      const msg = (e as Error).message;
+      setDraft(code);
+      setDraftErr(msg);
+      setNote(`✗ ${msg.split("\n")[0]} — click Fix to retry`);
+    }
+  };
+
+  // Generate a Pd module from the prompt (Pd system prompt + your OpenRouter key).
   const make = async () => {
     if (!prompt.trim() || busy) return;
     setBusy(true);
     setNote("Generating…");
+    setDraft(null);
+    setDraftErr("");
     try {
-      const code = await generatePd(prompt);
-      setNote(`Made "${addPd(code, "Pd Module")}"`);
-      setPrompt("");
+      await validateAndAdd(await generatePd(prompt));
+    } catch (e) {
+      setNote(`✗ ${(e as Error).message.split("\n")[0]}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // One user-triggered correction: feed the compile error of the failing draft back
+  // to the model and re-validate.
+  const fix = async () => {
+    if (!draft || busy) return;
+    setBusy(true);
+    setNote("Fixing…");
+    try {
+      const corrected = await generatePd(
+        `This patch failed to compile in WebPd:\n${draftErr}\nFix it — replace any unsupported object with a supported vanilla one and correct the syntax. Keep the original intent.`,
+        draft,
+      );
+      await validateAndAdd(corrected);
     } catch (e) {
       setNote(`✗ ${(e as Error).message.split("\n")[0]}`);
     } finally {
@@ -103,6 +143,16 @@ export function PdPanel({ disabled }: { disabled: boolean }) {
         <button className="btn" disabled={busy || disabled || !prompt.trim()} onClick={make}>
           Make
         </button>
+        {draft && (
+          <button
+            className="btn"
+            disabled={busy || disabled}
+            title="Send the compile error back to the AI for one correction"
+            onClick={fix}
+          >
+            Fix
+          </button>
+        )}
       </div>
       {note && <p className="hint sm">{note}</p>}
 
