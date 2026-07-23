@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { PdModules, parsePdPorts } from "../patch/pdModules";
 import { COMPONENT_DND_TYPE } from "../components/library";
+import { generatePd } from "../ai/openrouter";
 
 /**
  * The dedicated "Pd DSP" section. A Pd module is a loaded `.pd` file — we don't edit Pd
@@ -12,11 +13,37 @@ export function PdPanel({ disabled }: { disabled: boolean }) {
   const [rev, bump] = useReducer((x) => x + 1, 0);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => PdModules.subscribe(bump), []);
   void rev;
 
   const list = PdModules.all().sort((a, b) => a.title.localeCompare(b.title));
+
+  const addPd = (code: string, fallbackTitle: string): string => {
+    const { inputs, outputs, name, desc } = parsePdPorts(code);
+    const title = name || fallbackTitle;
+    const id = `pd-${Date.now().toString(36)}`;
+    PdModules.add({ id, title, code, inputs, outputs, desc });
+    return `${title} — ${inputs.length} in / ${outputs.length} out`;
+  };
+
+  // Generate a Pd module from a prompt (uses the Pd system prompt + your OpenRouter key).
+  const make = async () => {
+    if (!prompt.trim() || busy) return;
+    setBusy(true);
+    setNote("Generating…");
+    try {
+      const code = await generatePd(prompt);
+      setNote(`Made "${addPd(code, "Pd Module")}"`);
+      setPrompt("");
+    } catch (e) {
+      setNote(`✗ ${(e as Error).message.split("\n")[0]}`);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -24,11 +51,7 @@ export function PdPanel({ disabled }: { disabled: boolean }) {
     if (!file) return;
     try {
       const code = await file.text();
-      const { inputs, outputs, name, desc } = parsePdPorts(code);
-      const title = name || file.name.replace(/\.pd$/i, "");
-      const id = `pd-${Date.now().toString(36)}`;
-      PdModules.add({ id, title, code, inputs, outputs, desc });
-      setNote(`Loaded "${title}" — ${inputs.length} in / ${outputs.length} out`);
+      setNote(`Loaded "${addPd(code, file.name.replace(/\.pd$/i, ""))}"`);
     } catch {
       setNote("Could not read that .pd file.");
     }
@@ -56,6 +79,30 @@ export function PdPanel({ disabled }: { disabled: boolean }) {
           style={{ display: "none" }}
           onChange={onFile}
         />
+      </div>
+      <div className="fe-ai">
+        <textarea
+          className="fe-prompt"
+          rows={2}
+          placeholder="Describe a Pd module to make with AI… (⌘/Ctrl+Enter)"
+          value={prompt}
+          disabled={busy || disabled}
+          spellCheck={false}
+          autoComplete="off"
+          data-gramm="false"
+          data-1p-ignore="true"
+          data-lpignore="true"
+          onChange={(e) => setPrompt(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              void make();
+            }
+          }}
+        />
+        <button className="btn" disabled={busy || disabled || !prompt.trim()} onClick={make}>
+          Make
+        </button>
       </div>
       {note && <p className="hint sm">{note}</p>}
 
