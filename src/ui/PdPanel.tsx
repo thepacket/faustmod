@@ -45,14 +45,6 @@ export function PdPanel({ disabled, onEdit }: Props) {
     setRenamingId(null);
   };
 
-  // Editor button: open the most-recent existing Pd module (ids are time-ordered), or a
-  // new one if there are none yet.
-  const openEditor = () => {
-    const all = PdModules.all();
-    const recent = all.length ? all.slice().sort((a, b) => b.id.localeCompare(a.id))[0] : null;
-    onEdit(recent?.id);
-  };
-
   return (
     <>
       <div className="library-head">
@@ -60,11 +52,11 @@ export function PdPanel({ disabled, onEdit }: Props) {
         <span className="count">{list.length}</span>
       </div>
       <div className="palette-actions">
+        <button className="palette-btn" onClick={() => onEdit(undefined)} disabled={disabled}>
+          New
+        </button>
         <button className="palette-btn" onClick={() => fileRef.current?.click()} disabled={disabled}>
           Load
-        </button>
-        <button className="palette-btn" onClick={openEditor} disabled={disabled}>
-          Editor
         </button>
         <input ref={fileRef} type="file" accept=".pd" style={{ display: "none" }} onChange={onFile} />
       </div>
@@ -72,9 +64,9 @@ export function PdPanel({ disabled, onEdit }: Props) {
 
       {list.length === 0 && (
         <p className="hint">
-          No Pd modules yet. <strong>Editor</strong> opens the code editor (write or generate a Pd
-          patch with AI); <strong>Load</strong> imports a <code>.pd</code> file. Run by WebPd; audio
-          I/O via <code>adc~</code>/<code>dac~</code>.
+          No Pd modules yet. <strong>New</strong> opens the code editor (write or generate a Pd
+          patch with AI); <strong>Load</strong> imports a <code>.pd</code> file. Double-click a chip
+          to edit it. Run by WebPd; audio I/O via <code>adc~</code>/<code>dac~</code>.
         </p>
       )}
 

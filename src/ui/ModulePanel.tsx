@@ -102,6 +102,26 @@ export function ModulePanel({ disabled, onEdit, onAddPatch, onEditPd }: Props) {
     setRenamingId(null);
   };
 
+  // Load a `.dsp` file as a new user module: compile to derive its connectors, then store.
+  const fileRef = useRef<HTMLInputElement>(null);
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-loading the same filename later
+    if (!file) return;
+    const code = await file.text();
+    const title = file.name.replace(/\.dsp$/i, "");
+    const id = `user-${Date.now().toString(36)}`;
+    let inputs: ComponentDef["inputs"] = [{ label: "in" }];
+    let outputs: ComponentDef["outputs"] = [{ label: "out" }];
+    try {
+      const compiled = await FaustService.compile(id, code);
+      ({ inputs, outputs } = derivePorts(compiled.generator.getJSON(), code));
+    } catch {
+      /* keep the in/out fallback — the user can fix it in the editor */
+    }
+    CustomBlocks.add({ id, title, category: "Custom", inputs, outputs, code });
+  };
+
   const portSummary = (def: ComponentDef) => {
     const audioIn = def.inputs.filter((i) => !i.paramPath).length;
     const params = def.inputs.length - audioIn;
@@ -134,14 +154,18 @@ export function ModulePanel({ disabled, onEdit, onAddPatch, onEditPd }: Props) {
         />
         <div className="palette-actions">
           <button className="palette-btn" onClick={createNew} disabled={disabled}>
-            + New Faust DSP
+            New
           </button>
+          <button className="palette-btn" onClick={() => fileRef.current?.click()} disabled={disabled}>
+            Load
+          </button>
+          <input ref={fileRef} type="file" accept=".dsp" style={{ display: "none" }} onChange={onFile} />
         </div>
 
         {mods.length === 0 && (
         <p className="hint">
-          No DSP yet. Click <strong>+ New Faust DSP</strong> to write one in Faust. New to the
-          language?{" "}
+          No DSP yet. Click <strong>New</strong> to write one in Faust, or <strong>Load</strong> a{" "}
+          <code>.dsp</code> file. Double-click a chip to edit it. New to the language?{" "}
           <a href={FAUST_DOCS} target="_blank" rel="noreferrer">
             Read the Faust manual
           </a>
