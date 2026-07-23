@@ -12,7 +12,9 @@ export const OPENROUTER_PD_SYSTEM = "faustmod.pdSystemPrompt";
 export const DEFAULT_MODEL = "anthropic/claude-3.5-sonnet";
 
 /** Default system prompt for the Faust Make button. Editable in File → Settings…. */
-export const DEFAULT_SYSTEM_PROMPT = `You write Faust DSP for FaustMod, a modular audio patcher. Output ONLY Faust source — no prose, no markdown fences.
+export const DEFAULT_SYSTEM_PROMPT = `You write Faust DSP for FaustMod, a modular audio patcher.
+
+Think through the design first if it helps, then give the COMPLETE program in a single \`\`\`faust code block. FaustMod extracts that block and compiles it, so it must be the whole, self-contained program — do not split it across multiple blocks or leave anything for the user to fill in.
 
 Rules:
 - Start with import("stdfaust.lib"); and define exactly one "process".
@@ -23,7 +25,9 @@ Rules:
 - Keep it stable (bounded feedback, no NaN/blow-ups).`;
 
 /** Default system prompt for the Pd Make button. Editable in File → Settings…. */
-export const DEFAULT_PD_SYSTEM_PROMPT = `You write Pure Data (Pd) patches for FaustMod, run in the browser by WebPd. Output ONLY the raw .pd file text — no prose, no markdown fences.
+export const DEFAULT_PD_SYSTEM_PROMPT = `You write Pure Data (Pd) patches for FaustMod, run in the browser by WebPd.
+
+Think through the signal flow and object indices first if it helps, then give the COMPLETE .pd file in a single \`\`\`pd code block. FaustMod extracts that block and runs it, so it must be the whole, valid .pd file — do not split it or leave placeholders.
 
 Rules:
 - Use ONLY vanilla Pd audio objects that WebPd supports, e.g.: osc~ phasor~ +~ -~ *~ /~ min~ max~ pow~ abs~ cos~ sqrt~ exp~ log~ wrap~ mtof~ ftom~ lop~ hip~ bp~ vcf~ noise~ delread~ delread4~ delwrite~ clip~ line~ vline~ sig~ snapshot~ samphold~ expr~ tabread4~ tabosc4~ send~ receive~ throw~ catch~. NO externals (no ELSE/cyclone), NO GUI objects, NO FFT/spectral objects, NO message-domain scheduling (metro, delay, trigger are control-rate and won't work for audio).
@@ -77,9 +81,16 @@ export async function fetchModels(): Promise<string[]> {
   return ids.sort((a, b) => a.localeCompare(b));
 }
 
+/**
+ * Pull the code out of the model's reply. The model may reason first and then give the
+ * program in a fenced block, so take the LAST fenced block (the final answer). If there
+ * are no fences, assume the whole reply is the code.
+ */
 function stripFences(s: string): string {
-  const m = s.match(/```(?:faust|dsp|cpp|puredata|pd)?\s*\n?([\s\S]*?)```/i);
-  return (m ? m[1] : s).trim();
+  const fence = /```(?:faust|dsp|cpp|puredata|pd)?[ \t]*\n?([\s\S]*?)```/gi;
+  let last: string | null = null;
+  for (const m of s.matchAll(fence)) last = m[1];
+  return (last ?? s).trim();
 }
 
 /** POST a system+user turn to the model and return the fenced-stripped content. */
@@ -98,6 +109,9 @@ async function callModel(system: string, user: string, language: string): Promis
     },
     body: JSON.stringify({
       model,
+      // Generous cap: DSP with reasoning first can run long; a small default cap would
+      // silently truncate the program (→ it won't compile).
+      max_tokens: 8000,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
