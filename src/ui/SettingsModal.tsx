@@ -133,6 +133,12 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             className="sys-prompt"
             rows={8}
             spellCheck={false}
+            autoComplete="off"
+            data-gramm="false"
+            data-gramm_editor="false"
+            data-enable-grammarly="false"
+            data-1p-ignore="true"
+            data-lpignore="true"
             value={system}
             onChange={(e) => setSystem(e.target.value)}
           />

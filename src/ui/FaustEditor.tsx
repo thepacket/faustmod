@@ -169,6 +169,15 @@ export function FaustEditor({
             value={prompt}
             disabled={busy}
             spellCheck={false}
+            autoComplete="off"
+            // Keep browser extensions (Grammarly, password managers) from injecting into
+            // this field — their DOM injection fights React's controlled value and can
+            // wipe the text on the first keystroke in Chrome.
+            data-gramm="false"
+            data-gramm_editor="false"
+            data-enable-grammarly="false"
+            data-1p-ignore="true"
+            data-lpignore="true"
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
