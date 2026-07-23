@@ -61,8 +61,8 @@ export function PdPanel({ disabled }: { disabled: boolean }) {
 
       {list.length === 0 && (
         <p className="hint">
-          No Pd modules yet. <strong>+ New Pd DSP</strong> loads a <code>.pd</code> file; its
-          top-level <code>inlet~</code>/<code>outlet~</code> become the node's ports.
+          No Pd modules yet. <strong>+ New Pd DSP</strong> loads a <code>.pd</code> file, run by
+          WebPd. Audio I/O is via <code>adc~</code> (in) / <code>dac~</code> (out), stereo.
         </p>
       )}
 

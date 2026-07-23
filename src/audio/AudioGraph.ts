@@ -247,9 +247,12 @@ class AudioGraphImpl {
         return new TerminalUnit(ctx, "out");
       case "patch":
         return this.realizePatch(ctx, def, data.seen);
-      // TODO(pd-engine): run the .pd via WebPd / libpd-WASM. Silent stub for now.
-      case "pd":
-        return new StubUnit(ctx, def.inputs.length, def.outputs.length);
+      case "pd": {
+        // Run the .pd via WebPd. Lazy-import keeps webpd out of the initial bundle.
+        if (!def.code) return new StubUnit(ctx, def.inputs.length, def.outputs.length);
+        const { createPdUnit } = await import("./PdUnit");
+        return createPdUnit(ctx as AudioContext, def.code, def.inputs.length, def.outputs.length);
+      }
       case "module": {
         // Ported Faust example: precompiled factory + params-as-control-inputs.
         const worklet = await FaustService.createFactoryNode(def.id, ctx);

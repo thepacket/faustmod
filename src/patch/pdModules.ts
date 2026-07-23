@@ -30,36 +30,27 @@ function pdRecords(pd: string): string[] {
 }
 
 /**
- * Derive a Pd module's ports from its TOP-LEVEL `inlet~` / `outlet~` objects (signal
- * I/O), ordered left-to-right by x position — the same order Pd shows them on an object
- * box. Objects inside subpatches (deeper canvases) are ignored.
+ * Derive a Pd module's ports from its audio I/O objects. The WebPd engine exposes a
+ * patch's audio I/O as a STEREO worklet via `adc~` (input) and `dac~` (output) — not
+ * `inlet~`/`outlet~` — so a module presents 2 input ports if it uses `adc~` and 2
+ * output ports if it uses `dac~`. (Arbitrary mono ports via inlet~/outlet~ return with
+ * the libpd+ELSE engine.)
  */
 export function parsePdPorts(pd: string): { inputs: InputSpec[]; outputs: OutputSpec[] } {
-  let depth = 0;
-  const inX: number[] = [];
-  const outX: number[] = [];
+  let hasAdc = false;
+  let hasDac = false;
   for (const rec of pdRecords(pd)) {
     const t = rec.split(/\s+/);
-    if (t[0] === "#N" && t[1] === "canvas") {
-      depth++;
-      continue;
-    }
-    if (t[0] === "#X" && t[1] === "restore") {
-      depth--;
-      continue;
-    }
-    // The main canvas is depth 1; its inlet~/outlet~ are the module's ports.
-    if (depth === 1 && t[0] === "#X" && t[1] === "obj") {
-      const x = parseInt(t[2], 10) || 0;
-      if (t[4] === "inlet~") inX.push(x);
-      else if (t[4] === "outlet~") outX.push(x);
+    if (t[0] === "#X" && t[1] === "obj") {
+      if (t[4] === "adc~") hasAdc = true;
+      else if (t[4] === "dac~") hasDac = true;
     }
   }
-  inX.sort((a, b) => a - b);
-  outX.sort((a, b) => a - b);
-  const label = (arr: number[], base: string) =>
-    arr.map((_, i) => ({ label: arr.length > 1 ? `${base} ${i + 1}` : base }));
-  return { inputs: label(inX, "in"), outputs: label(outX, "out") };
+  const stereo = (base: string) => [{ label: `${base} L` }, { label: `${base} R` }];
+  return {
+    inputs: hasAdc ? stereo("in") : [],
+    outputs: hasDac ? stereo("out") : [],
+  };
 }
 
 /** Palette/canvas view of a Pd module — it looks like any component node. */
@@ -70,6 +61,7 @@ export function toPdComponentDef(m: PdModuleDef): ComponentDef {
     category: "Pd",
     kind: "pd",
     tooltip: `Pd module (${m.inputs.length} in / ${m.outputs.length} out)`,
+    code: m.code, // the .pd source, compiled by WebPd at realize time
     inputs: m.inputs,
     outputs: m.outputs,
   };
