@@ -8,9 +8,9 @@ import { generateDsp } from "../ai/openrouter";
 import { faustLanguage } from "./editor/faustLanguage";
 import { faustEditorTheme, faustHighlighting } from "./editor/faustTheme";
 
-// Remembered across editor opens for the lifetime of the page, so reopening the
-// editor to make corrections doesn't lose the last prompt.
-let lastPrompt = "";
+// The AI prompt is remembered (localStorage) so reopening the editor to make
+// corrections keeps the last prompt — and it survives reloads too.
+const PROMPT_KEY = "faustmod.aiPrompt";
 
 interface Props {
   title: string;
@@ -41,9 +41,9 @@ export function FaustEditor({
   const viewRef = useRef<EditorView | null>(null);
   const [status, setStatus] = useState<{ msg: string; err: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [prompt, setPromptState] = useState(lastPrompt);
+  const [prompt, setPromptState] = useState(() => localStorage.getItem(PROMPT_KEY) ?? "");
   const setPrompt = (v: string) => {
-    lastPrompt = v;
+    localStorage.setItem(PROMPT_KEY, v);
     setPromptState(v);
   };
   const [pos, setPos] = useState(() => ({

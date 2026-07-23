@@ -703,6 +703,37 @@ body {
 .settings-ai select {
   font-size: 14px;
 }
+.sys-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+.sys-prompt {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 4px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+  outline: none;
+}
+.sys-prompt:focus {
+  border-color: var(--accent);
+}
 .preset-list {
   display: flex;
   flex-direction: column;

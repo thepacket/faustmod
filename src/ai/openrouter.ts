@@ -7,9 +7,11 @@
 
 export const OPENROUTER_KEY = "faustmod.openrouterKey";
 export const OPENROUTER_MODEL = "faustmod.openrouterModel";
+export const OPENROUTER_SYSTEM = "faustmod.systemPrompt";
 export const DEFAULT_MODEL = "anthropic/claude-3.5-sonnet";
 
-const SYSTEM_PROMPT = `You write Faust DSP for FaustMod, a modular audio patcher. Output ONLY Faust source — no prose, no markdown fences.
+/** Default system prompt for the Make button. Editable in File → Settings…. */
+export const DEFAULT_SYSTEM_PROMPT = `You write Faust DSP for FaustMod, a modular audio patcher. Output ONLY Faust source — no prose, no markdown fences.
 
 Rules:
 - Start with import("stdfaust.lib"); and define exactly one "process".
@@ -18,6 +20,11 @@ Rules:
 - The number of process outputs is the AUDIO OUTPUT connectors (1 = mono "out", 2 = stereo).
 - Must be self-contained and real-time safe for an AudioWorklet: NO soundfile, NO ffunction/foreign functions, NO file or OS access. Use only stdfaust.lib.
 - Keep it stable (bounded feedback, no NaN/blow-ups).`;
+
+/** The active system prompt: the user's edited override (Settings) or the default. */
+export function systemPrompt(): string {
+  return localStorage.getItem(OPENROUTER_SYSTEM)?.trim() || DEFAULT_SYSTEM_PROMPT;
+}
 
 /**
  * Fetch the full list of model IDs available on OpenRouter (public endpoint, no key
@@ -65,7 +72,7 @@ export async function generateDsp(prompt: string, currentCode?: string): Promise
     body: JSON.stringify({
       model,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt() },
         { role: "user", content: userContent },
       ],
     }),

@@ -11,7 +11,9 @@ import { AudioEngine } from "../audio/AudioEngine";
 import {
   OPENROUTER_KEY,
   OPENROUTER_MODEL,
+  OPENROUTER_SYSTEM,
   DEFAULT_MODEL,
+  DEFAULT_SYSTEM_PROMPT,
   fetchModels,
 } from "../ai/openrouter";
 
@@ -32,6 +34,9 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [note, setNote] = useState("");
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(OPENROUTER_KEY) ?? "");
   const [model, setModel] = useState(() => localStorage.getItem(OPENROUTER_MODEL) ?? DEFAULT_MODEL);
+  const [system, setSystem] = useState(
+    () => localStorage.getItem(OPENROUTER_SYSTEM) || DEFAULT_SYSTEM_PROMPT,
+  );
   const [models, setModels] = useState<string[]>(MODEL_FALLBACK);
   const [modelsLoading, setModelsLoading] = useState(true);
 
@@ -66,6 +71,13 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const save = () => {
     localStorage.setItem(OPENROUTER_KEY, apiKey.trim());
     localStorage.setItem(OPENROUTER_MODEL, model.trim() || DEFAULT_MODEL);
+    // Store the system prompt only if it differs from the default (so future default
+    // improvements still reach users who never customised it).
+    if (system.trim() && system.trim() !== DEFAULT_SYSTEM_PROMPT) {
+      localStorage.setItem(OPENROUTER_SYSTEM, system);
+    } else {
+      localStorage.removeItem(OPENROUTER_SYSTEM);
+    }
     onClose();
   };
 
@@ -103,6 +115,27 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
               </option>
             ))}
           </select>
+        </label>
+        <label style={{ marginTop: 12 }}>
+          <span className="sys-label">
+            System prompt
+            {system.trim() !== DEFAULT_SYSTEM_PROMPT && (
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => setSystem(DEFAULT_SYSTEM_PROMPT)}
+              >
+                Reset to default
+              </button>
+            )}
+          </span>
+          <textarea
+            className="sys-prompt"
+            rows={8}
+            spellCheck={false}
+            value={system}
+            onChange={(e) => setSystem(e.target.value)}
+          />
         </label>
       </section>
 
