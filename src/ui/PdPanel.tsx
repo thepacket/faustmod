@@ -45,6 +45,14 @@ export function PdPanel({ disabled, onEdit }: Props) {
     setRenamingId(null);
   };
 
+  // Editor button: open the most-recent existing Pd module (ids are time-ordered), or a
+  // new one if there are none yet.
+  const openEditor = () => {
+    const all = PdModules.all();
+    const recent = all.length ? all.slice().sort((a, b) => b.id.localeCompare(a.id))[0] : null;
+    onEdit(recent?.id);
+  };
+
   return (
     <>
       <div className="library-head">
@@ -55,7 +63,7 @@ export function PdPanel({ disabled, onEdit }: Props) {
         <button className="palette-btn" onClick={() => fileRef.current?.click()} disabled={disabled}>
           Load
         </button>
-        <button className="palette-btn" onClick={() => onEdit(undefined)} disabled={disabled}>
+        <button className="palette-btn" onClick={openEditor} disabled={disabled}>
           Editor
         </button>
         <input ref={fileRef} type="file" accept=".pd" style={{ display: "none" }} onChange={onFile} />
