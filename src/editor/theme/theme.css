@@ -86,6 +86,16 @@
   box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 70%, transparent);
 }
 
+/* Knob headers: drop the distracting green accent line/glow — plain label only. */
+.dsp-node[data-widget-kind="knob"] .dsp-title {
+  background: linear-gradient(180deg, #272b34 0%, #21242c 100%);
+  box-shadow: none;
+  text-shadow: none;
+}
+.dsp-node[data-widget-kind="knob"] .dsp-title::after {
+  display: none;
+}
+
 /* ---- Ports: inputs left column, outputs right column ---- */
 .dsp-io {
   display: flex;

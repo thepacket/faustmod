@@ -286,7 +286,8 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       const node = await spawnControl("knob", { min: 0, max: 1, value: 0.5 }, { x: originX, y: originY });
       if (node) ids.push(node.id);
     }
-    await placeGrid(ids, n, originX, originY, gridCell(ids));
+    // Zero gap: the knobs pack flush against each other (sockets overlap, which is fine).
+    await placeGrid(ids, n, originX, originY, gridCell(ids, 0));
     notifyChange();
   };
 
@@ -479,7 +480,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   // A uniform grid cell sized to the largest node in the set + a minimal gap, so packed
   // nodes sit as tight as possible without touching.
   const GRID_GAP = 8;
-  const gridCell = (ids: string[]) => {
+  const gridCell = (ids: string[], gap = GRID_GAP) => {
     let w = 0;
     let h = 0;
     for (const id of ids) {
@@ -488,7 +489,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       w = Math.max(w, v.element.offsetWidth);
       h = Math.max(h, v.element.offsetHeight);
     }
-    return { w: w + GRID_GAP, h: h + GRID_GAP };
+    return { w: w + gap, h: h + gap };
   };
 
   // Lay ids out row-major into `cols` columns from (originX, originY) using cell size.
