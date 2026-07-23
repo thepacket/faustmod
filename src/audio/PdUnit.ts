@@ -13,9 +13,12 @@ export async function createPdUnit(
   numInputs: number,
   numOutputs: number,
 ): Promise<AudioUnit> {
-  const js = await compilePd(code);
+  // Compile the engine to read as many input channels as the module has ports (audio +
+  // parameters), so each FaustMod input port maps to one adc~ channel.
+  const channelCountIn = Math.max(2, numInputs);
+  const js = await compilePd(code, channelCountIn);
   const worklet = await runPd(ctx, js);
-  return new PdUnit(ctx, worklet, numInputs, numOutputs);
+  return new PdUnit(ctx, worklet, numInputs, numOutputs, channelCountIn);
 }
 
 class PdUnit implements AudioUnit {
@@ -29,15 +32,17 @@ class PdUnit implements AudioUnit {
     private worklet: AudioWorkletNode,
     numInputs: number,
     numOutputs: number,
+    channelCountIn: number,
   ) {
     this.numInputs = numInputs;
     this.numOutputs = numOutputs;
     if (numInputs > 0) {
-      this.merger = ctx.createChannelMerger(Math.max(2, numInputs));
+      // Merger has one mono input per engine channel; port i drives adc~ channel i+1.
+      this.merger = ctx.createChannelMerger(channelCountIn);
       this.merger.connect(worklet);
     }
     if (numOutputs > 0) {
-      this.splitter = ctx.createChannelSplitter(Math.max(2, numOutputs));
+      this.splitter = ctx.createChannelSplitter(2); // WebPd output is stereo
       worklet.connect(this.splitter);
     }
   }

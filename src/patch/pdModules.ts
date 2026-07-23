@@ -29,28 +29,33 @@ function pdRecords(pd: string): string[] {
     .filter(Boolean);
 }
 
+/** Channel numbers an `adc~`/`dac~` reads; bare (no args) = channels 1 & 2. */
+function channelsOf(args: string[]): number[] {
+  const nums = args.map(Number).filter((n) => Number.isFinite(n) && n >= 1);
+  return nums.length ? nums : [1, 2];
+}
+
 /**
- * Derive a Pd module's ports from its audio I/O objects. The WebPd engine exposes a
- * patch's audio I/O as a STEREO worklet via `adc~` (input) and `dac~` (output) — not
- * `inlet~`/`outlet~` — so a module presents 2 input ports if it uses `adc~` and 2
- * output ports if it uses `dac~`. (Arbitrary mono ports via inlet~/outlet~ return with
- * the libpd+ELSE engine.)
+ * Derive a Pd module's ports from its audio I/O objects. The WebPd engine drives a
+ * patch's audio via `adc~` (input) / `dac~` (output) — not `inlet~`/`outlet~`. Input
+ * ports = the audio channels the module reads (`adc~`, `adc~ 3`, …), one mono port per
+ * channel, so a module can expose many inputs (audio + parameters, each on its own
+ * channel). Output is stereo (WebPd caps output at 2 channels).
  */
 export function parsePdPorts(pd: string): { inputs: InputSpec[]; outputs: OutputSpec[] } {
-  let hasAdc = false;
-  let hasDac = false;
+  let maxIn = 0;
+  let maxOut = 0;
   for (const rec of pdRecords(pd)) {
     const t = rec.split(/\s+/);
     if (t[0] === "#X" && t[1] === "obj") {
-      if (t[4] === "adc~") hasAdc = true;
-      else if (t[4] === "dac~") hasDac = true;
+      if (t[4] === "adc~") maxIn = Math.max(maxIn, ...channelsOf(t.slice(5)));
+      else if (t[4] === "dac~") maxOut = Math.max(maxOut, ...channelsOf(t.slice(5)));
     }
   }
-  const stereo = (base: string) => [{ label: `${base} L` }, { label: `${base} R` }];
-  return {
-    inputs: hasAdc ? stereo("in") : [],
-    outputs: hasDac ? stereo("out") : [],
-  };
+  maxOut = Math.min(maxOut, 2); // WebPd output is stereo
+  const ports = (n: number, base: string) =>
+    Array.from({ length: n }, (_, i) => ({ label: `${base} ${i + 1}` }));
+  return { inputs: ports(maxIn, "in"), outputs: ports(maxOut, "out") };
 }
 
 /** Palette/canvas view of a Pd module — it looks like any component node. */

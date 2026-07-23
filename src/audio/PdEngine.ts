@@ -18,8 +18,9 @@ async function ensureInit(ctx: AudioContext): Promise<void> {
 }
 
 /** Compile a `.pd` string to runnable JavaScript, in-browser. Throws on failure. */
-export async function compilePd(code: string): Promise<string> {
+export async function compilePd(code: string, channelCountIn = 2): Promise<string> {
   const settings = WebPd.Browser.defaultSettingsForBuild(location.origin + "/");
+  settings.audioSettings.channelCount.in = channelCountIn;
   const result = await WebPd.Build.buildRunnable(code, "javascript", settings);
   return result as string;
 }
