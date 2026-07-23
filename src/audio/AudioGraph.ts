@@ -1,6 +1,14 @@
 import { AudioEngine } from "./AudioEngine";
 import { FaustService } from "./FaustService";
-import { FaustUnit, ModuleUnit, ConstantUnit, OutputUnit, InputUnit, TerminalUnit } from "./units";
+import {
+  FaustUnit,
+  ModuleUnit,
+  ConstantUnit,
+  OutputUnit,
+  InputUnit,
+  TerminalUnit,
+  PatchStubUnit,
+} from "./units";
 import {
   MeterUnit,
   ScopeUnit,
@@ -181,6 +189,9 @@ class AudioGraphImpl {
             return new TerminalUnit(ctx, "in");
           case "terminal-out":
             return new TerminalUnit(ctx, "out");
+          // TODO(#3): flatten the child subgraph and wire it to these boundaries.
+          case "patch":
+            return new PatchStubUnit(ctx, def.inputs.length, def.outputs.length);
           case "module": {
             // Ported Faust example: precompiled factory + params-as-control-inputs.
             const worklet = await FaustService.createFactoryNode(def.id, ctx);

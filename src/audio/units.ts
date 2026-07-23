@@ -325,6 +325,43 @@ export class InputUnit implements AudioUnit {
 }
 
 /**
+ * Placeholder for an embedded-patch node: exposes the right number of input/output
+ * ports (silent) so the node realizes without error. The real implementation
+ * (flattening the child subgraph and wiring it to these boundaries) replaces this.
+ */
+export class PatchStubUnit implements AudioUnit {
+  readonly numInputs: number;
+  readonly numOutputs: number;
+  private ins: GainNode[];
+  private outs: GainNode[];
+
+  constructor(ctx: BaseAudioContext, numInputs: number, numOutputs: number) {
+    this.numInputs = numInputs;
+    this.numOutputs = numOutputs;
+    this.ins = Array.from({ length: numInputs }, () => ctx.createGain());
+    this.outs = Array.from({ length: numOutputs }, () => ctx.createGain());
+  }
+
+  input(i: number) {
+    return this.ins[i] ? { node: this.ins[i] as AudioNode, channel: 0 } : null;
+  }
+  output(i: number) {
+    return this.outs[i] ? { node: this.outs[i] as AudioNode, channel: 0 } : null;
+  }
+  setValue() {}
+  onInputConnected() {}
+  dispose() {
+    for (const g of [...this.ins, ...this.outs]) {
+      try {
+        g.disconnect();
+      } catch {
+        /* noop */
+      }
+    }
+  }
+}
+
+/**
  * A patch I/O terminal — a single mono passthrough (one GainNode). Defines a port on
  * the boundary of a patch: "in" exposes one OUTPUT (signal the parent will feed in),
  * "out" exposes one INPUT (signal the parent will read out). At the top level it's

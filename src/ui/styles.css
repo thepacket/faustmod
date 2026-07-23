@@ -352,6 +352,48 @@ body {
   border-right: none;
   border-left: 1px solid var(--border);
 }
+/* Two stacked sections (User Defined DSP / Patches) with a draggable divider. */
+.panel.split-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+.split-panel .pane {
+  min-height: 60px;
+  overflow-y: auto;
+  padding: 12px;
+}
+.split-panel .pane-top {
+  flex: 0 0 auto;
+}
+.split-panel .pane-bottom {
+  flex: 1 1 0;
+}
+.pane-splitter {
+  flex: 0 0 auto;
+  height: 8px;
+  cursor: row-resize;
+  background: var(--panel-2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  touch-action: none;
+}
+.pane-splitter::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 2px;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: var(--border);
+}
+.pane-splitter:hover::after {
+  background: var(--accent);
+}
 .comp-rename {
   flex: 1;
   min-width: 0;

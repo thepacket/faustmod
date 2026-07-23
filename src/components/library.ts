@@ -14,7 +14,8 @@ export type ComponentKind =
   | "widget"
   | "module"
   | "terminal-in"
-  | "terminal-out";
+  | "terminal-out"
+  | "patch";
 
 export interface ComponentDef {
   /** Stable identifier used in serialized graphs, factory filenames, and by the AI. */

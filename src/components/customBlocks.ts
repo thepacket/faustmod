@@ -1,5 +1,6 @@
 import { LIBRARY_BY_ID, type ComponentDef } from "./library";
 import { MODULES_BY_ID } from "./modules";
+import { EmbeddablePatches } from "../patch/embeddablePatches";
 import type { CustomBlockDef } from "../patch/format";
 
 const STORAGE_KEY = "faustmod.customBlocks";
@@ -116,7 +117,12 @@ class CustomBlocksImpl {
 
 export const CustomBlocks = new CustomBlocksImpl();
 
-/** Resolve a component id: built-in library, then example modules, then custom blocks. */
+/** Resolve a component id: built-in library, example modules, custom blocks, patches. */
 export function resolveComponent(id: string): ComponentDef | undefined {
-  return LIBRARY_BY_ID.get(id) ?? MODULES_BY_ID.get(id) ?? CustomBlocks.get(id);
+  return (
+    LIBRARY_BY_ID.get(id) ??
+    MODULES_BY_ID.get(id) ??
+    CustomBlocks.get(id) ??
+    EmbeddablePatches.def(id)
+  );
 }

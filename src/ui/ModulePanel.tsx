@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type PointerEvent } from "react";
 import { CustomBlocks } from "../components/customBlocks";
 import { COMPONENT_DND_TYPE, type ComponentDef } from "../components/library";
 import { FaustService } from "../audio/FaustService";
 import { derivePorts } from "../audio/faustIO";
 import { usePanelCollapsed, CollapsedStrip, PanelCollapseButton } from "./PanelCollapse";
+import { PatchPanel } from "./PatchPanel";
 
 interface Props {
   disabled: boolean;
   /** Open the Faust editor for a user-defined DSP module. */
   onEdit: (def: ComponentDef, readOnly: boolean) => void;
+  /** Register the current patch as an embeddable patch. */
+  onAddPatch: () => void;
 }
+
+const SPLIT_KEY = "faustmod.embedSplit";
 
 // A functional starter DSP that demonstrates the connector convention: the signal
 // args of `process` are audio-input connectors; a slider DECLARES a named control-input
@@ -27,12 +32,39 @@ const FAUST_DOCS = "https://faustdoc.grame.fr/manual/syntax/";
  * double-click to edit, rename (✎) and delete (×), drag onto the canvas. Dirty
  * (saved-but-not-compiled) modules show an amber dot.
  */
-export function ModulePanel({ disabled, onEdit }: Props) {
+export function ModulePanel({ disabled, onEdit, onAddPatch }: Props) {
   const [panelCollapsed, togglePanel] = usePanelCollapsed("faustmod.panel.modules");
   const [query, setQuery] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [rev, bump] = useReducer((x) => x + 1, 0);
   useEffect(() => CustomBlocks.subscribe(bump), []);
+
+  // Draggable horizontal splitter between User Defined DSP (top) and Patches (bottom).
+  const asideRef = useRef<HTMLElement>(null);
+  const [ratio, setRatio] = useState(() => {
+    const v = parseFloat(localStorage.getItem(SPLIT_KEY) ?? "");
+    return Number.isFinite(v) ? Math.min(0.85, Math.max(0.15, v)) : 0.6;
+  });
+  const ratioRef = useRef(ratio);
+  ratioRef.current = ratio;
+  const startDragSplit = (e: PointerEvent) => {
+    e.preventDefault();
+    const aside = asideRef.current;
+    if (!aside) return;
+    const rect = aside.getBoundingClientRect();
+    const move = (ev: globalThis.PointerEvent) => {
+      const r = Math.min(0.85, Math.max(0.15, (ev.clientY - rect.top) / rect.height));
+      ratioRef.current = r;
+      setRatio(r);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      localStorage.setItem(SPLIT_KEY, ratioRef.current.toFixed(3));
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
 
   const mods = useMemo(() => CustomBlocks.all(), [rev]);
   const q = query.trim().toLowerCase();
@@ -80,29 +112,30 @@ export function ModulePanel({ disabled, onEdit }: Props) {
   }
 
   return (
-    <aside className="panel modules">
-      <div className="library-head">
-        <h2>User Defined DSP</h2>
-        <div className="head-right">
-          <span className="count">{list.length}</span>
-          <PanelCollapseButton side="right" onClick={togglePanel} />
+    <aside className="panel modules split-panel" ref={asideRef}>
+      <section className="pane pane-top" style={{ flexBasis: `${ratio * 100}%` }}>
+        <div className="library-head">
+          <h2>User Defined DSP</h2>
+          <div className="head-right">
+            <span className="count">{list.length}</span>
+            <PanelCollapseButton side="right" onClick={togglePanel} />
+          </div>
         </div>
-      </div>
-      <input
-        className="search"
-        type="search"
-        placeholder="Search your DSP…"
-        value={query}
-        disabled={disabled}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      <div className="palette-actions">
-        <button className="palette-btn" onClick={createNew} disabled={disabled}>
-          + New DSP
-        </button>
-      </div>
+        <input
+          className="search"
+          type="search"
+          placeholder="Search your DSP…"
+          value={query}
+          disabled={disabled}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <div className="palette-actions">
+          <button className="palette-btn" onClick={createNew} disabled={disabled}>
+            + New DSP
+          </button>
+        </div>
 
-      {mods.length === 0 && (
+        {mods.length === 0 && (
         <p className="hint">
           No DSP yet. Click <strong>+ New DSP</strong> to write one in Faust. New to the
           language?{" "}
@@ -174,6 +207,17 @@ export function ModulePanel({ disabled, onEdit }: Props) {
           </button>
         </div>
       ))}
+      </section>
+
+      <div
+        className="pane-splitter"
+        onPointerDown={startDragSplit}
+        title="Drag to resize"
+      />
+
+      <section className="pane pane-bottom">
+        <PatchPanel disabled={disabled} onAddPatch={onAddPatch} />
+      </section>
     </aside>
   );
 }

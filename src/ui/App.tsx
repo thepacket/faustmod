@@ -20,6 +20,8 @@ import { FaustEditor } from "./FaustEditor";
 import { ModuleEditBridge } from "../editor/widgets/ModuleEditBridge";
 import { RecordBridge } from "../editor/widgets/RecordBridge";
 import { ContextMenuBridge, type ContextMenuTarget } from "../editor/widgets/ContextMenuBridge";
+import { EmbeddablePatches } from "../patch/embeddablePatches";
+import { derivePatchSignature } from "../patch/signature";
 import { TooltipLayer } from "./TooltipLayer";
 import { ContextMenu } from "./ContextMenu";
 import { CustomBlocks } from "../components/customBlocks";
@@ -216,6 +218,21 @@ export function App() {
     }
   };
 
+  // Register the current patch as an embeddable patch (its I/O terminals → ports).
+  const addCurrentPatch = () => {
+    const pm = patchRef.current;
+    if (!pm) return;
+    const patch = pm.build();
+    const sig = derivePatchSignature(patch.nodes);
+    const base = patch.name && patch.name !== "Untitled" ? patch.name : "Patch";
+    const taken = new Set(EmbeddablePatches.all().map((p) => p.title));
+    let title = base;
+    for (let n = 2; taken.has(title); n++) title = `${base} ${n}`;
+    const id = `patch-${Date.now().toString(36)}`;
+    EmbeddablePatches.add({ id, title, patch, inputs: sig.inputs, outputs: sig.outputs });
+    setStatus(`Added patch "${title}" — ${sig.inputs.length} in / ${sig.outputs.length} out`);
+  };
+
   const exportBrief = () => {
     const url = URL.createObjectURL(new Blob([buildAiBrief()], { type: "text/markdown" }));
     const a = document.createElement("a");
@@ -361,6 +378,7 @@ export function App() {
         />
         <ModulePanel
           disabled={!ready}
+          onAddPatch={addCurrentPatch}
           onEdit={(def: ComponentDef, readOnly: boolean) => {
             if (!def.code) return;
             if (readOnly) setEditTarget({ kind: "example", title: def.title, code: def.code });
