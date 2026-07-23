@@ -52,11 +52,11 @@ export function PdPanel({ disabled, onEdit }: Props) {
         <span className="count">{list.length}</span>
       </div>
       <div className="palette-actions">
-        <button className="palette-btn" onClick={() => onEdit(undefined)} disabled={disabled}>
-          Editor
-        </button>
         <button className="palette-btn" onClick={() => fileRef.current?.click()} disabled={disabled}>
           Load
+        </button>
+        <button className="palette-btn" onClick={() => onEdit(undefined)} disabled={disabled}>
+          Editor
         </button>
         <input ref={fileRef} type="file" accept=".pd" style={{ display: "none" }} onChange={onFile} />
       </div>
