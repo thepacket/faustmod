@@ -91,7 +91,8 @@ export function PatchPanel({ disabled, onAddPatch }: Props) {
             title="Delete this patch"
             onClick={(e) => {
               e.stopPropagation();
-              EmbeddablePatches.remove(p.id);
+              if (window.confirm(`Delete the patch “${p.title}”? This cannot be undone.`))
+                EmbeddablePatches.remove(p.id);
             }}
           >
             ×

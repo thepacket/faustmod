@@ -403,11 +403,15 @@ body {
   flex: 1;
   min-width: 0;
   background: var(--bg);
+  /* Match the display name (.comp / .comp-name): same white, same size — the rename
+     field must not shrink or dim while editing. */
   color: var(--text);
+  font-size: 14px;
+  font-weight: inherit;
+  font-family: inherit;
   border: 1px solid var(--accent);
   border-radius: 4px;
   padding: 2px 5px;
-  font-size: 13px;
   outline: none;
 }
 .hint.sm {
@@ -925,9 +929,11 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 10px;
-  font-family: inherit;
+  /* Match the code editor above exactly: same monospace family, size and line-height, so
+     the prompt reads at the same visual size as the code. */
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.5;
   resize: vertical;
   outline: none;
 }

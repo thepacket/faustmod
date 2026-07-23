@@ -227,7 +227,8 @@ export function ModulePanel({ disabled, onEdit, onAddPatch, onEditPd }: Props) {
             title="Delete this DSP"
             onClick={(e) => {
               e.stopPropagation();
-              CustomBlocks.remove(def.id);
+              if (window.confirm(`Delete the module “${def.title}”? This cannot be undone.`))
+                CustomBlocks.remove(def.id);
             }}
           >
             ×

@@ -8,6 +8,15 @@ interface Props {
   onEdit: (id?: string) => void;
 }
 
+// Minimal valid starter for a brand-new Pd module: mono audio pass-through (adc~→dac~).
+// No @name, so the entry keeps its "Untitled N" title until the user edits it.
+const STARTER_PD = `#N canvas 0 0 460 320 12;
+#X obj 40 60 adc~ 1;
+#X obj 40 160 dac~ 1;
+#X connect 0 0 1 0;
+#X text 40 220 @in audio;
+#X text 200 220 @out out;`;
+
 /**
  * The dedicated "Pd DSP" section. Modules run in the browser via WebPd. Create/edit one
  * in the same code editor + AI generator as Faust ("+ New Pd DSP"), or load an existing
@@ -45,6 +54,17 @@ export function PdPanel({ disabled, onEdit }: Props) {
     setRenamingId(null);
   };
 
+  // Like Faust "New": create an empty module entry (a valid pass-through starter) without
+  // opening the editor. Double-click the chip to edit it.
+  const createNew = () => {
+    const taken = new Set(PdModules.all().map((m) => m.title));
+    let n = 1;
+    while (taken.has(`Untitled ${n}`)) n++;
+    const title = `Untitled ${n}`;
+    const { inputs, outputs, desc } = parsePdPorts(STARTER_PD);
+    PdModules.add({ id: `pd-${Date.now().toString(36)}`, title, code: STARTER_PD, inputs, outputs, desc });
+  };
+
   return (
     <>
       <div className="library-head">
@@ -52,7 +72,7 @@ export function PdPanel({ disabled, onEdit }: Props) {
         <span className="count">{list.length}</span>
       </div>
       <div className="palette-actions">
-        <button className="palette-btn" onClick={() => onEdit(undefined)} disabled={disabled}>
+        <button className="palette-btn" onClick={createNew} disabled={disabled}>
           New
         </button>
         <button className="palette-btn" onClick={() => fileRef.current?.click()} disabled={disabled}>
@@ -116,7 +136,8 @@ export function PdPanel({ disabled, onEdit }: Props) {
             title="Delete this Pd module"
             onClick={(e) => {
               e.stopPropagation();
-              PdModules.remove(m.id);
+              if (window.confirm(`Delete the Pd module “${m.title}”? This cannot be undone.`))
+                PdModules.remove(m.id);
             }}
           >
             ×

@@ -86,6 +86,37 @@ export function CodeEditor({ title, initialCode, lang, onApply, onSaveDraft, onC
     if (prompt.trim()) void generate(prompt);
   };
 
+  const copyError = async () => {
+    if (!fixError) return;
+    // Prefer the async Clipboard API; fall back to execCommand for insecure/sandboxed
+    // contexts where navigator.clipboard is unavailable.
+    try {
+      await navigator.clipboard.writeText(fixError);
+      setStatus({ msg: "✓ Error copied to clipboard", err: false });
+      return;
+    } catch {
+      /* fall through to the legacy path */
+    }
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = fixError;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      setStatus(
+        ok
+          ? { msg: "✓ Error copied to clipboard", err: false }
+          : { msg: "✗ Could not access the clipboard", err: true },
+      );
+    } catch {
+      setStatus({ msg: "✗ Could not access the clipboard", err: true });
+    }
+  };
+
   // One correction: send the compile error back to the model to repair the code.
   const fix = () => {
     if (!fixError) return;
@@ -188,14 +219,23 @@ export function CodeEditor({ title, initialCode, lang, onApply, onSaveDraft, onC
             Make
           </button>
           {fixError && (
-            <button
-              className="btn"
-              disabled={busy}
-              title="Send the compile error back to the AI for one correction"
-              onClick={fix}
-            >
-              Fix
-            </button>
+            <>
+              <button
+                className="btn"
+                disabled={busy}
+                title="Send the compile error back to the AI for one correction"
+                onClick={fix}
+              >
+                Fix
+              </button>
+              <button
+                className="btn"
+                title="Copy the full compile error to the clipboard"
+                onClick={copyError}
+              >
+                Copy error
+              </button>
+            </>
           )}
         </div>
       )}
