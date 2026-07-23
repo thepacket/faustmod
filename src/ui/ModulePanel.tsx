@@ -13,6 +13,8 @@ interface Props {
   onEdit: (def: ComponentDef, readOnly: boolean) => void;
   /** Register the current patch as an embeddable patch. */
   onAddPatch: () => void;
+  /** Open the Pd code editor — with a module id to edit it, or undefined for a new one. */
+  onEditPd: (id?: string) => void;
 }
 
 const SPLIT_KEY = "faustmod.embedSplit";
@@ -33,7 +35,7 @@ const FAUST_DOCS = "https://faustdoc.grame.fr/manual/syntax/";
  * double-click to edit, rename (✎) and delete (×), drag onto the canvas. Dirty
  * (saved-but-not-compiled) modules show an amber dot.
  */
-export function ModulePanel({ disabled, onEdit, onAddPatch }: Props) {
+export function ModulePanel({ disabled, onEdit, onAddPatch, onEditPd }: Props) {
   const [panelCollapsed, togglePanel] = usePanelCollapsed("faustmod.panel.modules");
   const [query, setQuery] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -210,7 +212,7 @@ export function ModulePanel({ disabled, onEdit, onAddPatch }: Props) {
       ))}
 
         <div className="section-divider" />
-        <PdPanel disabled={disabled} />
+        <PdPanel disabled={disabled} onEdit={onEditPd} />
       </section>
 
       <div

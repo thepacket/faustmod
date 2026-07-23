@@ -16,7 +16,9 @@ import { ImportBlockModal } from "./ImportBlockModal";
 import { AboutModal } from "./AboutModal";
 import { SettingsModal } from "./SettingsModal";
 import { PresetModal } from "./PresetModal";
-import { FaustEditor } from "./FaustEditor";
+import { CodeEditor } from "./CodeEditor";
+import { faustLang, pdLang } from "./editorLangs";
+import { PdModules, parsePdPorts } from "../patch/pdModules";
 import { ModuleEditBridge } from "../editor/widgets/ModuleEditBridge";
 import { RecordBridge } from "../editor/widgets/RecordBridge";
 import { ContextMenuBridge, type ContextMenuTarget } from "../editor/widgets/ContextMenuBridge";
@@ -35,7 +37,24 @@ type ModalKind = null | "about" | "import-block" | "settings" | "presets";
 type EditTarget =
   | { kind: "node"; nodeId: string; title: string; code: string }
   | { kind: "user"; id: string; title: string; code: string }
-  | { kind: "example"; title: string; code: string };
+  | { kind: "example"; title: string; code: string }
+  // Pd module — `id` present when editing an existing one, absent when new.
+  | { kind: "pd"; id?: string; title: string; code: string };
+
+// Starter Pd module: audio through a gain, with the metadata conventions filled in.
+const NEW_PD_CODE = `#N canvas 0 0 460 320 12;
+#X obj 40 60 adc~ 1;
+#X obj 160 60 adc~ 2;
+#X obj 40 130 *~;
+#X obj 40 200 dac~ 1;
+#X connect 0 0 2 0;
+#X connect 1 0 2 1;
+#X connect 2 0 3 0;
+#X text 40 20 @name New Pd Module;
+#X text 40 240 @desc Audio through a gain.;
+#X text 40 260 @in audio gain;
+#X text 240 260 @out out;
+#X text 40 280 @param gain 1 0 1;`;
 
 export function App() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -394,6 +413,15 @@ export function App() {
             if (readOnly) setEditTarget({ kind: "example", title: def.title, code: def.code });
             else setEditTarget({ kind: "user", id: def.id, title: def.title, code: def.code });
           }}
+          onEditPd={(id) => {
+            const m = id ? PdModules.get(id) : undefined;
+            setEditTarget({
+              kind: "pd",
+              id,
+              title: m?.title ?? "New Pd Module",
+              code: m?.code ?? NEW_PD_CODE,
+            });
+          }}
         />
       </div>
 
@@ -416,8 +444,13 @@ export function App() {
       {modal === "settings" && <SettingsModal onClose={() => setModal(null)} />}
 
       {editTarget && (
-        <FaustEditor
-          key={editTarget.kind === "node" ? editTarget.nodeId : editTarget.title}
+        <CodeEditor
+          key={
+            editTarget.kind === "node"
+              ? editTarget.nodeId
+              : ("id" in editTarget && editTarget.id) || editTarget.title
+          }
+          lang={editTarget.kind === "pd" ? pdLang : faustLang}
           title={editTarget.title}
           initialCode={editTarget.code}
           readOnly={editTarget.kind === "example"}
@@ -437,11 +470,13 @@ export function App() {
               : async (code) => {
                   if (editTarget.kind === "node") {
                     await editorRef.current!.applyModuleCode(editTarget.nodeId, code);
+                  } else if (editTarget.kind === "pd") {
+                    await savePdModule(editTarget.id, code);
                   } else {
                     await updateUserModule(editTarget.id, code);
                   }
                   setEditTarget(null);
-                  setStatus(`Recompiled "${editTarget.title}"`);
+                  setStatus(`Saved "${editTarget.title}"`);
                 }
           }
         />
@@ -486,4 +521,14 @@ async function updateUserModule(id: string, code: string): Promise<void> {
     code,
     dirty: false, // compiled cleanly
   });
+}
+
+/** Validate a Pd module with WebPd, then save it (new when id is undefined). */
+async function savePdModule(id: string | undefined, code: string): Promise<void> {
+  const { compilePd } = await import("../audio/PdEngine");
+  const { inputs, outputs, name, desc } = parsePdPorts(code);
+  await compilePd(code, Math.max(2, inputs.length)); // throws → surfaced in the editor
+  const mid = id ?? `pd-${Date.now().toString(36)}`;
+  const title = name ?? (id ? PdModules.get(id)?.title : undefined) ?? "Pd Module";
+  PdModules.add({ id: mid, title, code, inputs, outputs, desc });
 }

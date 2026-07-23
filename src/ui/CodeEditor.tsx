@@ -3,47 +3,38 @@ import { EditorView, keymap } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { indentWithTab } from "@codemirror/commands";
 import { basicSetup } from "codemirror";
-import { FaustService } from "../audio/FaustService";
-import { generateDsp } from "../ai/openrouter";
-import { faustLanguage } from "./editor/faustLanguage";
-import { faustEditorTheme, faustHighlighting } from "./editor/faustTheme";
-
-// The AI prompt is remembered (localStorage) so reopening the editor to make
-// corrections keeps the last prompt — and it survives reloads too.
-const PROMPT_KEY = "faustmod.aiPrompt";
+import type { EditorLang } from "./editorLangs";
 
 interface Props {
   title: string;
   initialCode: string;
-  /** Recompile + apply the edited source. Rejects (with a message) on failure. Omitted when read-only. */
+  /** Language config: syntax, AI generate, compile/validate (Faust or Pd). */
+  lang: EditorLang;
+  /** Compile + apply the edited source. Rejects (with a message) on failure. Omitted when read-only. */
   onApply?: (code: string) => Promise<void>;
   /** Save the source WITHOUT compiling (draft). When present, adds a Save button. */
   onSaveDraft?: (code: string) => void;
   onCancel: () => void;
-  /** View-only (example modules): no Compile/OK, editor is not editable. */
+  /** View-only (examples): no Compile/Done, editor is not editable. */
   readOnly?: boolean;
 }
 
 /**
- * Floating, draggable Faust source editor. A full CodeMirror 6 instance (syntax
- * colouring, undo/redo, find, multi-cursor, bracket matching, indent). No menu —
- * just Cancel / Compile / OK (or a single Close when read-only).
+ * Floating, draggable source editor shared by Faust and Pd modules. A full CodeMirror 6
+ * instance (undo/redo, find, multi-cursor, indent). The AI Make button generates from a
+ * prompt; Compile validates; if compilation fails a Fix button feeds the error back to
+ * the model. No menu — Cancel / Compile / Save / Done (or Close when read-only).
  */
-export function FaustEditor({
-  title,
-  initialCode,
-  onApply,
-  onSaveDraft,
-  onCancel,
-  readOnly = false,
-}: Props) {
+export function CodeEditor({ title, initialCode, lang, onApply, onSaveDraft, onCancel, readOnly = false }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [status, setStatus] = useState<{ msg: string; err: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [prompt, setPromptState] = useState(() => localStorage.getItem(PROMPT_KEY) ?? "");
+  // Last compile error — enables the Fix button (feed it back to the model).
+  const [fixError, setFixError] = useState<string | null>(null);
+  const [prompt, setPromptState] = useState(() => localStorage.getItem(lang.promptKey) ?? "");
   const setPrompt = (v: string) => {
-    localStorage.setItem(PROMPT_KEY, v);
+    localStorage.setItem(lang.promptKey, v);
     setPromptState(v);
   };
   const [pos, setPos] = useState(() => ({
@@ -60,9 +51,7 @@ export function FaustEditor({
       extensions: [
         basicSetup,
         keymap.of([indentWithTab]),
-        faustLanguage,
-        faustEditorTheme,
-        faustHighlighting,
+        ...lang.extensions,
         ...(readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []),
       ],
     });
@@ -78,13 +67,13 @@ export function FaustEditor({
     if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
   };
 
-  const make = async () => {
-    if (!prompt.trim()) return;
+  const generate = async (userPrompt: string) => {
     setBusy(true);
     setStatus({ msg: "Generating…", err: false });
     try {
-      const generated = await generateDsp(prompt, code());
+      const generated = await lang.generate(userPrompt, code());
       setCode(generated);
+      setFixError(null);
       setStatus({ msg: "✓ Generated — Compile to check", err: false });
     } catch (e) {
       setStatus({ msg: `✗ ${(e as Error).message.split("\n")[0]}`, err: true });
@@ -93,30 +82,37 @@ export function FaustEditor({
     }
   };
 
-  // libfaust errors read like "edit-1784…:5 : ERROR : syntax error…" — strip the
-  // internal compile-unit name and surface the line number as "Line 5: …".
-  const formatError = (message: string): string => {
-    const first = message.split("\n")[0].trim();
-    const m = first.match(/^[^\s:]+:(\d+)\s*:\s*ERROR\s*:\s*(.*)$/i);
-    return m ? `Line ${m[1]}: ${m[2]}` : first;
+  const make = () => {
+    if (prompt.trim()) void generate(prompt);
+  };
+
+  // One correction: send the compile error back to the model to repair the code.
+  const fix = () => {
+    if (!fixError) return;
+    void generate(
+      `The current code failed to compile with this error:\n${fixError}\nReturn a corrected version — keep the intent, fix the cause of the error.`,
+    );
   };
 
   const compile = async (): Promise<boolean> => {
     setBusy(true);
     setStatus({ msg: "Compiling…", err: false });
     try {
-      const c = await FaustService.compile(`edit-${Date.now()}`, code());
-      setStatus({ msg: `✓ Compiled — ${c.numInputs} in · ${c.numOutputs} out`, err: false });
+      const msg = await lang.compile(code());
+      setFixError(null);
+      setStatus({ msg, err: false });
       return true;
     } catch (e) {
-      setStatus({ msg: `✗ ${formatError((e as Error).message)}`, err: true });
+      const raw = (e as Error).message;
+      setFixError(raw);
+      setStatus({ msg: `✗ ${lang.formatError(raw)}`, err: true });
       return false;
     } finally {
       setBusy(false);
     }
   };
 
-  const ok = async () => {
+  const done = async () => {
     if (!onApply) return;
     setBusy(true);
     setStatus({ msg: "Compiling…", err: false });
@@ -124,7 +120,9 @@ export function FaustEditor({
       await onApply(code());
       // onApply resolving means the parent tears this panel down.
     } catch (e) {
-      setStatus({ msg: `✗ ${formatError((e as Error).message)}`, err: true });
+      const raw = (e as Error).message;
+      setFixError(raw);
+      setStatus({ msg: `✗ ${lang.formatError(raw)}`, err: true });
       setBusy(false);
     }
   };
@@ -165,7 +163,7 @@ export function FaustEditor({
           <textarea
             className="fe-prompt"
             rows={2}
-            placeholder="Describe the DSP to make… (uses your OpenRouter key — set it in File → Settings). ⌘/Ctrl+Enter to Make."
+            placeholder={lang.promptPlaceholder}
             value={prompt}
             disabled={busy}
             spellCheck={false}
@@ -182,13 +180,23 @@ export function FaustEditor({
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
-                void make();
+                make();
               }
             }}
           />
           <button className="btn" disabled={busy || !prompt.trim()} onClick={make}>
             Make
           </button>
+          {fixError && (
+            <button
+              className="btn"
+              disabled={busy}
+              title="Send the compile error back to the AI for one correction"
+              onClick={fix}
+            >
+              Fix
+            </button>
+          )}
         </div>
       )}
       <div className={`fe-status ${status?.err ? "err" : ""}`}>{status?.msg ?? ""}</div>
@@ -215,7 +223,7 @@ export function FaustEditor({
                 Save
               </button>
             )}
-            <button className="btn primary" disabled={busy} onClick={ok}>
+            <button className="btn primary" disabled={busy} onClick={done}>
               Done
             </button>
           </>
