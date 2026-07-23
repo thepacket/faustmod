@@ -6,7 +6,15 @@ import { WIDGETS } from "./widgets";
 export const COMPONENT_DND_TYPE = "application/x-faustmod-component";
 
 /** What kind of audio unit a component realizes into. */
-export type ComponentKind = "faust" | "output" | "input" | "constant" | "widget" | "module";
+export type ComponentKind =
+  | "faust"
+  | "output"
+  | "input"
+  | "constant"
+  | "widget"
+  | "module"
+  | "terminal-in"
+  | "terminal-out";
 
 export interface ComponentDef {
   /** Stable identifier used in serialized graphs, factory filenames, and by the AI. */
@@ -76,6 +84,26 @@ const SPECIAL: ComponentDef[] = [
       { label: "L", tooltip: "Left channel from the input device." },
       { label: "R", tooltip: "Right channel from the input device." },
     ],
+  },
+  {
+    id: "terminal-in",
+    title: "In",
+    category: "I/O",
+    kind: "terminal-in",
+    tooltip:
+      "Patch input terminal. When this patch is embedded in another, this becomes an INPUT port on the embedded node — rename it to name the port. Inert at the top level.",
+    inputs: [],
+    outputs: [{ label: "", tooltip: "Signal entering the patch from the parent." }],
+  },
+  {
+    id: "terminal-out",
+    title: "Out",
+    category: "I/O",
+    kind: "terminal-out",
+    tooltip:
+      "Patch output terminal. When this patch is embedded in another, this becomes an OUTPUT port on the embedded node — rename it to name the port. A sink at the top level.",
+    inputs: [{ label: "", tooltip: "Signal leaving the patch to the parent." }],
+    outputs: [],
   },
 ];
 

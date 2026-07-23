@@ -323,3 +323,38 @@ export class InputUnit implements AudioUnit {
     }
   }
 }
+
+/**
+ * A patch I/O terminal — a single mono passthrough (one GainNode). Defines a port on
+ * the boundary of a patch: "in" exposes one OUTPUT (signal the parent will feed in),
+ * "out" exposes one INPUT (signal the parent will read out). At the top level it's
+ * inert (an "in" is silent, an "out" is a sink); embedding wires the parent to `gain`.
+ */
+export class TerminalUnit implements AudioUnit {
+  readonly numInputs: number;
+  readonly numOutputs: number;
+  /** The boundary node the embedding logic connects the parent graph to/from. */
+  readonly gain: GainNode;
+
+  constructor(ctx: BaseAudioContext, direction: "in" | "out") {
+    this.gain = ctx.createGain();
+    this.numInputs = direction === "out" ? 1 : 0;
+    this.numOutputs = direction === "in" ? 1 : 0;
+  }
+
+  input(i: number) {
+    return this.numInputs && i === 0 ? { node: this.gain as AudioNode, channel: 0 } : null;
+  }
+  output(i: number) {
+    return this.numOutputs && i === 0 ? { node: this.gain as AudioNode, channel: 0 } : null;
+  }
+  setValue() {}
+  onInputConnected() {}
+  dispose() {
+    try {
+      this.gain.disconnect();
+    } catch {
+      /* noop */
+    }
+  }
+}

@@ -1,6 +1,6 @@
 import { AudioEngine } from "./AudioEngine";
 import { FaustService } from "./FaustService";
-import { FaustUnit, ModuleUnit, ConstantUnit, OutputUnit, InputUnit } from "./units";
+import { FaustUnit, ModuleUnit, ConstantUnit, OutputUnit, InputUnit, TerminalUnit } from "./units";
 import {
   MeterUnit,
   ScopeUnit,
@@ -177,6 +177,10 @@ class AudioGraphImpl {
           }
           case "constant":
             return new ConstantUnit(ctx, this.values.get(nodeId) ?? def.value ?? 0);
+          case "terminal-in":
+            return new TerminalUnit(ctx, "in");
+          case "terminal-out":
+            return new TerminalUnit(ctx, "out");
           case "module": {
             // Ported Faust example: precompiled factory + params-as-control-inputs.
             const worklet = await FaustService.createFactoryNode(def.id, ctx);
