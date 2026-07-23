@@ -716,6 +716,11 @@ body {
   cursor: pointer;
   padding: 0;
 }
+.link-btn:disabled {
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: default;
+}
 .sys-prompt {
   width: 100%;
   box-sizing: border-box;

@@ -119,15 +119,14 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         <label style={{ marginTop: 12 }}>
           <span className="sys-label">
             System prompt
-            {system.trim() !== DEFAULT_SYSTEM_PROMPT && (
-              <button
-                type="button"
-                className="link-btn"
-                onClick={() => setSystem(DEFAULT_SYSTEM_PROMPT)}
-              >
-                Reset to default
-              </button>
-            )}
+            <button
+              type="button"
+              className="link-btn"
+              disabled={system.trim() === DEFAULT_SYSTEM_PROMPT}
+              onClick={() => setSystem(DEFAULT_SYSTEM_PROMPT)}
+            >
+              Reset to default
+            </button>
           </span>
           <textarea
             className="sys-prompt"
