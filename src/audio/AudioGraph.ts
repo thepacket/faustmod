@@ -7,7 +7,7 @@ import {
   OutputUnit,
   InputUnit,
   TerminalUnit,
-  PatchStubUnit,
+  PatchUnit,
 } from "./units";
 import {
   MeterUnit,
@@ -24,6 +24,25 @@ import {
 } from "./monitors";
 import type { AudioUnit, InputSpec } from "./types";
 import { resolveComponent } from "../components/customBlocks";
+import { EmbeddablePatches } from "../patch/embeddablePatches";
+import { derivePatchSignature } from "../patch/signature";
+import type { ComponentDef } from "../components/library";
+
+/** Per-node data the unit factory needs beyond the component definition. */
+interface NodeData {
+  nodeId?: string;
+  value?: number;
+  code?: string;
+  overrideInputs?: InputSpec[];
+  state?: Record<string, unknown>;
+  /** Register widgets in Monitors (top-level only — embedded widgets have no UI). */
+  registerMonitors: boolean;
+  /** Patch ids currently being realized, to break embedding cycles. */
+  seen: Set<string>;
+}
+
+/** Parse a socket key like "out-3" / "in-1" into its channel index. */
+const socketIndex = (key: string) => parseInt(key.split("-")[1] ?? "0", 10);
 
 interface Conn {
   src: string;
@@ -163,104 +182,16 @@ class AudioGraphImpl {
 
     const promise = (async (): Promise<AudioUnit | null> => {
       const ctx = AudioEngine.context!;
+      const override = this.overrides.get(nodeId);
       try {
-        // Edited module: compile the overridden source rather than the stock factory.
-        const override = this.overrides.get(nodeId);
-        if (override) {
-          const compiled = await FaustService.compile(`${componentId}-edit`, override.code);
-          const worklet = await FaustService.createNode(compiled, ctx);
-          return new FaustUnit(ctx, worklet, override.inputs);
-        }
-        switch (def.kind) {
-          case "output":
-            return new OutputUnit(ctx, AudioEngine.masterNode!);
-          case "input": {
-            const unit = new InputUnit(ctx);
-            try {
-              await unit.open();
-            } catch (err) {
-              console.warn("Audio input unavailable:", err);
-            }
-            return unit;
-          }
-          case "constant":
-            return new ConstantUnit(ctx, this.values.get(nodeId) ?? def.value ?? 0);
-          case "terminal-in":
-            return new TerminalUnit(ctx, "in");
-          case "terminal-out":
-            return new TerminalUnit(ctx, "out");
-          // TODO(#3): flatten the child subgraph and wire it to these boundaries.
-          case "patch":
-            return new PatchStubUnit(ctx, def.inputs.length, def.outputs.length);
-          case "module": {
-            // Ported Faust example: precompiled factory + params-as-control-inputs.
-            const worklet = await FaustService.createFactoryNode(def.id, ctx);
-            return new ModuleUnit(ctx, worklet, def.inputs);
-          }
-          case "widget": {
-            let widgetUnit: AudioUnit;
-            switch (def.widget) {
-              case "scope":
-                widgetUnit = new ScopeUnit(ctx);
-                break;
-              case "spectrogram":
-              case "spectrum":
-                widgetUnit = new SpectrumUnit(ctx);
-                break;
-              case "tuner":
-              case "freqmeter":
-                widgetUnit = new TunerUnit(ctx);
-                break;
-              case "sequencer": {
-                const steps = Number(def.widgetConfig?.steps ?? 8);
-                widgetUnit = await SequencerUnit.create(ctx, new Array(steps).fill(0));
-                break;
-              }
-              case "knob":
-              case "slider":
-              case "button":
-                widgetUnit = new ConstantUnit(ctx, Number(def.widgetConfig?.default ?? 0));
-                break;
-              case "keyboard":
-                widgetUnit = new GateFreqUnit(ctx, false);
-                break;
-              case "midi":
-                widgetUnit = new GateFreqUnit(ctx, true);
-                break;
-              case "xypad":
-                widgetUnit = new Vec2Unit(ctx);
-                break;
-              case "sampler":
-                widgetUnit = await SamplerUnit.create(ctx);
-                break;
-              case "granular":
-                widgetUnit = await GranularUnit.create(ctx);
-                break;
-              case "comment":
-                widgetUnit = new NullUnit();
-                break;
-              case "record":
-                widgetUnit = new MeterUnit(ctx); // taps the "on" input; body drives the recorder
-                break;
-              default:
-                widgetUnit = new MeterUnit(ctx); // meters + LEDs
-            }
-            Monitors.set(nodeId, widgetUnit);
-            return widgetUnit;
-          }
-          default: {
-            let worklet;
-            if (def.code) {
-              // User-authored custom block: compile the Faust source with libfaust.
-              const compiled = await FaustService.compile(def.id, def.code);
-              worklet = await FaustService.createNode(compiled, ctx);
-            } else {
-              // Built-in block: load its precompiled WASM factory (no compiler).
-              worklet = await FaustService.createFactoryNode(def.id, ctx);
-            }
-            return new FaustUnit(ctx, worklet, def.inputs);
-          }
-        }
+        return await this.createUnit(ctx, def, {
+          nodeId,
+          value: this.values.get(nodeId),
+          code: override?.code,
+          overrideInputs: override?.inputs,
+          registerMonitors: true,
+          seen: new Set(),
+        });
       } catch (err) {
         // A single failed node must not break the whole patch — but make it visible
         // rather than silently producing no sound.
@@ -276,6 +207,190 @@ class AudioGraphImpl {
 
     this.units.set(nodeId, promise);
     return promise;
+  }
+
+  /**
+   * Build one AudioUnit from a component definition + per-node data. Shared by the
+   * top-level graph and by embedded patches (which realize their children through the
+   * same factory — so embedding nests to any depth).
+   */
+  private async createUnit(
+    ctx: BaseAudioContext,
+    def: ComponentDef,
+    data: NodeData,
+  ): Promise<AudioUnit | null> {
+    // Edited Faust source (module editor override, or a per-node override captured in
+    // an embedded patch): compile it instead of loading the stock factory.
+    if (data.code) {
+      const compiled = await FaustService.compile(`${def.id}-edit`, data.code);
+      const worklet = await FaustService.createNode(compiled, ctx);
+      return new FaustUnit(ctx, worklet, data.overrideInputs ?? def.inputs);
+    }
+    switch (def.kind) {
+      case "output":
+        return new OutputUnit(ctx, AudioEngine.masterNode!);
+      case "input": {
+        const unit = new InputUnit(ctx);
+        try {
+          await unit.open();
+        } catch (err) {
+          console.warn("Audio input unavailable:", err);
+        }
+        return unit;
+      }
+      case "constant":
+        return new ConstantUnit(ctx, data.value ?? def.value ?? 0);
+      case "terminal-in":
+        return new TerminalUnit(ctx, "in");
+      case "terminal-out":
+        return new TerminalUnit(ctx, "out");
+      case "patch":
+        return this.realizePatch(ctx, def, data.seen);
+      case "module": {
+        // Ported Faust example: precompiled factory + params-as-control-inputs.
+        const worklet = await FaustService.createFactoryNode(def.id, ctx);
+        return new ModuleUnit(ctx, worklet, def.inputs);
+      }
+      case "widget": {
+        let widgetUnit: AudioUnit;
+        switch (def.widget) {
+          case "scope":
+            widgetUnit = new ScopeUnit(ctx);
+            break;
+          case "spectrogram":
+          case "spectrum":
+            widgetUnit = new SpectrumUnit(ctx);
+            break;
+          case "tuner":
+          case "freqmeter":
+            widgetUnit = new TunerUnit(ctx);
+            break;
+          case "sequencer": {
+            const steps = Number(def.widgetConfig?.steps ?? 8);
+            widgetUnit = await SequencerUnit.create(ctx, new Array(steps).fill(0));
+            break;
+          }
+          case "knob":
+          case "slider":
+          case "button": {
+            // Top-level: the React body drives the value via Monitors, so start at the
+            // config default. Embedded (no UI): use the stored value from widgetState.
+            const v = data.registerMonitors
+              ? Number(def.widgetConfig?.default ?? 0)
+              : Number(data.state?.value ?? def.widgetConfig?.default ?? 0);
+            widgetUnit = new ConstantUnit(ctx, v);
+            break;
+          }
+          case "keyboard":
+            widgetUnit = new GateFreqUnit(ctx, false);
+            break;
+          case "midi":
+            widgetUnit = new GateFreqUnit(ctx, true);
+            break;
+          case "xypad":
+            widgetUnit = new Vec2Unit(ctx);
+            break;
+          case "sampler":
+            widgetUnit = await SamplerUnit.create(ctx);
+            break;
+          case "granular":
+            widgetUnit = await GranularUnit.create(ctx);
+            break;
+          case "comment":
+            widgetUnit = new NullUnit();
+            break;
+          case "record":
+            widgetUnit = new MeterUnit(ctx); // taps the "on" input; body drives the recorder
+            break;
+          default:
+            widgetUnit = new MeterUnit(ctx); // meters + LEDs
+        }
+        if (data.registerMonitors && data.nodeId) Monitors.set(data.nodeId, widgetUnit);
+        return widgetUnit;
+      }
+      default: {
+        let worklet;
+        if (def.code) {
+          // User-authored custom block: compile the Faust source with libfaust.
+          const compiled = await FaustService.compile(def.id, def.code);
+          worklet = await FaustService.createNode(compiled, ctx);
+        } else {
+          // Built-in block: load its precompiled WASM factory (no compiler).
+          worklet = await FaustService.createFactoryNode(def.id, ctx);
+        }
+        return new FaustUnit(ctx, worklet, def.inputs);
+      }
+    }
+  }
+
+  /**
+   * Flatten an embedded patch: build all of its child nodes as units, wire the child's
+   * internal connections, and expose the patch's ports as the boundary nodes of its
+   * I/O terminals. Recurses through nested patches (with a cycle guard).
+   */
+  private async realizePatch(
+    ctx: BaseAudioContext,
+    def: ComponentDef,
+    seen: Set<string>,
+  ): Promise<AudioUnit> {
+    const nulls = (n: number) => new Array<AudioNode | null>(n).fill(null);
+    if (seen.has(def.id)) {
+      this.collectErrors?.push(`Patch "${def.title}" embeds itself — skipped`);
+      return new PatchUnit([], nulls(def.inputs.length), nulls(def.outputs.length));
+    }
+    const patchDef = EmbeddablePatches.get(def.id);
+    if (!patchDef) return new PatchUnit([], nulls(def.inputs.length), nulls(def.outputs.length));
+
+    const nextSeen = new Set(seen).add(def.id);
+    const byId = new Map<string, AudioUnit>();
+    const children: AudioUnit[] = [];
+
+    for (const n of patchDef.patch.nodes) {
+      const cdef = resolveComponent(n.componentId);
+      if (!cdef) continue;
+      const unit = await this.createUnit(ctx, cdef, {
+        nodeId: n.id,
+        value: n.value,
+        code: n.code,
+        state: n.state,
+        registerMonitors: false,
+        seen: nextSeen,
+      });
+      if (unit) {
+        byId.set(n.id, unit);
+        children.push(unit);
+      }
+    }
+
+    // Wire the child's internal connections (same rule as the top-level graph).
+    for (const c of patchDef.patch.connections) {
+      const src = byId.get(c.source);
+      const dst = byId.get(c.target);
+      if (!src || !dst) continue;
+      const out = src.output(socketIndex(c.sourceOutput));
+      const dstIdx = socketIndex(c.targetInput);
+      const inp = dst.input(dstIdx);
+      if (out && inp) {
+        try {
+          out.node.connect(inp.node, out.channel, inp.channel);
+          dst.onInputConnected(dstIdx, true);
+        } catch (err) {
+          console.warn("child connect failed", err);
+        }
+      }
+    }
+
+    // Ports map to the terminals' boundary GainNodes, in signature order.
+    const sig = derivePatchSignature(patchDef.patch.nodes);
+    const boundary = (id: string) => {
+      const u = byId.get(id);
+      return u instanceof TerminalUnit ? u.gain : null;
+    };
+    return new PatchUnit(
+      children,
+      sig.inputTerminals.map(boundary),
+      sig.outputTerminals.map(boundary),
+    );
   }
 
   private async realizeConn(conn: Conn) {

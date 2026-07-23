@@ -325,35 +325,38 @@ export class InputUnit implements AudioUnit {
 }
 
 /**
- * Placeholder for an embedded-patch node: exposes the right number of input/output
- * ports (silent) so the node realizes without error. The real implementation
- * (flattening the child subgraph and wiring it to these boundaries) replaces this.
+ * An embedded patch, flattened: it owns the child subgraph's units (already wired
+ * internally by AudioGraph) and exposes the patch's ports as the boundary GainNodes of
+ * its I/O terminals. `input(i)` / `output(i)` are the i-th input/output terminal's
+ * boundary node, so the parent graph connects straight through to the child.
  */
-export class PatchStubUnit implements AudioUnit {
+export class PatchUnit implements AudioUnit {
   readonly numInputs: number;
   readonly numOutputs: number;
-  private ins: GainNode[];
-  private outs: GainNode[];
 
-  constructor(ctx: BaseAudioContext, numInputs: number, numOutputs: number) {
-    this.numInputs = numInputs;
-    this.numOutputs = numOutputs;
-    this.ins = Array.from({ length: numInputs }, () => ctx.createGain());
-    this.outs = Array.from({ length: numOutputs }, () => ctx.createGain());
+  constructor(
+    private children: AudioUnit[],
+    private inBoundaries: (AudioNode | null)[],
+    private outBoundaries: (AudioNode | null)[],
+  ) {
+    this.numInputs = inBoundaries.length;
+    this.numOutputs = outBoundaries.length;
   }
 
   input(i: number) {
-    return this.ins[i] ? { node: this.ins[i] as AudioNode, channel: 0 } : null;
+    const node = this.inBoundaries[i];
+    return node ? { node, channel: 0 } : null;
   }
   output(i: number) {
-    return this.outs[i] ? { node: this.outs[i] as AudioNode, channel: 0 } : null;
+    const node = this.outBoundaries[i];
+    return node ? { node, channel: 0 } : null;
   }
   setValue() {}
   onInputConnected() {}
   dispose() {
-    for (const g of [...this.ins, ...this.outs]) {
+    for (const c of this.children) {
       try {
-        g.disconnect();
+        c.dispose();
       } catch {
         /* noop */
       }
