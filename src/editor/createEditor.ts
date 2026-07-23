@@ -51,6 +51,8 @@ export interface EditorHandle {
   addSliderForInput(nodeId: string, inputKey: string, orientation: "v" | "h"): Promise<void>;
   /** Add a knob (world position); range defaults to 0–1. Unconnected. */
   addKnob(position?: { x: number; y: number }): Promise<void>;
+  /** Drop an N×N grid of unconnected knobs, top-left at the given world position. */
+  addKnobGrid(size: number, position?: { x: number; y: number }): Promise<void>;
   /** Add a knob configured from an input port's declared range and wire it in. */
   addKnobForInput(nodeId: string, inputKey: string): Promise<void>;
   /**
@@ -273,6 +275,19 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
 
   const addKnob: EditorHandle["addKnob"] = async (position) => {
     await spawnControl("knob", { min: 0, max: 1, value: 0.5 }, position);
+  };
+
+  const addKnobGrid: EditorHandle["addKnobGrid"] = async (size, position) => {
+    const n = Math.max(1, Math.floor(size));
+    const originX = position?.x ?? 100;
+    const originY = position?.y ?? 80;
+    const ids: string[] = [];
+    for (let i = 0; i < n * n; i++) {
+      const node = await spawnControl("knob", { min: 0, max: 1, value: 0.5 }, { x: originX, y: originY });
+      if (node) ids.push(node.id);
+    }
+    await placeGrid(ids, n, originX, originY, gridCell(ids));
+    notifyChange();
   };
 
   const addKnobForInput: EditorHandle["addKnobForInput"] = async (nodeId, inputKey) => {
@@ -833,6 +848,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     addSliderForInput,
     addKnob,
     addKnobForInput,
+    addKnobGrid,
     addControlsForAllInputs,
     screenToWorld,
     getModuleCode,

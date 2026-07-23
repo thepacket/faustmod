@@ -401,10 +401,18 @@ export function App() {
             const id = e.dataTransfer.getData(COMPONENT_DND_TYPE);
             if (!id) return;
             e.preventDefault();
-            const def = resolveComponent(id);
             const editor = ed();
-            if (!def || !editor) return;
-            void editor.addComponent(def, editor.screenToWorld(e.clientX, e.clientY));
+            if (!editor) return;
+            const pos = editor.screenToWorld(e.clientX, e.clientY);
+            // Knob-bank components expand into an N×N grid of knobs, not one node.
+            const grid = /^knobs-(\d+)$/.exec(id);
+            if (grid) {
+              void editor.addKnobGrid(Number(grid[1]), pos);
+              return;
+            }
+            const def = resolveComponent(id);
+            if (!def) return;
+            void editor.addComponent(def, pos);
           }}
         />
         <ModulePanel

@@ -144,6 +144,21 @@ export const WIDGETS: ComponentDef[] = [
     inputs: [],
     outputs: [{ label: "" }],
   },
+  // Convenience banks: dropping one lays down an N×N grid of independent knobs. These
+  // never become a single node — the drop handler expands them into that many knobs.
+  ...([2, 3, 4, 5, 6] as const).map(
+    (n): ComponentDef => ({
+      id: `knobs-${n}`,
+      title: `Knobs ${n}×${n}`,
+      category: "Controls",
+      kind: "widget",
+      widget: "knob",
+      widgetConfig: { default: 0.5, min: 0, max: 1 },
+      tooltip: `A ${n}×${n} grid of ${n * n} knobs. Drop it, then wire each into a control input.`,
+      inputs: [],
+      outputs: [{ label: "" }],
+    }),
+  ),
   {
     id: "button",
     title: "Button",
