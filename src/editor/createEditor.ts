@@ -75,6 +75,8 @@ export interface EditorHandle {
   alignSelected(mode: AlignMode): Promise<void>;
   /** Even out the gaps between selected nodes along an axis. */
   distributeSelected(axis: "h" | "v"): Promise<void>;
+  /** Pack selected nodes into a tidy grid/matrix (near-square, or a fixed column count). */
+  gridSelected(cols?: number): Promise<void>;
   copySelection(): void;
   paste(): Promise<void>;
   selectAll(): Promise<void>;
@@ -274,27 +276,38 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   };
 
   // Right-click the title → attach a control to every CONTROL input (those with a
-  // declared default/range), stacked in a column to the left of the node.
+  // declared default/range). Knobs (compact) tile into a MATRIX to the left of the node so
+  // a many-input module doesn't produce an unusable tall column; sliders stay in a column
+  // (they're already wide/short enough, and a slider grid reads poorly).
   const addControlsForAllInputs: EditorHandle["addControlsForAllInputs"] = async (
     nodeId,
     componentId,
   ) => {
     const target = editor.getNode(nodeId) as DspNode | undefined;
     if (!target) return;
+    const controlKeys = Object.entries(target.inputSpecs).filter(
+      ([, spec]) => spec.default !== undefined, // control inputs only, not audio signals
+    );
     const view = area.nodeViews.get(nodeId);
-    const baseX = (view ? view.position.x : 0) - 90;
-    const baseY = view ? view.position.y : 0;
-    const spacing = componentId === "slider-v" ? 170 : componentId === "knob" ? 96 : 42;
+    const nodeX = view ? view.position.x : 0;
+    const nodeY = view ? view.position.y : 0;
+
+    // Knobs → grid: near-square, growing to the LEFT of the node so it doesn't overlap.
+    const asGrid = componentId === "knob";
+    const cols = asGrid ? Math.max(1, Math.ceil(Math.sqrt(controlKeys.length))) : 1;
+    const cellW = 88; // knob width + gap
+    const rowStep = componentId === "slider-v" ? 170 : componentId === "knob" ? 96 : 42;
+    const baseX = nodeX - 90 - (cols - 1) * cellW;
+
     let i = 0;
-    for (const [key, spec] of Object.entries(target.inputSpecs)) {
-      if (spec.default === undefined) continue; // control inputs only, not audio signals
+    for (const [key, spec] of controlKeys) {
       const min = spec.min ?? 0;
       const max = spec.max ?? 1;
       const value = spec.default ?? (min + max) / 2;
-      await spawnControl(componentId, { min, max, value }, { x: baseX, y: baseY + i * spacing }, {
-        node: target,
-        inputKey: key,
-      });
+      const row = Math.floor(i / cols);
+      const col = i % cols;
+      const pos = { x: baseX + col * cellW, y: nodeY + row * rowStep };
+      await spawnControl(componentId, { min, max, value }, pos, { node: target, inputKey: key });
       i++;
     }
   };
@@ -432,6 +445,29 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     for (const s of sel) {
       await area.translate(s.id, horizontal ? { x: cursor, y: s.y } : { x: s.x, y: cursor });
       cursor += (horizontal ? s.w : s.h) + gap;
+    }
+    notifyChange();
+  };
+
+  // Pack the selection into a tidy grid. Nodes keep their reading order (top-to-bottom,
+  // then left-to-right), so a tall column of knobs becomes a compact matrix in the same
+  // order. Cells are sized to the widest/tallest member so rows and columns line up.
+  const gridSelected: EditorHandle["gridSelected"] = async (cols) => {
+    const sel = selectedBoxes();
+    if (sel.length < 2) return;
+    sel.sort((a, b) => a.y - b.y || a.x - b.x);
+    const n = sel.length;
+    const ncols = Math.max(1, cols ?? Math.ceil(Math.sqrt(n)));
+    const gapX = 24;
+    const gapY = 20;
+    const cellW = Math.max(...sel.map((s) => s.w)) + gapX;
+    const cellH = Math.max(...sel.map((s) => s.h)) + gapY;
+    const originX = Math.min(...sel.map((s) => s.x));
+    const originY = Math.min(...sel.map((s) => s.y));
+    for (let k = 0; k < n; k++) {
+      const row = Math.floor(k / ncols);
+      const col = k % ncols;
+      await area.translate(sel[k].id, { x: originX + col * cellW, y: originY + row * cellH });
     }
     notifyChange();
   };
@@ -771,6 +807,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     duplicateSelected,
     alignSelected,
     distributeSelected,
+    gridSelected,
     copySelection,
     paste,
     selectAll,

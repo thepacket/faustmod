@@ -338,6 +338,8 @@ export function App() {
         { separator: true },
         { label: "Distribute Horizontally", onClick: () => void ed()?.distributeSelected("h") },
         { label: "Distribute Vertically", onClick: () => void ed()?.distributeSelected("v") },
+        { separator: true },
+        { label: "Arrange in Grid", onClick: () => void ed()?.gridSelected() },
       ],
     },
     {
