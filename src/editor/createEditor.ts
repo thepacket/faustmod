@@ -286,8 +286,8 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       const node = await spawnControl("knob", { min: 0, max: 1, value: 0.5 }, { x: originX, y: originY });
       if (node) ids.push(node.id);
     }
-    // Zero gap: the knobs pack flush against each other (sockets overlap, which is fine).
-    await placeGrid(ids, n, originX, originY, gridCell(ids, 0));
+    // Knobs pack tight with just a 3px margin between them (sockets overlap, which is fine).
+    await placeGrid(ids, n, originX, originY, gridCell(ids, KNOB_GRID_GAP));
     notifyChange();
   };
 
@@ -334,8 +334,8 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       if (node) ids.push(node.id);
     }
     const cols = isKnob ? Math.max(1, Math.ceil(Math.sqrt(ids.length))) : 1;
-    // Knobs pack flush like the Knobs N×N bank components; sliders keep a small gap.
-    const cell = gridCell(ids, isKnob ? 0 : undefined);
+    // Knobs pack tight (3px) like the Knobs N×N bank components; sliders keep a small gap.
+    const cell = gridCell(ids, isKnob ? KNOB_GRID_GAP : undefined);
     // Sit the grid just left of the node; its right column ends ~40px before it.
     const originX = nodeX - 40 - cols * cell.w;
     await placeGrid(ids, cols, originX, nodeY, cell);
@@ -481,6 +481,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   // A uniform grid cell sized to the largest node in the set + a minimal gap, so packed
   // nodes sit as tight as possible without touching.
   const GRID_GAP = 8;
+  const KNOB_GRID_GAP = 3; // tight margin for packed knob banks / auto-knob matrices
   const gridCell = (ids: string[], gap = GRID_GAP) => {
     let w = 0;
     let h = 0;
