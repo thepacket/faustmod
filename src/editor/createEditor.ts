@@ -213,9 +213,10 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     range: { min: number; max: number; value: number },
     position?: { x: number; y: number },
     connectTo?: { node: DspNode; inputKey: string },
-  ): Promise<void> => {
+    label?: string,
+  ): Promise<DspNode | null> => {
     const def = resolveComponent(componentId);
-    if (!def) return;
+    if (!def) return null;
     // Tune the config so the widget mounts with the right range/value immediately;
     // also mirror it into widgetState so it survives save/load.
     const tuned: ComponentDef = {
@@ -224,6 +225,8 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     };
     const node = await instantiate(tuned, position);
     node.widgetState = { min: range.min, max: range.max, value: range.value };
+    // Name the control after the input it drives, so a grid of knobs is legible.
+    if (label) node.label = label;
     await area.update("node", node.id);
     if (connectTo) {
       const conn = new ClassicPreset.Connection(
@@ -235,6 +238,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       await editor.addConnection(conn as Conn);
     }
     notifyChange();
+    return node;
   };
 
   // The range/placement for a control wired into a given input port.
@@ -247,11 +251,12 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     const value = spec?.default ?? (min + max) / 2;
     const view = area.nodeViews.get(nodeId);
     const pos = view ? { x: view.position.x - 70, y: view.position.y + 10 } : undefined;
-    return { target, range: { min, max, value }, pos };
+    return { target, range: { min, max, value }, pos, label: spec?.label };
   };
 
-  const addSlider: EditorHandle["addSlider"] = (orientation, position) =>
-    spawnControl(orientation === "h" ? "slider-h" : "slider-v", { min: 0, max: 1, value: 0.5 }, position);
+  const addSlider: EditorHandle["addSlider"] = async (orientation, position) => {
+    await spawnControl(orientation === "h" ? "slider-h" : "slider-v", { min: 0, max: 1, value: 0.5 }, position);
+  };
 
   const addSliderForInput: EditorHandle["addSliderForInput"] = async (
     nodeId,
@@ -266,13 +271,15 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     });
   };
 
-  const addKnob: EditorHandle["addKnob"] = (position) =>
-    spawnControl("knob", { min: 0, max: 1, value: 0.5 }, position);
+  const addKnob: EditorHandle["addKnob"] = async (position) => {
+    await spawnControl("knob", { min: 0, max: 1, value: 0.5 }, position);
+  };
 
   const addKnobForInput: EditorHandle["addKnobForInput"] = async (nodeId, inputKey) => {
     const c = controlForInput(nodeId, inputKey);
     if (!c) return;
-    await spawnControl("knob", c.range, c.pos, { node: c.target, inputKey });
+    // Name the knob after its input so it's identifiable on the canvas.
+    await spawnControl("knob", c.range, c.pos, { node: c.target, inputKey }, c.label);
   };
 
   // Right-click the title → attach a control to every CONTROL input (those with a
@@ -288,28 +295,33 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     const controlKeys = Object.entries(target.inputSpecs).filter(
       ([, spec]) => spec.default !== undefined, // control inputs only, not audio signals
     );
+    if (controlKeys.length === 0) return;
     const view = area.nodeViews.get(nodeId);
     const nodeX = view ? view.position.x : 0;
     const nodeY = view ? view.position.y : 0;
+    const isKnob = componentId === "knob";
 
-    // Knobs → grid: near-square, growing to the LEFT of the node so it doesn't overlap.
-    const asGrid = componentId === "knob";
-    const cols = asGrid ? Math.max(1, Math.ceil(Math.sqrt(controlKeys.length))) : 1;
-    const cellW = 88; // knob width + gap
-    const rowStep = componentId === "slider-v" ? 170 : componentId === "knob" ? 96 : 42;
-    const baseX = nodeX - 90 - (cols - 1) * cellW;
-
-    let i = 0;
+    // Spawn each control near the node, naming knobs after their input, then pack them
+    // into a tight grid (knobs) or column (sliders) using MEASURED sizes.
+    const ids: string[] = [];
     for (const [key, spec] of controlKeys) {
       const min = spec.min ?? 0;
       const max = spec.max ?? 1;
       const value = spec.default ?? (min + max) / 2;
-      const row = Math.floor(i / cols);
-      const col = i % cols;
-      const pos = { x: baseX + col * cellW, y: nodeY + row * rowStep };
-      await spawnControl(componentId, { min, max, value }, pos, { node: target, inputKey: key });
-      i++;
+      const node = await spawnControl(
+        componentId,
+        { min, max, value },
+        { x: nodeX, y: nodeY },
+        { node: target, inputKey: key },
+        isKnob ? spec.label : undefined,
+      );
+      if (node) ids.push(node.id);
     }
+    const cols = isKnob ? Math.max(1, Math.ceil(Math.sqrt(ids.length))) : 1;
+    const cell = gridCell(ids);
+    // Sit the grid just left of the node; its right column ends ~40px before it.
+    const originX = nodeX - 40 - cols * cell.w;
+    await placeGrid(ids, cols, originX, nodeY, cell);
   };
 
   // Resolve a component id to a def; if edited `code` is supplied, compile it (throws
@@ -449,26 +461,49 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     notifyChange();
   };
 
+  // A uniform grid cell sized to the largest node in the set + a minimal gap, so packed
+  // nodes sit as tight as possible without touching.
+  const GRID_GAP = 8;
+  const gridCell = (ids: string[]) => {
+    let w = 0;
+    let h = 0;
+    for (const id of ids) {
+      const v = area.nodeViews.get(id);
+      if (!v) continue;
+      w = Math.max(w, v.element.offsetWidth);
+      h = Math.max(h, v.element.offsetHeight);
+    }
+    return { w: w + GRID_GAP, h: h + GRID_GAP };
+  };
+
+  // Lay ids out row-major into `cols` columns from (originX, originY) using cell size.
+  const placeGrid = async (
+    ids: string[],
+    cols: number,
+    originX: number,
+    originY: number,
+    cell: { w: number; h: number },
+  ) => {
+    for (let k = 0; k < ids.length; k++) {
+      const row = Math.floor(k / cols);
+      const col = k % cols;
+      await area.translate(ids[k], { x: originX + col * cell.w, y: originY + row * cell.h });
+    }
+  };
+
   // Pack the selection into a tidy grid. Nodes keep their reading order (top-to-bottom,
   // then left-to-right), so a tall column of knobs becomes a compact matrix in the same
-  // order. Cells are sized to the widest/tallest member so rows and columns line up.
+  // order. Cells are sized to the largest member so rows and columns line up, with minimal
+  // spacing.
   const gridSelected: EditorHandle["gridSelected"] = async (cols) => {
     const sel = selectedBoxes();
     if (sel.length < 2) return;
     sel.sort((a, b) => a.y - b.y || a.x - b.x);
-    const n = sel.length;
-    const ncols = Math.max(1, cols ?? Math.ceil(Math.sqrt(n)));
-    const gapX = 24;
-    const gapY = 20;
-    const cellW = Math.max(...sel.map((s) => s.w)) + gapX;
-    const cellH = Math.max(...sel.map((s) => s.h)) + gapY;
+    const ncols = Math.max(1, cols ?? Math.ceil(Math.sqrt(sel.length)));
     const originX = Math.min(...sel.map((s) => s.x));
     const originY = Math.min(...sel.map((s) => s.y));
-    for (let k = 0; k < n; k++) {
-      const row = Math.floor(k / ncols);
-      const col = k % ncols;
-      await area.translate(sel[k].id, { x: originX + col * cellW, y: originY + row * cellH });
-    }
+    const ids = sel.map((s) => s.id);
+    await placeGrid(ids, ncols, originX, originY, gridCell(ids));
     notifyChange();
   };
 
