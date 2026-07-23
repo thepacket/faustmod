@@ -38,6 +38,8 @@ type Conn = ClassicPreset.Connection<Node, Node>;
 type Schemes = GetSchemes<Node, Conn>;
 type AreaExtra = ReactArea2D<Schemes>;
 
+export type AlignMode = "left" | "right" | "center" | "top" | "bottom" | "middle";
+
 export interface EditorHandle {
   addComponent(def: ComponentDef, position?: { x: number; y: number }): Promise<DspNode>;
   /** Add a slider (world position); range defaults to 0–1. Unconnected. */
@@ -69,6 +71,10 @@ export interface EditorHandle {
   applyModuleCode(nodeId: string, code: string): Promise<void>;
   removeSelected(): Promise<void>;
   duplicateSelected(): Promise<void>;
+  /** Align selected nodes to a shared edge or centre line. */
+  alignSelected(mode: AlignMode): Promise<void>;
+  /** Even out the gaps between selected nodes along an axis. */
+  distributeSelected(axis: "h" | "v"): Promise<void>;
   copySelection(): void;
   paste(): Promise<void>;
   selectAll(): Promise<void>;
@@ -370,6 +376,64 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       await selectable.unselect(node.id); // drop it from the selector before removal
       await editor.removeNode(node.id);
     }
+  };
+
+  // Bounding boxes (world coords) of the currently selected nodes.
+  const selectedBoxes = () => {
+    const out: { id: string; x: number; y: number; w: number; h: number }[] = [];
+    for (const node of editor.getNodes()) {
+      if (!(node as any).selected) continue;
+      const view = area.nodeViews.get(node.id);
+      if (!view) continue;
+      out.push({
+        id: node.id,
+        x: view.position.x,
+        y: view.position.y,
+        w: view.element.offsetWidth,
+        h: view.element.offsetHeight,
+      });
+    }
+    return out;
+  };
+
+  const alignSelected: EditorHandle["alignSelected"] = async (mode) => {
+    const sel = selectedBoxes();
+    if (sel.length < 2) return;
+    const minX = Math.min(...sel.map((s) => s.x));
+    const maxRight = Math.max(...sel.map((s) => s.x + s.w));
+    const minY = Math.min(...sel.map((s) => s.y));
+    const maxBottom = Math.max(...sel.map((s) => s.y + s.h));
+    const cx = (minX + maxRight) / 2;
+    const cy = (minY + maxBottom) / 2;
+    for (const s of sel) {
+      let { x, y } = s;
+      if (mode === "left") x = minX;
+      else if (mode === "right") x = maxRight - s.w;
+      else if (mode === "center") x = cx - s.w / 2;
+      else if (mode === "top") y = minY;
+      else if (mode === "bottom") y = maxBottom - s.h;
+      else if (mode === "middle") y = cy - s.h / 2;
+      await area.translate(s.id, { x, y });
+    }
+    notifyChange();
+  };
+
+  const distributeSelected: EditorHandle["distributeSelected"] = async (axis) => {
+    const sel = selectedBoxes();
+    if (sel.length < 3) return; // need endpoints + at least one node to move between
+    const horizontal = axis === "h";
+    sel.sort((a, b) => (horizontal ? a.x - b.x : a.y - b.y));
+    const first = sel[0];
+    const last = sel[sel.length - 1];
+    const span = horizontal ? last.x + last.w - first.x : last.y + last.h - first.y;
+    const sizes = sel.reduce((n, s) => n + (horizontal ? s.w : s.h), 0);
+    const gap = (span - sizes) / (sel.length - 1);
+    let cursor = horizontal ? first.x : first.y;
+    for (const s of sel) {
+      await area.translate(s.id, horizontal ? { x: cursor, y: s.y } : { x: s.x, y: cursor });
+      cursor += (horizontal ? s.w : s.h) + gap;
+    }
+    notifyChange();
   };
 
   const clear: EditorHandle["clear"] = async () => {
@@ -705,6 +769,8 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     applyModuleCode,
     removeSelected,
     duplicateSelected,
+    alignSelected,
+    distributeSelected,
     copySelection,
     paste,
     selectAll,
