@@ -24,10 +24,10 @@ export function PdPanel({ disabled }: { disabled: boolean }) {
     if (!file) return;
     try {
       const code = await file.text();
-      const { inputs, outputs } = parsePdPorts(code);
-      const title = file.name.replace(/\.pd$/i, "");
+      const { inputs, outputs, name, desc } = parsePdPorts(code);
+      const title = name || file.name.replace(/\.pd$/i, "");
       const id = `pd-${Date.now().toString(36)}`;
-      PdModules.add({ id, title, code, inputs, outputs });
+      PdModules.add({ id, title, code, inputs, outputs, desc });
       setNote(`Loaded "${title}" — ${inputs.length} in / ${outputs.length} out`);
     } catch {
       setNote("Could not read that .pd file.");

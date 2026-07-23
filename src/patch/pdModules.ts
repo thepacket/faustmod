@@ -14,6 +14,8 @@ export interface PdModuleDef {
   code: string;
   inputs: InputSpec[];
   outputs: OutputSpec[];
+  /** Node tooltip, from an `@desc` comment. */
+  desc?: string;
 }
 
 /**
@@ -42,14 +44,27 @@ function channelsOf(args: string[]): number[] {
  * channel, so a module can expose many inputs (audio + parameters, each on its own
  * channel). Output is stereo (WebPd caps output at 2 channels).
  */
-export function parsePdPorts(pd: string): { inputs: InputSpec[]; outputs: OutputSpec[] } {
+export interface PdMeta {
+  inputs: InputSpec[];
+  outputs: OutputSpec[];
+  /** From an `@name` comment — overrides the loaded filename. */
+  name?: string;
+  /** From a `@desc` comment — the node tooltip. */
+  desc?: string;
+}
+
+export function parsePdPorts(pd: string): PdMeta {
   let maxIn = 0;
   let maxOut = 0;
   // Optional metadata from Pd comments (Pd has no native audio port names/ranges):
-  //   @in a b c   / @out l r        → port names
+  //   @name <title>                       → module display name
+  //   @desc <text...>                     → node tooltip
+  //   @in a b c   / @out l r              → port names
   //   @param <name> <default> <min> <max> → make that input a control input with range
   let inNames: string[] = [];
   let outNames: string[] = [];
+  let name: string | undefined;
+  let desc: string | undefined;
   const params = new Map<string, { default: number; min: number; max: number }>();
   for (const rec of pdRecords(pd)) {
     const t = rec.split(/\s+/);
@@ -60,6 +75,8 @@ export function parsePdPorts(pd: string): { inputs: InputSpec[]; outputs: Output
       const w = t.slice(4); // words after `#X text X Y`
       if (w[0] === "@in") inNames = w.slice(1);
       else if (w[0] === "@out") outNames = w.slice(1);
+      else if (w[0] === "@name") name = w.slice(1).join(" ") || undefined;
+      else if (w[0] === "@desc") desc = w.slice(1).join(" ") || undefined;
       else if (w[0] === "@param" && w.length >= 5) {
         params.set(w[1], { default: +w[2], min: +w[3], max: +w[4] });
       }
@@ -75,7 +92,7 @@ export function parsePdPorts(pd: string): { inputs: InputSpec[]; outputs: Output
   const outputs: OutputSpec[] = Array.from({ length: maxOut }, (_, i) => ({
     label: outNames[i] || `${i + 1}`,
   }));
-  return { inputs, outputs };
+  return { inputs, outputs, name, desc };
 }
 
 /** Palette/canvas view of a Pd module — it looks like any component node. */
@@ -85,7 +102,7 @@ export function toPdComponentDef(m: PdModuleDef): ComponentDef {
     title: m.title,
     category: "Pd",
     kind: "pd",
-    tooltip: `Pd module (${m.inputs.length} in / ${m.outputs.length} out)`,
+    tooltip: m.desc || `Pd module (${m.inputs.length} in / ${m.outputs.length} out)`,
     code: m.code, // the .pd source, compiled by WebPd at realize time
     inputs: m.inputs,
     outputs: m.outputs,
