@@ -23,6 +23,7 @@ import { ModuleEditBridge } from "../editor/widgets/ModuleEditBridge";
 import { RecordBridge } from "../editor/widgets/RecordBridge";
 import { ContextMenuBridge, type ContextMenuTarget } from "../editor/widgets/ContextMenuBridge";
 import { EmbeddablePatches } from "../patch/embeddablePatches";
+import { SavedPatches } from "../patch/savedPatches";
 import { derivePatchSignature } from "../patch/signature";
 import { TooltipLayer } from "./TooltipLayer";
 import { ContextMenu } from "./ContextMenu";
@@ -252,6 +253,25 @@ export function App() {
     setStatus(`Added patch "${title}" — ${sig.inputs.length} in / ${sig.outputs.length} out`);
   };
 
+  // Save the current patch document into the Saved Patches library (survives closing the
+  // tab). Names uniquely off the current patch name.
+  const saveCurrentPatch = () => {
+    const pm = patchRef.current;
+    if (!pm) return;
+    const patch = pm.build();
+    const base = patch.name?.trim() || "Untitled";
+    const taken = new Set(SavedPatches.all().map((p) => p.name));
+    let name = base;
+    for (let n = 2; taken.has(name); n++) name = `${base} ${n}`;
+    SavedPatches.add({ id: `saved-${Date.now().toString(36)}`, name, patch: { ...patch, name } });
+    setStatus(`Saved patch "${name}" to your library (${patch.nodes.length} nodes)`);
+  };
+
+  const openSavedPatch = (id: string) => {
+    const p = SavedPatches.get(id);
+    if (p) void tabsRef.current?.openPatch(structuredClone(p.patch));
+  };
+
   const exportBrief = () => {
     const url = URL.createObjectURL(new Blob([buildAiBrief()], { type: "text/markdown" }));
     const a = document.createElement("a");
@@ -418,6 +438,8 @@ export function App() {
         <ModulePanel
           disabled={!ready}
           onAddPatch={addCurrentPatch}
+          onSavePatch={saveCurrentPatch}
+          onOpenPatch={openSavedPatch}
           onEdit={(def: ComponentDef, readOnly: boolean) => {
             if (!def.code) return;
             if (readOnly) setEditTarget({ kind: "example", title: def.title, code: def.code });

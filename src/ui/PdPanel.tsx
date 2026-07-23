@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { PdModules, parsePdPorts } from "../patch/pdModules";
 import { COMPONENT_DND_TYPE } from "../components/library";
+import { download, safeName } from "../patch/download";
 
 interface Props {
   disabled: boolean;
@@ -121,6 +122,16 @@ export function PdPanel({ disabled, onEdit }: Props) {
           ) : (
             <span className="comp-name">{m.title}</span>
           )}
+          <button
+            className="comp-act"
+            title="Save this Pd module to disk (.pd)"
+            onClick={(e) => {
+              e.stopPropagation();
+              download(`${safeName(m.title)}.pd`, m.code, "text/plain");
+            }}
+          >
+            ⭳
+          </button>
           <button
             className="comp-act"
             title="Rename this Pd module"

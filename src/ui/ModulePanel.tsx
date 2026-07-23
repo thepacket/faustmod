@@ -6,6 +6,7 @@ import { derivePorts } from "../audio/faustIO";
 import { usePanelCollapsed, CollapsedStrip, PanelCollapseButton } from "./PanelCollapse";
 import { PatchPanel } from "./PatchPanel";
 import { PdPanel } from "./PdPanel";
+import { download, safeName } from "../patch/download";
 
 interface Props {
   disabled: boolean;
@@ -13,6 +14,10 @@ interface Props {
   onEdit: (def: ComponentDef, readOnly: boolean) => void;
   /** Register the current patch as an embeddable patch. */
   onAddPatch: () => void;
+  /** Save the current patch document into the Saved Patches library. */
+  onSavePatch: () => void;
+  /** Open a saved patch document into a new tab. */
+  onOpenPatch: (id: string) => void;
   /** Open the Pd code editor — with a module id to edit it, or undefined for a new one. */
   onEditPd: (id?: string) => void;
 }
@@ -35,7 +40,7 @@ const FAUST_DOCS = "https://faustdoc.grame.fr/manual/syntax/";
  * double-click to edit, rename (✎) and delete (×), drag onto the canvas. Dirty
  * (saved-but-not-compiled) modules show an amber dot.
  */
-export function ModulePanel({ disabled, onEdit, onAddPatch, onEditPd }: Props) {
+export function ModulePanel({ disabled, onEdit, onAddPatch, onSavePatch, onOpenPatch, onEditPd }: Props) {
   const [panelCollapsed, togglePanel] = usePanelCollapsed("faustmod.panel.modules");
   const [query, setQuery] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -214,6 +219,16 @@ export function ModulePanel({ disabled, onEdit, onAddPatch, onEditPd }: Props) {
           )}
           <button
             className="comp-act"
+            title="Save this DSP to disk (.dsp)"
+            onClick={(e) => {
+              e.stopPropagation();
+              download(`${safeName(def.title)}.dsp`, def.code ?? "", "text/plain");
+            }}
+          >
+            ⭳
+          </button>
+          <button
+            className="comp-act"
             title="Rename this DSP"
             onClick={(e) => {
               e.stopPropagation();
@@ -247,7 +262,12 @@ export function ModulePanel({ disabled, onEdit, onAddPatch, onEditPd }: Props) {
       />
 
       <section className="pane pane-bottom">
-        <PatchPanel disabled={disabled} onAddPatch={onAddPatch} />
+        <PatchPanel
+          disabled={disabled}
+          onAddPatch={onAddPatch}
+          onSavePatch={onSavePatch}
+          onOpenPatch={onOpenPatch}
+        />
       </section>
     </aside>
   );
