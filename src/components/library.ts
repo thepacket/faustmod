@@ -15,7 +15,8 @@ export type ComponentKind =
   | "module"
   | "terminal-in"
   | "terminal-out"
-  | "patch";
+  | "patch"
+  | "pd";
 
 export interface ComponentDef {
   /** Stable identifier used in serialized graphs, factory filenames, and by the AI. */

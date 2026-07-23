@@ -5,6 +5,7 @@ import { FaustService } from "../audio/FaustService";
 import { derivePorts } from "../audio/faustIO";
 import { usePanelCollapsed, CollapsedStrip, PanelCollapseButton } from "./PanelCollapse";
 import { PatchPanel } from "./PatchPanel";
+import { PdPanel } from "./PdPanel";
 
 interface Props {
   disabled: boolean;
@@ -115,7 +116,7 @@ export function ModulePanel({ disabled, onEdit, onAddPatch }: Props) {
     <aside className="panel modules split-panel" ref={asideRef}>
       <section className="pane pane-top" style={{ flexBasis: `${ratio * 100}%` }}>
         <div className="library-head">
-          <h2>User Defined DSP</h2>
+          <h2>Faust DSP</h2>
           <div className="head-right">
             <span className="count">{list.length}</span>
             <PanelCollapseButton side="right" onClick={togglePanel} />
@@ -131,13 +132,13 @@ export function ModulePanel({ disabled, onEdit, onAddPatch }: Props) {
         />
         <div className="palette-actions">
           <button className="palette-btn" onClick={createNew} disabled={disabled}>
-            + New DSP
+            + New Faust DSP
           </button>
         </div>
 
         {mods.length === 0 && (
         <p className="hint">
-          No DSP yet. Click <strong>+ New DSP</strong> to write one in Faust. New to the
+          No DSP yet. Click <strong>+ New Faust DSP</strong> to write one in Faust. New to the
           language?{" "}
           <a href={FAUST_DOCS} target="_blank" rel="noreferrer">
             Read the Faust manual
@@ -207,6 +208,9 @@ export function ModulePanel({ disabled, onEdit, onAddPatch }: Props) {
           </button>
         </div>
       ))}
+
+        <div className="section-divider" />
+        <PdPanel disabled={disabled} />
       </section>
 
       <div

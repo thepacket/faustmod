@@ -8,6 +8,7 @@ import {
   InputUnit,
   TerminalUnit,
   PatchUnit,
+  StubUnit,
 } from "./units";
 import {
   MeterUnit,
@@ -246,6 +247,9 @@ class AudioGraphImpl {
         return new TerminalUnit(ctx, "out");
       case "patch":
         return this.realizePatch(ctx, def, data.seen);
+      // TODO(pd-engine): run the .pd via WebPd / libpd-WASM. Silent stub for now.
+      case "pd":
+        return new StubUnit(ctx, def.inputs.length, def.outputs.length);
       case "module": {
         // Ported Faust example: precompiled factory + params-as-control-inputs.
         const worklet = await FaustService.createFactoryNode(def.id, ctx);

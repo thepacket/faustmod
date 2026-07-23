@@ -325,6 +325,43 @@ export class InputUnit implements AudioUnit {
 }
 
 /**
+ * A silent placeholder exposing a given number of input/output ports (each a GainNode),
+ * so a node realizes and can be wired without error while its real engine is pending.
+ * Used for Pd modules until the Pd (WebPd / libpd) engine is integrated.
+ */
+export class StubUnit implements AudioUnit {
+  readonly numInputs: number;
+  readonly numOutputs: number;
+  private ins: GainNode[];
+  private outs: GainNode[];
+
+  constructor(ctx: BaseAudioContext, numInputs: number, numOutputs: number) {
+    this.numInputs = numInputs;
+    this.numOutputs = numOutputs;
+    this.ins = Array.from({ length: numInputs }, () => ctx.createGain());
+    this.outs = Array.from({ length: numOutputs }, () => ctx.createGain());
+  }
+
+  input(i: number) {
+    return this.ins[i] ? { node: this.ins[i] as AudioNode, channel: 0 } : null;
+  }
+  output(i: number) {
+    return this.outs[i] ? { node: this.outs[i] as AudioNode, channel: 0 } : null;
+  }
+  setValue() {}
+  onInputConnected() {}
+  dispose() {
+    for (const g of [...this.ins, ...this.outs]) {
+      try {
+        g.disconnect();
+      } catch {
+        /* noop */
+      }
+    }
+  }
+}
+
+/**
  * An embedded patch, flattened: it owns the child subgraph's units (already wired
  * internally by AudioGraph) and exposes the patch's ports as the boundary GainNodes of
  * its I/O terminals. `input(i)` / `output(i)` are the i-th input/output terminal's

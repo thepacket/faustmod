@@ -367,6 +367,11 @@ body {
 .split-panel .pane-top {
   flex: 0 0 auto;
 }
+.section-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0 4px;
+}
 .split-panel .pane-bottom {
   flex: 1 1 0;
 }
