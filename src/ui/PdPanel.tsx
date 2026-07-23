@@ -53,7 +53,7 @@ export function PdPanel({ disabled, onEdit }: Props) {
       </div>
       <div className="palette-actions">
         <button className="palette-btn" onClick={() => onEdit(undefined)} disabled={disabled}>
-          + New Pd DSP
+          Editor
         </button>
         <button className="palette-btn" onClick={() => fileRef.current?.click()} disabled={disabled}>
           Load
@@ -64,7 +64,7 @@ export function PdPanel({ disabled, onEdit }: Props) {
 
       {list.length === 0 && (
         <p className="hint">
-          No Pd modules yet. <strong>+ New Pd DSP</strong> opens the editor (write or generate a Pd
+          No Pd modules yet. <strong>Editor</strong> opens the code editor (write or generate a Pd
           patch with AI); <strong>Load</strong> imports a <code>.pd</code> file. Run by WebPd; audio
           I/O via <code>adc~</code>/<code>dac~</code>.
         </p>
