@@ -251,7 +251,7 @@ class AudioGraphImpl {
         // Run the .pd via WebPd. Lazy-import keeps webpd out of the initial bundle.
         if (!def.code) return new StubUnit(ctx, def.inputs.length, def.outputs.length);
         const { createPdUnit } = await import("./PdUnit");
-        return createPdUnit(ctx as AudioContext, def.code, def.inputs.length, def.outputs.length);
+        return createPdUnit(ctx as AudioContext, def.code, def.inputs, def.outputs.length);
       }
       case "module": {
         // Ported Faust example: precompiled factory + params-as-control-inputs.

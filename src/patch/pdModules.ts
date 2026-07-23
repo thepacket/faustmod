@@ -45,26 +45,37 @@ function channelsOf(args: string[]): number[] {
 export function parsePdPorts(pd: string): { inputs: InputSpec[]; outputs: OutputSpec[] } {
   let maxIn = 0;
   let maxOut = 0;
-  // Optional port names from `@in ...` / `@out ...` comments (Pd has no native audio
-  // port names). Channel i's name is the i-th word after the marker.
+  // Optional metadata from Pd comments (Pd has no native audio port names/ranges):
+  //   @in a b c   / @out l r        → port names
+  //   @param <name> <default> <min> <max> → make that input a control input with range
   let inNames: string[] = [];
   let outNames: string[] = [];
+  const params = new Map<string, { default: number; min: number; max: number }>();
   for (const rec of pdRecords(pd)) {
     const t = rec.split(/\s+/);
     if (t[0] === "#X" && t[1] === "obj") {
       if (t[4] === "adc~") maxIn = Math.max(maxIn, ...channelsOf(t.slice(5)));
       else if (t[4] === "dac~") maxOut = Math.max(maxOut, ...channelsOf(t.slice(5)));
     } else if (t[0] === "#X" && t[1] === "text") {
-      const words = t.slice(4); // after `#X text X Y`
-      if (words[0] === "@in") inNames = words.slice(1);
-      else if (words[0] === "@out") outNames = words.slice(1);
+      const w = t.slice(4); // words after `#X text X Y`
+      if (w[0] === "@in") inNames = w.slice(1);
+      else if (w[0] === "@out") outNames = w.slice(1);
+      else if (w[0] === "@param" && w.length >= 5) {
+        params.set(w[1], { default: +w[2], min: +w[3], max: +w[4] });
+      }
     }
   }
   maxOut = Math.min(maxOut, 2); // WebPd output is stereo
-  // Use the declared name for a channel, else its number (left = in, right = out).
-  const ports = (n: number, names: string[]) =>
-    Array.from({ length: n }, (_, i) => ({ label: names[i] || `${i + 1}` }));
-  return { inputs: ports(maxIn, inNames), outputs: ports(maxOut, outNames) };
+
+  const inputs: InputSpec[] = Array.from({ length: maxIn }, (_, i) => {
+    const label = inNames[i] || `${i + 1}`;
+    const p = params.get(label);
+    return p ? { label, default: p.default, min: p.min, max: p.max } : { label };
+  });
+  const outputs: OutputSpec[] = Array.from({ length: maxOut }, (_, i) => ({
+    label: outNames[i] || `${i + 1}`,
+  }));
+  return { inputs, outputs };
 }
 
 /** Palette/canvas view of a Pd module — it looks like any component node. */
