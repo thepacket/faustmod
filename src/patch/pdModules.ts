@@ -53,9 +53,9 @@ export function parsePdPorts(pd: string): { inputs: InputSpec[]; outputs: Output
     }
   }
   maxOut = Math.min(maxOut, 2); // WebPd output is stereo
-  const ports = (n: number, base: string) =>
-    Array.from({ length: n }, (_, i) => ({ label: `${base} ${i + 1}` }));
-  return { inputs: ports(maxIn, "in"), outputs: ports(maxOut, "out") };
+  // Labels are just the channel number — left = inputs, right = outputs by position.
+  const ports = (n: number) => Array.from({ length: n }, (_, i) => ({ label: `${i + 1}` }));
+  return { inputs: ports(maxIn), outputs: ports(maxOut) };
 }
 
 /** Palette/canvas view of a Pd module — it looks like any component node. */
