@@ -1,0 +1,15 @@
+#N canvas 0 0 460 320 12;
+#X obj 40 70 adc~ 1;
+#X obj 160 70 adc~ 2;
+#X obj 160 110 osc~;
+#X obj 40 170 *~;
+#X obj 40 230 dac~ 1;
+#X connect 1 0 2 0;
+#X connect 0 0 3 0;
+#X connect 2 0 3 1;
+#X connect 3 0 4 0;
+#X text 40 20 @name RingMod;
+#X text 40 270 @desc Ring modulation with a sine carrier.;
+#X text 40 290 @in audio freq;
+#X text 240 290 @out out;
+#X text 40 310 @param freq 220 1 5000;

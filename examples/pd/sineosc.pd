@@ -1,0 +1,13 @@
+#N canvas 0 0 460 300 12;
+#X obj 40 70 adc~ 1;
+#X obj 40 120 osc~;
+#X obj 40 160 *~ 0.2;
+#X obj 40 210 dac~ 1;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 2 0 3 0;
+#X text 40 20 @name Sine Osc;
+#X text 40 250 @desc Sine oscillator (generator).;
+#X text 40 270 @in freq;
+#X text 240 270 @out out;
+#X text 40 290 @param freq 220 20 8000;

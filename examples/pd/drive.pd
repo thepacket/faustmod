@@ -1,0 +1,15 @@
+#N canvas 0 0 460 320 12;
+#X obj 40 70 adc~ 1;
+#X obj 160 70 adc~ 2;
+#X obj 40 140 *~;
+#X obj 40 180 clip~ -1 1;
+#X obj 40 230 dac~ 1;
+#X connect 0 0 2 0;
+#X connect 1 0 2 1;
+#X connect 2 0 3 0;
+#X connect 3 0 4 0;
+#X text 40 20 @name Drive;
+#X text 40 270 @desc Gain into a hard clip for distortion.;
+#X text 40 290 @in audio drive;
+#X text 240 290 @out out;
+#X text 40 310 @param drive 1 1 50;
