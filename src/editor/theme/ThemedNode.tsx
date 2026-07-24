@@ -134,6 +134,10 @@ export function ThemedNode(props: Props) {
       style={{ ["--accent" as string]: accentFor(category ?? "") }}
       onDoubleClick={editable ? () => ModuleEditBridge.open(id) : undefined}
     >
+      {/* Headerless widgets (sliders/buttons) and constants have no title to grab, so give
+          them a thin drag grip. It carries no pointer handler, so rete moves the node. */}
+      {(isTitleless || isConstant) && <div className="dsp-grip" data-tip="Drag to move" />}
+
       {!isConstant &&
         !isTitleless &&
         (editing ? (

@@ -676,6 +676,22 @@ body {
   background: radial-gradient(circle at 1px 1px, #2a2f3d 1px, transparent 0) 0 0 / 22px 22px,
     var(--bg);
 }
+/* Drag grip for headerless widgets (sliders/buttons) and constants — a thin dotted bar
+   to move the node without touching its value. No pointer handler, so rete moves it. */
+.dsp-grip {
+  height: 9px;
+  flex: none;
+  cursor: grab;
+  border-radius: 8px 8px 0 0;
+  background-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.4) 1px, transparent 1.3px);
+  background-size: 6px 6px;
+  background-position: center;
+}
+.dsp-grip:active {
+  cursor: grabbing;
+}
+
 /* Custom canvas scrollbars (rete pans via transform, so no native scroll). The tracks are
    click-through; only the thumbs are draggable. */
 .canvas-scroll {
