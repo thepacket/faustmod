@@ -8,6 +8,11 @@ import { PatchPanel } from "./PatchPanel";
 import { PdPanel } from "./PdPanel";
 import { download, safeName } from "../patch/download";
 
+// Pd modules are fully implemented (WebPd engine, editor, AI generation) but the workflow
+// is too clunky to ship. Kept in the code; hidden from the UI. Flip to re-expose the
+// "Pd DSP" palette section (see PdPanel, PdEngine, pdModules, editorLangs.pdLang).
+const SHOW_PD_MODULES = false;
+
 interface Props {
   disabled: boolean;
   /** Open the Faust editor for a user-defined DSP module. */
@@ -251,8 +256,12 @@ export function ModulePanel({ disabled, onEdit, onAddPatch, onSavePatch, onOpenP
         </div>
       ))}
 
-        <div className="section-divider" />
-        <PdPanel disabled={disabled} onEdit={onEditPd} />
+        {SHOW_PD_MODULES && (
+          <>
+            <div className="section-divider" />
+            <PdPanel disabled={disabled} onEdit={onEditPd} />
+          </>
+        )}
       </section>
 
       <div
