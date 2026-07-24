@@ -13,6 +13,7 @@ import {
 import {
   MeterUnit,
   ScopeUnit,
+  XYScopeUnit,
   SpectrumUnit,
   SequencerUnit,
   GateFreqUnit,
@@ -263,6 +264,9 @@ class AudioGraphImpl {
         switch (def.widget) {
           case "scope":
             widgetUnit = new ScopeUnit(ctx);
+            break;
+          case "xyscope":
+            widgetUnit = new XYScopeUnit(ctx);
             break;
           case "spectrogram":
           case "spectrum":

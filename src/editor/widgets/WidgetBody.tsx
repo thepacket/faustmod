@@ -1,5 +1,6 @@
 import type { WidgetNode } from "./WidgetBridge";
 import { Scope } from "./Scope";
+import { XYScope } from "./XYScope";
 import { Spectrogram } from "./Spectrogram";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { Tuner } from "./Tuner";
@@ -23,6 +24,8 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
   switch (node.widget) {
     case "scope":
       return <Scope node={node} />;
+    case "xyscope":
+      return <XYScope node={node} />;
     case "spectrogram":
       return <Spectrogram node={node} />;
     case "spectrum":

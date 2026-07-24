@@ -20,6 +20,20 @@ export const WIDGETS: ComponentDef[] = [
     defaultSize: { w: 280, h: 150 },
   },
   {
+    id: "xy-scope",
+    title: "XY Scope",
+    category: "Instruments",
+    kind: "widget",
+    widget: "xyscope",
+    // Square 1:1 (vectorscope); resize keeps the aspect via widgetConfig.square.
+    widgetConfig: { square: true },
+    tooltip: "XY / vectorscope (Lissajous). Plots x (horizontal) against y (vertical); both −1…1.",
+    inputs: [{ label: "x" }, { label: "y" }],
+    outputs: [],
+    resizable: true,
+    defaultSize: { w: 160, h: 160 },
+  },
+  {
     id: "spectrogram",
     title: "Spectrogram",
     category: "Instruments",

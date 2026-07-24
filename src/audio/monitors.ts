@@ -186,6 +186,59 @@ export class ScopeUnit implements AudioUnit, ScopeMonitor {
   }
 }
 
+// ---- XY / vectorscope (x + y inputs, no trigger) -------------------------
+export interface XYScopeMonitor {
+  readX(buf: Float32Array): void;
+  readY(buf: Float32Array): void;
+}
+
+export class XYScopeUnit implements AudioUnit, XYScopeMonitor {
+  readonly numInputs = 2;
+  readonly numOutputs = 0;
+  private xMerger: ChannelMergerNode;
+  private yMerger: ChannelMergerNode;
+  private xAnalyser: AnalyserNode;
+  private yAnalyser: AnalyserNode;
+
+  constructor(ctx: BaseAudioContext) {
+    this.xMerger = ctx.createChannelMerger(1);
+    this.xAnalyser = ctx.createAnalyser();
+    this.xAnalyser.fftSize = 2048;
+    this.xMerger.connect(this.xAnalyser);
+
+    this.yMerger = ctx.createChannelMerger(1);
+    this.yAnalyser = ctx.createAnalyser();
+    this.yAnalyser.fftSize = 2048;
+    this.yMerger.connect(this.yAnalyser);
+  }
+  input(i: number) {
+    if (i === 0) return { node: this.xMerger as AudioNode, channel: 0 };
+    if (i === 1) return { node: this.yMerger as AudioNode, channel: 0 };
+    return null;
+  }
+  output() {
+    return null;
+  }
+  readX(buf: Float32Array) {
+    this.xAnalyser.getFloatTimeDomainData(buf as Float32Array<ArrayBuffer>);
+  }
+  readY(buf: Float32Array) {
+    this.yAnalyser.getFloatTimeDomainData(buf as Float32Array<ArrayBuffer>);
+  }
+  setValue() {}
+  onInputConnected() {}
+  dispose() {
+    try {
+      this.xMerger.disconnect();
+      this.xAnalyser.disconnect();
+      this.yMerger.disconnect();
+      this.yAnalyser.disconnect();
+    } catch {
+      /* noop */
+    }
+  }
+}
+
 // ---- Spectrogram / spectrum ----------------------------------------------
 export class SpectrumUnit implements AudioUnit, SpectrumMonitor {
   readonly numInputs = 1;
