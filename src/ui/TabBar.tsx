@@ -5,10 +5,14 @@ interface Props {
   active: number;
   onSelect: (i: number) => void;
   onClose: (i: number) => void;
-  onNew: () => void;
 }
 
-export function TabBar({ tabs, active, onSelect, onClose, onNew }: Props) {
+/**
+ * The open-patch tabs. Tabs are opened from the Patches library (New / Load / double-
+ * click), never here — so there's no "+" new-tab button; the user can only switch and
+ * close tabs.
+ */
+export function TabBar({ tabs, active, onSelect, onClose }: Props) {
   return (
     <div className="tabbar">
       {tabs.map((t, i) => (
@@ -32,9 +36,6 @@ export function TabBar({ tabs, active, onSelect, onClose, onNew }: Props) {
           </button>
         </div>
       ))}
-      <button className="tab-new" onClick={onNew} title="New tab">
-        +
-      </button>
     </div>
   );
 }

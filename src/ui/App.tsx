@@ -7,7 +7,6 @@ import { AudioGraph } from "../audio/AudioGraph";
 import { AudioEngine } from "../audio/AudioEngine";
 import { PatchManager } from "../patch/PatchManager";
 import { TabsManager, type TabInfo } from "../patch/TabsManager";
-import { buildAiBrief } from "../patch/aiBrief";
 import { MenuBar, type Menu } from "./MenuBar";
 import { TabBar } from "./TabBar";
 import { LibraryPanel } from "./LibraryPanel";
@@ -341,16 +340,6 @@ export function App() {
     input.click();
   };
 
-  const exportBrief = () => {
-    const url = URL.createObjectURL(new Blob([buildAiBrief()], { type: "text/markdown" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "faustmod-catalog-for-ai.md";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setStatus("Exported catalog for AI");
-  };
-
   // Global keyboard shortcuts (rete handles ⌘Z/⌘Y on the canvas itself).
   useEffect(() => {
     if (!ready) return;
@@ -360,16 +349,7 @@ export function App() {
         !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
       const mod = e.metaKey || e.ctrlKey;
       const k = e.key.toLowerCase();
-      if (mod && k === "s") {
-        e.preventDefault();
-        void (e.shiftKey ? pm()?.saveAs() : pm()?.save());
-      } else if (mod && k === "o") {
-        e.preventDefault();
-        void tb()?.openFile();
-      } else if (mod && k === "n") {
-        e.preventDefault();
-        void tb()?.newTab();
-      } else if (!inField && mod && k === "d") {
+      if (!inField && mod && k === "d") {
         e.preventDefault();
         void ed()?.duplicateSelected();
       } else if (!inField && mod && k === "c") {
@@ -393,16 +373,8 @@ export function App() {
     {
       label: "File",
       items: [
-        { label: "New Tab", shortcut: "⌘N", onClick: () => void tb()?.newTab() },
-        { label: "Open…", shortcut: "⌘O", onClick: () => void tb()?.openFile() },
-        { label: "Presets…", onClick: () => setModal("presets") },
-        { separator: true },
-        { label: "Save", shortcut: "⌘S", onClick: () => void pm()?.save() },
-        { label: "Save As…", shortcut: "⇧⌘S", onClick: () => void pm()?.saveAs() },
-        { separator: true },
-        { label: "Export a copy…", onClick: () => pm()?.export() },
-        { label: "Export Catalog for AI…", onClick: () => exportBrief() },
-        { separator: true },
+        // Faust DSP and patches live in the library, not in files — so no New/Open/Save
+        // here. Only whole-library backup Export/Import, and Settings.
         { label: "Export All (backup)…", onClick: () => exportAll() },
         { label: "Import All (restore)…", onClick: () => importAll() },
         { separator: true },
@@ -476,7 +448,6 @@ export function App() {
         active={activeTab}
         onSelect={(i) => void tb()?.switchTo(i)}
         onClose={(i) => void tb()?.closeTab(i)}
-        onNew={() => void tb()?.newTab()}
       />
       <div className="body">
         <LibraryPanel disabled={!ready} />
