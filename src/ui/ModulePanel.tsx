@@ -156,7 +156,7 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
   };
 
   if (panelCollapsed) {
-    return <CollapsedStrip label="User Defined DSP" side="right" onExpand={togglePanel} />;
+    return <CollapsedStrip label="User Defined DSP" side="left" onExpand={togglePanel} />;
   }
 
   return (
@@ -166,7 +166,7 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
           <h2>Faust DSP</h2>
           <div className="head-right">
             <span className="count">{list.length}</span>
-            <PanelCollapseButton side="right" onClick={togglePanel} />
+            <PanelCollapseButton side="left" onClick={togglePanel} />
           </div>
         </div>
         <input

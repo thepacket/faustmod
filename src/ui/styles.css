@@ -345,18 +345,28 @@ body {
 .panel {
   width: 230px;
   background: var(--panel);
-  border-right: 1px solid var(--border);
   padding: 12px;
   overflow-y: auto;
 }
 .panel.ai {
-  border-right: none;
   border-left: 1px solid var(--border);
   width: 300px;
 }
-.panel.modules {
-  border-right: none;
+/* Panel placement (right-handed layout): user DSP / Patches on the LEFT, the big
+   COMPONENTS palette on the RIGHT (nearer the mouse). Borders live on .canvas-host so a
+   separator always sits between the canvas and whichever panel is adjacent. */
+.panel.modules,
+.panel.collapsed-left {
+  order: 1;
+}
+.canvas-host {
+  order: 2;
   border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.panel.library,
+.panel.collapsed-right {
+  order: 3;
 }
 /* Two stacked sections (User Defined DSP / Patches) with a draggable divider. */
 .panel.split-panel {
@@ -500,7 +510,7 @@ body {
   font-weight: 600;
 }
 /* On the left panel, read the label bottom-to-top. */
-.panel.library.collapsed .vlabel {
+.panel.collapsed-left .vlabel {
   transform: rotate(180deg);
 }
 .search {

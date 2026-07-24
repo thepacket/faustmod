@@ -58,7 +58,7 @@ export function LibraryPanel({ disabled }: Props) {
   const expandAll = () => setCollapsed(new Set());
 
   if (panelCollapsed) {
-    return <CollapsedStrip label="Components" side="left" onExpand={togglePanel} />;
+    return <CollapsedStrip label="Components" side="right" onExpand={togglePanel} />;
   }
 
   return (
@@ -67,7 +67,7 @@ export function LibraryPanel({ disabled }: Props) {
         <h2>Components</h2>
         <div className="head-right">
           <span className="count">{searching ? `${shown}/${total}` : total}</span>
-          <PanelCollapseButton side="left" onClick={togglePanel} />
+          <PanelCollapseButton side="right" onClick={togglePanel} />
         </div>
       </div>
       <input

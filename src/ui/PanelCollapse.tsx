@@ -25,7 +25,7 @@ export function CollapsedStrip({
   // Chevron points toward the canvas (where the panel will reappear from).
   const chevron = side === "left" ? "›" : "‹";
   return (
-    <aside className={`panel ${side === "left" ? "library" : "modules"} collapsed`}>
+    <aside className={`panel collapsed collapsed-${side}`}>
       <button className="panel-expand" onClick={onExpand} title={`Show ${label}`}>
         <span className="chev">{chevron}</span>
         <span className="vlabel">{label}</span>
