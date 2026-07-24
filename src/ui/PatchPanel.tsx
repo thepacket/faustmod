@@ -36,7 +36,7 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
     setRenamingId(null);
   };
 
-  const duplicate = (id: string, name: string, patch: (typeof list)[number]["patch"]) => {
+  const duplicate = (name: string, patch: (typeof list)[number]["patch"]) => {
     const taken = new Set(list.map((p) => p.name));
     let copy = `${name} copy`;
     for (let n = 2; taken.has(copy); n++) copy = `${name} copy ${n}`;
@@ -119,7 +119,7 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
               title="Duplicate this patch"
               onClick={(e) => {
                 e.stopPropagation();
-                duplicate(p.id, p.name, p.patch);
+                duplicate(p.name, p.patch);
               }}
             >
               Dup
