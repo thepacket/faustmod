@@ -23,7 +23,7 @@ import {
   NullUnit,
   Monitors,
 } from "./monitors";
-import { TableUnit, MultiCVUnit, EqCurveUnit } from "./tableUnits";
+import { TableUnit, MultiCVUnit, EqCurveUnit, ProbeUnit } from "./tableUnits";
 import { PatternUnit } from "./seqUnits";
 import type { AudioUnit, InputSpec } from "./types";
 import { resolveComponent } from "../components/customBlocks";
@@ -344,6 +344,25 @@ class AudioGraphImpl {
             });
             break;
           }
+          case "selector":
+          case "numbox": {
+            // Same story as knob/slider: the body drives the value through Monitors.
+            const v = data.registerMonitors
+              ? Number(def.widgetConfig?.default ?? 0)
+              : Number(data.state?.value ?? def.widgetConfig?.default ?? 0);
+            widgetUnit = new ConstantUnit(ctx, v);
+            break;
+          }
+          case "morphpad":
+          case "pads":
+          case "randomize":
+            widgetUnit = new MultiCVUnit(ctx, def.outputs.length, 0);
+            break;
+          case "midi-out":
+            widgetUnit = new ProbeUnit(ctx, def.inputs.length);
+            break;
+          case "panel-frame":
+          case "midi-monitor":
           case "comment":
             widgetUnit = new NullUnit();
             break;

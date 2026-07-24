@@ -929,3 +929,211 @@
   background: linear-gradient(180deg, #9775fa, #6741d9);
   border-radius: 1px;
 }
+
+/* ---- Selector / number box / dice ---- */
+.selector {
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  flex-wrap: wrap;
+  max-width: 132px;
+}
+.sel-btn {
+  min-width: 20px;
+  padding: 3px 5px;
+  font-size: 10px;
+  background: #191b21;
+  border: 1px solid #0b0c10;
+  border-radius: 4px;
+  color: #aab1c0;
+  cursor: pointer;
+}
+.sel-btn.on {
+  background: color-mix(in srgb, var(--accent) 30%, #191b21);
+  border-color: var(--accent);
+  color: #fff;
+}
+.sel-menu,
+.midiout-port {
+  background: #0f1116;
+  border: 1px solid #0b0c10;
+  border-radius: 4px;
+  color: #cfd4e0;
+  font-size: 10px;
+  padding: 3px 4px;
+  max-width: 128px;
+}
+.numbox {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 4px 6px;
+  background: #0f1116;
+  border: 1px solid #0b0c10;
+  border-radius: 4px;
+  cursor: ns-resize;
+  min-width: 66px;
+  justify-content: center;
+}
+.numbox-val {
+  font: 12px ui-monospace, monospace;
+  color: #9fe6c4;
+}
+.numbox-unit {
+  font-size: 9px;
+  color: var(--muted);
+}
+.numbox-input {
+  width: 64px;
+  background: transparent;
+  border: none;
+  color: #9fe6c4;
+  font: 12px ui-monospace, monospace;
+  text-align: center;
+  outline: none;
+}
+.dice {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+}
+.dice-btn {
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 6px;
+  background: #191b21;
+  border: 1px solid #0b0c10;
+  border-radius: 4px;
+  color: #cfd4e0;
+  cursor: pointer;
+}
+.dice-val {
+  font: 10px ui-monospace, monospace;
+  color: var(--muted);
+}
+
+/* ---- Morph pad ---- */
+.morph {
+  padding: 3px;
+}
+.morph-row {
+  display: flex;
+  gap: 3px;
+  margin-top: 3px;
+}
+.morph-corner {
+  display: flex;
+}
+.morph-btn {
+  font-size: 9px;
+  padding: 2px 4px;
+  background: #191b21;
+  border: 1px solid #0b0c10;
+  border-radius: 3px 0 0 3px;
+  color: #cfd4e0;
+  cursor: pointer;
+}
+.morph-btn.dice {
+  border-radius: 0 3px 3px 0;
+  border-left: none;
+  color: #8d94a6;
+}
+
+/* ---- Pads ---- */
+.pads {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+  padding: 4px;
+  outline: none;
+}
+.pad {
+  width: 26px;
+  height: 22px;
+  background: #191b21;
+  border: 1px solid #0b0c10;
+  border-radius: 4px;
+  color: #8d94a6;
+  font-size: 9px;
+  cursor: pointer;
+}
+.pad.on {
+  background: color-mix(in srgb, var(--accent) 55%, #191b21);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ---- Group frame: a backdrop, so it must not swallow clicks meant for nodes ---- */
+.panel-frame {
+  border: 1px dashed;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  pointer-events: none;
+}
+.panel-frame-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: 6px 6px 0 0;
+  pointer-events: auto;
+}
+.panel-frame-label {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #0b0c10;
+  font-size: 10px;
+  font-weight: 600;
+  width: 100%;
+}
+.panel-frame-color {
+  background: transparent;
+  border: none;
+  color: #0b0c10;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+/* ---- MIDI out / monitor ---- */
+.midiout,
+.midimon {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px;
+}
+.midiout-status,
+.midimon-head {
+  font: 9px ui-monospace, monospace;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+.midimon-clear {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font: 9px ui-monospace, monospace;
+  text-decoration: underline;
+}
+.midimon-log {
+  flex: 1;
+  overflow: hidden;
+  background: #0a0c10;
+  border: 1px solid #0b0c10;
+  border-radius: 4px;
+  padding: 3px 4px;
+}
+.midimon-line,
+.midimon-empty {
+  font: 9px ui-monospace, monospace;
+  color: #9fe6c4;
+  white-space: nowrap;
+}
+.midimon-empty {
+  color: var(--muted);
+}

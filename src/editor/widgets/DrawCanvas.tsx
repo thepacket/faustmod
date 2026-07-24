@@ -66,6 +66,16 @@ export function pushTable(nodeId: string, table: Float32Array) {
 }
 
 /**
+ * Push control values straight to the running unit. Momentary widgets (pads, dice) must
+ * call this the instant they fire: waiting for the next poll can miss a short pulse
+ * entirely if the browser throttles timers.
+ */
+export function pushValues(nodeId: string, values: number[]) {
+  const m = Monitors.get(nodeId) as { setValues?(v: number[]): void } | undefined;
+  m?.setValues?.(values);
+}
+
+/**
  * Keep the running unit in sync with a drawn shape: pushes on mount, whenever `deps`
  * change, and periodically while the graph may still be starting up (a widget can be
  * drawn before Start, so the unit appears later and needs the shape resent once).

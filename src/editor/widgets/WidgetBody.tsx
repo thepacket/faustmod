@@ -28,6 +28,14 @@ import { Transport } from "./Transport";
 import { PianoRoll } from "./PianoRoll";
 import { EuclidCircle } from "./EuclidCircle";
 import { TuringMachine } from "./TuringMachine";
+import { Selector } from "./Selector";
+import { NumberBox } from "./NumberBox";
+import { MorphPad } from "./MorphPad";
+import { Pads } from "./Pads";
+import { Randomize } from "./Randomize";
+import { PanelFrame } from "./PanelFrame";
+import { MidiOut } from "./MidiOut";
+import { MidiMonitor } from "./MidiMonitor";
 
 /** Renders the custom body for a widget node, dispatched by its `widget` type. */
 export function WidgetBody({ node }: { node: WidgetNode }) {
@@ -91,6 +99,22 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
       return <EuclidCircle node={node} />;
     case "turing":
       return <TuringMachine node={node} />;
+    case "selector":
+      return <Selector node={node} />;
+    case "numbox":
+      return <NumberBox node={node} />;
+    case "morphpad":
+      return <MorphPad node={node} />;
+    case "pads":
+      return <Pads node={node} />;
+    case "randomize":
+      return <Randomize node={node} />;
+    case "panel-frame":
+      return <PanelFrame node={node} />;
+    case "midi-out":
+      return <MidiOut node={node} />;
+    case "midi-monitor":
+      return <MidiMonitor node={node} />;
     default:
       return null;
   }

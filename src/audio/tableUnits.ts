@@ -287,3 +287,57 @@ export class MultiCVUnit implements AudioUnit, MultiCVMonitor {
     }
   }
 }
+
+// ---- Multi-input probe (MIDI Out, value monitors) -------------------------
+export interface ProbeMonitor {
+  /** Instantaneous level of input `i` (mean of the analyser window, so DC survives). */
+  level(i: number): number;
+}
+
+/**
+ * Taps N inputs with analysers so a React body can read their values at control rate.
+ * Unlike MeterUnit this reports the *mean* rather than RMS, so a steady CV (a pitch in
+ * Hz, a held gate) reads as its actual value instead of its energy.
+ */
+export class ProbeUnit implements AudioUnit, ProbeMonitor {
+  readonly numInputs: number;
+  readonly numOutputs = 0;
+  private analysers: AnalyserNode[];
+  private buf: Float32Array;
+
+  constructor(ctx: BaseAudioContext, inputs: number) {
+    this.numInputs = inputs;
+    this.analysers = Array.from({ length: inputs }, () => {
+      const a = ctx.createAnalyser();
+      a.fftSize = 1024;
+      return a;
+    });
+    this.buf = new Float32Array(1024);
+  }
+  input(i: number) {
+    const a = this.analysers[i];
+    return a ? { node: a as AudioNode, channel: 0 } : null;
+  }
+  output() {
+    return null;
+  }
+  level(i: number) {
+    const a = this.analysers[i];
+    if (!a) return 0;
+    a.getFloatTimeDomainData(this.buf as Float32Array<ArrayBuffer>);
+    let s = 0;
+    for (const v of this.buf) s += v;
+    return s / this.buf.length;
+  }
+  setValue() {}
+  onInputConnected() {}
+  dispose() {
+    for (const a of this.analysers) {
+      try {
+        a.disconnect();
+      } catch {
+        /* noop */
+      }
+    }
+  }
+}
