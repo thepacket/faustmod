@@ -433,10 +433,6 @@ export function App() {
       ],
     },
     {
-      label: "Block",
-      items: [{ label: "Import DSP Block…", onClick: () => setModal("import-block") }],
-    },
-    {
       label: "Help",
       items: [{ label: "About FaustMod", onClick: () => setModal("about") }],
     },
