@@ -26,6 +26,7 @@ interface Props {
 export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onRenamePatch }: Props) {
   const [rev, bump] = useReducer((x) => x + 1, 0);
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   useEffect(() => SavedPatches.subscribe(bump), []);
   void rev;
 
@@ -36,15 +37,16 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
     setRenamingId(null);
   };
 
-  const duplicate = (name: string, patch: (typeof list)[number]["patch"]) => {
+  // Duplicate the currently selected patch into a new "<name> copy" entry.
+  const duplicateSelected = () => {
+    const src = selectedId && SavedPatches.get(selectedId);
+    if (!src) return;
     const taken = new Set(list.map((p) => p.name));
-    let copy = `${name} copy`;
-    for (let n = 2; taken.has(copy); n++) copy = `${name} copy ${n}`;
-    SavedPatches.add({
-      id: `saved-${Date.now().toString(36)}`,
-      name: copy,
-      patch: { ...structuredClone(patch), name: copy },
-    });
+    let copy = `${src.name} copy`;
+    for (let n = 2; taken.has(copy); n++) copy = `${src.name} copy ${n}`;
+    const id = `saved-${Date.now().toString(36)}`;
+    SavedPatches.add({ id, name: copy, patch: { ...structuredClone(src.patch), name: copy } });
+    setSelectedId(id);
   };
 
   return (
@@ -59,6 +61,14 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
         </button>
         <button className="palette-btn" onClick={onLoadPatch} disabled={disabled}>
           Load
+        </button>
+        <button
+          className="palette-btn"
+          onClick={duplicateSelected}
+          disabled={disabled || !selectedId}
+          title="Duplicate the selected patch"
+        >
+          Dup
         </button>
       </div>
 
@@ -76,7 +86,7 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
         return (
           <div
             key={p.id}
-            className="comp"
+            className={`comp${selectedId === p.id ? " selected" : ""}`}
             // Embeddable patches can be dragged onto a canvas as a node.
             draggable={!disabled && embeddable && renamingId !== p.id}
             onDragStart={(e) => {
@@ -85,6 +95,7 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
               e.dataTransfer.setData("text/plain", p.name);
               e.dataTransfer.effectAllowed = "copy";
             }}
+            onClick={() => setSelectedId(p.id)}
             onDoubleClick={() => onOpenPatch(p.id)}
             title={
               embeddable
@@ -114,16 +125,6 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
             ) : (
               <span className="comp-name">{p.name}</span>
             )}
-            <button
-              className="comp-act"
-              title="Duplicate this patch"
-              onClick={(e) => {
-                e.stopPropagation();
-                duplicate(p.name, p.patch);
-              }}
-            >
-              Dup
-            </button>
             <button
               className="comp-act"
               title="Save this patch to disk (.faustmod)"

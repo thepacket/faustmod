@@ -51,6 +51,7 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
   const [panelCollapsed, togglePanel] = usePanelCollapsed("faustmod.panel.modules");
   const [query, setQuery] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rev, bump] = useReducer((x) => x + 1, 0);
   useEffect(() => CustomBlocks.subscribe(bump), []);
 
@@ -114,13 +115,16 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
     setRenamingId(null);
   };
 
-  const duplicate = (def: ComponentDef) => {
-    const block = CustomBlocks.toDef(def.id);
+  // Duplicate the currently selected module into a new "<name> copy" entry.
+  const duplicateSelected = () => {
+    const block = selectedId && CustomBlocks.toDef(selectedId);
     if (!block) return;
     const taken = new Set(mods.map((m) => m.title));
-    let name = `${def.title} copy`;
-    for (let n = 2; taken.has(name); n++) name = `${def.title} copy ${n}`;
-    CustomBlocks.add({ ...block, id: `user-${Date.now().toString(36)}`, title: name });
+    let name = `${block.title} copy`;
+    for (let n = 2; taken.has(name); n++) name = `${block.title} copy ${n}`;
+    const id = `user-${Date.now().toString(36)}`;
+    CustomBlocks.add({ ...block, id, title: name });
+    setSelectedId(id);
   };
 
   // Load a `.dsp` file as a new user module: compile to derive its connectors, then store.
@@ -180,6 +184,14 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
           <button className="palette-btn" onClick={() => fileRef.current?.click()} disabled={disabled}>
             Load
           </button>
+          <button
+            className="palette-btn"
+            onClick={duplicateSelected}
+            disabled={disabled || !selectedId}
+            title="Duplicate the selected DSP"
+          >
+            Dup
+          </button>
           <input ref={fileRef} type="file" accept=".dsp" style={{ display: "none" }} onChange={onFile} />
         </div>
 
@@ -198,15 +210,16 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
       {list.map((def) => (
         <div
           key={def.id}
-          className="comp"
+          className={`comp${selectedId === def.id ? " selected" : ""}`}
           draggable={!disabled && renamingId !== def.id}
           onDragStart={(e) => {
             e.dataTransfer.setData(COMPONENT_DND_TYPE, def.id);
             e.dataTransfer.setData("text/plain", def.title);
             e.dataTransfer.effectAllowed = "copy";
           }}
+          onClick={() => setSelectedId(def.id)}
           onDoubleClick={() => onEdit(def, false)}
-          title={`${portSummary(def)}\nDouble-click to edit · drag onto the canvas`}
+          title={`${portSummary(def)}\nClick to select · double-click to edit · drag onto the canvas`}
         >
           {renamingId === def.id ? (
             <input
@@ -233,16 +246,6 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
               {def.title}
             </span>
           )}
-          <button
-            className="comp-act"
-            title="Duplicate this DSP"
-            onClick={(e) => {
-              e.stopPropagation();
-              duplicate(def);
-            }}
-          >
-            Dup
-          </button>
           <button
             className="comp-act"
             title="Save this DSP to disk (.dsp)"

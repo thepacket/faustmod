@@ -581,6 +581,10 @@ body {
 .comp:hover {
   border-color: var(--accent);
 }
+.comp.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel-2));
+}
 .comp-name {
   flex: 1;
   overflow: hidden;
