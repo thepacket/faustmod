@@ -685,15 +685,15 @@ body {
 }
 .canvas-scroll-h {
   left: 0;
-  right: 11px;
+  right: 13px;
   bottom: 0;
-  height: 11px;
+  height: 13px;
 }
 .canvas-scroll-v {
   top: 0;
-  bottom: 11px;
+  bottom: 13px;
   right: 0;
-  width: 11px;
+  width: 13px;
 }
 .canvas-scroll-thumb {
   position: absolute;
