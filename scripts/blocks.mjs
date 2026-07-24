@@ -804,4 +804,78 @@ B("osc-wavetable", "Wavetable Osc", "Oscillators",
      b3 = max(0, 1 - abs(p - 3));
    }`);
 
+// ================================================================= BATCH 6
+// Gaps in the palette that the Faust standard library already covers.
+
+// ------------------------------------------------------------------ Reverb
+// Greyhole: dark, diffuse, heavily modulated feedback network (SuperCollider port).
+B("re-greyhole", "Greyhole", "Reverb",
+  [sig("l", "L"), sig("r", "R"), ctl("dt", "delay", 0.5, 0.1, 1.45, "s"), ctl("damp", "damp", 0.3, 0, 1),
+   ctl("size", "size", 1, 0.5, 3), ctl("diff", "diffusion", 0.6, 0, 1), ctl("fb", "feedback", 0.5, 0, 1),
+   ctl("md", "mod depth", 0.3, 0, 1)],
+  "(l, r) : re.greyhole(dt, damp, size, diff, fb, md, 0.5)");
+// JPverb: lush algorithmic room/hall with per-band decay multipliers.
+B("re-jpverb", "JPverb", "Reverb",
+  [sig("l", "L"), sig("r", "R"), ctl("t60", "t60", 3, 0.1, 60, "s"), ctl("damp", "damp", 0.2, 0, 1),
+   ctl("size", "size", 1, 0.5, 5), ctl("diff", "diffusion", 0.8, 0, 1), ctl("low", "low mult", 0.9, 0, 1),
+   ctl("mid", "mid mult", 0.8, 0, 1), ctl("high", "high mult", 0.7, 0, 1)],
+  "(l, r) : re.jpverb(t60, damp, size, diff, 0.3, 0.4, low, mid, high, 500, 4000)");
+
+// ------------------------------------------------------------------ Effects
+// 16-band vocoder: the modulator's spectral envelope imposed on the carrier.
+B("ve-vocoder", "Vocoder", "Effects",
+  [sig("src", "modulator"), sig("exc", "carrier"), ctl("att", "attack", 0.01, 0.001, 0.5, "s"),
+   ctl("rel", "release", 0.05, 0.001, 1, "s"), ctl("bw", "bandwidth", 0.5, 0.1, 2)],
+  "ve.vocoder(16, att, rel, bw, src, exc) * 0.5"); // 16 summed bands run ~1.5x hot at unity
+// Reverse echo: two ramped reverse-delay taps, half a delay period apart.
+B("ef-reverse-echo", "Reverse Echo", "Delay", [sig("x", "in")], "x : ef.reverseEchoN(2, 22050)");
+
+// ------------------------------------------------------------------ Noise colours
+B("no-velvet", "Velvet Noise", "Noise",
+  [ctl("amp", "amp", 0.5, 0, 1), ctl("dens", "density", 1000, 10, 20000, "Hz")],
+  "no.velvet_noise(amp, dens)");
+B("no-gauss", "Gaussian Noise", "Noise", [GAIN(0.5)], "no.gnoise(4) * 0.3 * gain");
+// Brown (1/f^2): white through a leaky integrator. Violet (f^2): differentiated white.
+B("no-brown", "Brown Noise", "Noise", [GAIN(0.5)], "(no.noise * 0.07 : + ~ *(0.99)) * gain");
+B("no-violet", "Violet Noise", "Noise", [GAIN(0.5)], "(\\(n).(n - n'))(no.noise) * 0.5 * gain");
+
+// ------------------------------------------------------------------ Physical models
+// Waveguide models. Where the tube/string length maps cleanly to pitch (clarinet,
+// bowed string, guitar) the port is a frequency; the flute and brass models are
+// jet/lip driven, so they expose the physical length instead (as pm's own UI does).
+B("pm-clarinet", "Clarinet", "Synths",
+  [FREQ(), ctl("press", "pressure", 0.9, 0, 1), ctl("stiff", "reed stiffness", 0.5, 0, 1),
+   ctl("bell", "bell opening", 0.5, 0, 1)],
+  "pm.clarinetModel(pm.f2l(freq), press, stiff, bell)");
+B("pm-flute", "Flute", "Synths",
+  [ctl("len", "length", 0.5, 0.05, 2, "m"), ctl("mouth", "mouth pos", 0.5, 0, 1),
+   ctl("press", "pressure", 0.9, 0, 1)],
+  "pm.fluteModel(len, mouth, press)");
+B("pm-brass", "Brass", "Synths",
+  [ctl("len", "length", 1.4, 0.1, 3, "m"), ctl("lips", "lip tension", 0.8, 0, 1),
+   ctl("mute", "mute", 0.5, 0, 1), ctl("press", "pressure", 0.9, 0, 1)],
+  "pm.brassModel(len, lips, mute, press)");
+B("pm-violin", "Bowed String", "Synths",
+  [FREQ(), ctl("press", "bow pressure", 0.4, 0, 1), ctl("vel", "bow velocity", 0.25, 0, 1),
+   ctl("pos", "bow position", 0.15, 0.01, 0.5)],
+  "pm.violinModel(pm.f2l(freq), press, vel, pos)");
+B("pm-churchbell", "Church Bell", "Synths",
+  [sig("trig", "trig"), ctl("pos", "strike pos", 0.4, 0, 1), ctl("cut", "strike cutoff", 2000, 200, 8000, "Hz"),
+   ctl("sharp", "sharpness", 0.5, 0, 1), GAIN(0.8)],
+  "pm.churchBell(pos, cut, sharp, gain, trig)");
+for (const [id, fn, title] of [["pm-guitar", "guitarModel", "Guitar"], ["pm-nylon-guitar", "nylonGuitarModel", "Nylon Guitar"]]) {
+  B(id, title, "Synths",
+    [sig("trig", "trig"), FREQ(), ctl("pluck", "pluck pos", 0.3, 0.01, 0.9), GAIN(0.8)],
+    `((trig : en.ar(0.001, 0.005)) * no.noise : pm.${fn}(pm.f2l(freq), pluck)) * gain`);
+}
+
+// ------------------------------------------------------------------ Spatial / analysis
+// Rotational 4-channel panner: angle 0..1 goes once around the ring.
+B("sp-spat4", "Spat 4", "Spatial",
+  [sig("x", "in"), ctl("angle", "angle", 0.5, 0, 1), ctl("dist", "distance", 0.5, 0, 1)],
+  "x : sp.spat(4, angle, dist)");
+// Monophonic pitch tracker: outputs the detected fundamental in Hz (a CV, not audio).
+B("an-pitch", "Pitch Tracker", "Analysis",
+  [sig("x", "in"), ctl("tau", "tau", 0.05, 0.005, 0.5, "s")], "x : an.pitchTracker(2, tau)");
+
 export default blocks;
