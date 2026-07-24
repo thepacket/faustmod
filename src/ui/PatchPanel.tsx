@@ -103,11 +103,6 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
                 : `Patch (${p.patch.nodes.length} nodes)\nDouble-click to open in a tab`
             }
           >
-            {embeddable && (
-              <span className="comp-badge" title="Embeddable — has I/O terminals">
-                ⧉
-              </span>
-            )}
             {renamingId === p.id ? (
               <input
                 className="comp-rename"
@@ -123,7 +118,9 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
                 }}
               />
             ) : (
-              <span className="comp-name">{p.name}</span>
+              // Display-only " (mod)" tag for embeddable patches (usable as modules); the
+              // stored name is unchanged.
+              <span className="comp-name">{embeddable ? `${p.name} (mod)` : p.name}</span>
             )}
             <button
               className="comp-act"

@@ -248,8 +248,8 @@ body {
   border-color: var(--accent);
 }
 .btn:disabled {
-  /* Non-interactive, but keep the label fully legible — no text dimming. */
-  cursor: not-allowed;
+  opacity: 0.5;
+  cursor: default;
 }
 .btn.primary {
   background: var(--accent);
@@ -531,12 +531,9 @@ body {
   border-color: var(--accent);
   color: var(--text);
 }
-/* Disabled = not interactive, but never dim the TEXT — keep it fully legible. The muted
-   border/background conveys the disabled state instead. */
 .palette-btn:disabled {
-  cursor: not-allowed;
-  border-color: var(--border);
-  background: transparent;
+  opacity: 0.4;
+  cursor: default;
 }
 .cat-header {
   display: flex;
@@ -593,13 +590,6 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-/* Embeddable-patch marker (has I/O terminals → draggable onto a canvas as a node). */
-.comp-badge {
-  flex: none;
-  color: var(--accent);
-  font-size: 12px;
-  line-height: 1;
 }
 .dirty-dot {
   color: #e0a33a;
