@@ -3,6 +3,11 @@
 > ⚠️ **FaustMod is in its initial development phase.** Expect rough edges, breaking
 > changes, and features that are still landing or being reworked. Not yet production-ready.
 
+FaustMod offers a modular visual design environment to [Faust](https://faust.grame.fr/)
+(Functional Audio Stream), a functional programming language for sound synthesis and audio
+processing with a strong focus on the design of synthesizers, musical instruments, audio
+effects, etc.
+
 A browser-based **modular audio synthesis IDE**. Patch DSP components together on a
 node canvas, hear the result live, write your own DSP in the built-in Faust editor, and
 save/open patches. DSP is written in the [Faust](https://faust.grame.fr/) language and
@@ -291,3 +296,10 @@ Instrument nodes (scope, meters, LEDs, sequencer…) are `kind: "widget"` compon
 registers in a `Monitors` map keyed by node id. The matching React body in
 `src/editor/widgets/` reads that map each frame to animate. Resizable widgets persist
 their size (and the sequencer its notes) in the patch.
+
+## License
+
+FaustMod's own source code is licensed under the [MIT License](LICENSE). It bundles two
+LGPL-3.0 dependencies — `@grame/faustwasm` (libfaust) and `webpd` — used unmodified; this
+does not change FaustMod's MIT license, but the distributed app carries LGPL notice/source
+obligations for those components. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

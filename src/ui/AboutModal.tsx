@@ -12,7 +12,17 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
           https://faust.grame.fr/
         </a>
       </p>
-      <p className="hint">© 2026 Andre Paquette. MIT License.</p>
+      <p className="hint">
+        © 2026 Andre Paquette. FaustMod&apos;s own code is MIT-licensed; it uses{" "}
+        <a href="https://github.com/grame-cncm/faustwasm" target="_blank" rel="noreferrer">
+          @grame/faustwasm
+        </a>{" "}
+        and{" "}
+        <a href="https://github.com/sebpiq/WebPd" target="_blank" rel="noreferrer">
+          webpd
+        </a>{" "}
+        under LGPL-3.0.
+      </p>
       <div className="modal-actions">
         <button className="btn primary" onClick={onClose}>
           Close
