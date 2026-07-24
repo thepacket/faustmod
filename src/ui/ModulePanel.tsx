@@ -3,7 +3,7 @@ import { CustomBlocks } from "../components/customBlocks";
 import { COMPONENT_DND_TYPE, type ComponentDef } from "../components/library";
 import { FaustService } from "../audio/FaustService";
 import { derivePorts } from "../audio/faustIO";
-import { usePanelCollapsed, CollapsedStrip, PanelCollapseButton } from "./PanelCollapse";
+import { usePanelCollapsed, CollapsedStrip } from "./PanelCollapse";
 import { PatchPanel } from "./PatchPanel";
 import { PdPanel } from "./PdPanel";
 import { download, safeName } from "../patch/download";
@@ -55,11 +55,12 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
   const [rev, bump] = useReducer((x) => x + 1, 0);
   useEffect(() => CustomBlocks.subscribe(bump), []);
 
-  // Draggable horizontal splitter between User Defined DSP (top) and Patches (bottom).
+  // Draggable horizontal splitter between Patches (top) and Faust DSP (bottom). `ratio`
+  // sizes the top (Patches) pane; default gives it less room than the DSP list below.
   const asideRef = useRef<HTMLElement>(null);
   const [ratio, setRatio] = useState(() => {
     const v = parseFloat(localStorage.getItem(SPLIT_KEY) ?? "");
-    return Number.isFinite(v) ? Math.min(0.85, Math.max(0.15, v)) : 0.6;
+    return Number.isFinite(v) ? Math.min(0.85, Math.max(0.15, v)) : 0.4;
   });
   const ratioRef = useRef(ratio);
   ratioRef.current = ratio;
@@ -162,12 +163,22 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
   return (
     <aside className="panel modules split-panel" ref={asideRef}>
       <section className="pane pane-top" style={{ flexBasis: `${ratio * 100}%` }}>
+        <PatchPanel
+          disabled={disabled}
+          onNewPatch={onNewPatch}
+          onLoadPatch={onLoadPatch}
+          onOpenPatch={onOpenPatch}
+          onRenamePatch={onRenamePatch}
+          onCollapse={togglePanel}
+        />
+      </section>
+
+      <div className="pane-splitter" onPointerDown={startDragSplit} title="Drag to resize" />
+
+      <section className="pane pane-bottom">
         <div className="library-head">
           <h2>Faust DSP</h2>
-          <div className="head-right">
-            <span className="count">{list.length}</span>
-            <PanelCollapseButton side="left" onClick={togglePanel} />
-          </div>
+          <span className="count">{list.length}</span>
         </div>
         <input
           className="search"
@@ -286,22 +297,6 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
             <PdPanel disabled={disabled} onEdit={onEditPd} />
           </>
         )}
-      </section>
-
-      <div
-        className="pane-splitter"
-        onPointerDown={startDragSplit}
-        title="Drag to resize"
-      />
-
-      <section className="pane pane-bottom">
-        <PatchPanel
-          disabled={disabled}
-          onNewPatch={onNewPatch}
-          onLoadPatch={onLoadPatch}
-          onOpenPatch={onOpenPatch}
-          onRenamePatch={onRenamePatch}
-        />
       </section>
     </aside>
   );

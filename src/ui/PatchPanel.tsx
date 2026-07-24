@@ -4,6 +4,7 @@ import { COMPONENT_DND_TYPE } from "../components/library";
 import { serializePatch, PATCH_EXTENSION } from "../patch/format";
 import { derivePatchSignature } from "../patch/signature";
 import { download, safeName } from "../patch/download";
+import { PanelCollapseButton } from "./PanelCollapse";
 
 interface Props {
   disabled: boolean;
@@ -15,6 +16,8 @@ interface Props {
   onOpenPatch: (id: string) => void;
   /** Rename a saved patch (and any open tab for it). */
   onRenamePatch: (id: string, name: string) => void;
+  /** When set, render the panel's collapse button in this (top) section's header. */
+  onCollapse?: () => void;
 }
 
 /**
@@ -23,7 +26,7 @@ interface Props {
  * it gets an ⧉ badge and can be dragged onto a canvas as a node. Rename / download /
  * delete per entry. Persisted in localStorage via SavedPatches.
  */
-export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onRenamePatch }: Props) {
+export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onRenamePatch, onCollapse }: Props) {
   const [rev, bump] = useReducer((x) => x + 1, 0);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -53,7 +56,10 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
     <>
       <div className="library-head">
         <h2>Patches</h2>
-        <span className="count">{list.length}</span>
+        <div className="head-right">
+          <span className="count">{list.length}</span>
+          {onCollapse && <PanelCollapseButton side="left" onClick={onCollapse} />}
+        </div>
       </div>
       <div className="palette-actions">
         <button className="palette-btn" onClick={onNewPatch} disabled={disabled}>
