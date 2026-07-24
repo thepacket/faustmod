@@ -386,7 +386,7 @@ export function App() {
       items: [
         // Faust DSP and patches live in the library, not in files — so no New/Open/Save
         // here. Only whole-library backup Export/Import, and Settings.
-        { label: "Export All (backup)…", onClick: () => exportAll() },
+        { label: "Export All…", onClick: () => exportAll() },
         { label: "Import All (restore)…", onClick: () => importAll() },
         { separator: true },
         { label: "Export Catalog…", onClick: () => exportBrief() },
