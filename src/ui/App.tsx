@@ -24,6 +24,8 @@ import { RecordBridge } from "../editor/widgets/RecordBridge";
 import { ContextMenuBridge, type ContextMenuTarget } from "../editor/widgets/ContextMenuBridge";
 import { EmbeddablePatches } from "../patch/embeddablePatches";
 import { SavedPatches } from "../patch/savedPatches";
+import { buildBackup, importBackup } from "../patch/backup";
+import { download } from "../patch/download";
 import { derivePatchSignature } from "../patch/signature";
 import { TooltipLayer } from "./TooltipLayer";
 import { ContextMenu } from "./ContextMenu";
@@ -272,6 +274,33 @@ export function App() {
     if (p) void tabsRef.current?.openPatch(structuredClone(p.patch));
   };
 
+  // Portable backup of ALL localStorage-bound work — carry it between machines/browsers
+  // (localStorage never leaves the device it was made on).
+  const exportAll = () => {
+    const stamp = new Date().toISOString().slice(0, 10);
+    download(`faustmod-backup-${stamp}.json`, buildBackup(), "application/json");
+    setStatus("Exported your full library — keep this file to restore on another device");
+  };
+
+  const importAll = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const r = importBackup(await file.text());
+        setStatus(
+          `Imported ${r.modules} modules, ${r.saved} saved patches, ${r.embeddable} embeddable, ${r.settings} settings`,
+        );
+      } catch (e) {
+        setStatus(`Import failed: ${(e as Error).message}`);
+      }
+    };
+    input.click();
+  };
+
   const exportBrief = () => {
     const url = URL.createObjectURL(new Blob([buildAiBrief()], { type: "text/markdown" }));
     const a = document.createElement("a");
@@ -333,6 +362,9 @@ export function App() {
         { separator: true },
         { label: "Export a copy…", onClick: () => pm()?.export() },
         { label: "Export Catalog for AI…", onClick: () => exportBrief() },
+        { separator: true },
+        { label: "Export All (backup)…", onClick: () => exportAll() },
+        { label: "Import All (restore)…", onClick: () => importAll() },
         { separator: true },
         { label: "Settings…", onClick: () => setModal("settings") },
       ],
