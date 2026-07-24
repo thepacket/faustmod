@@ -248,8 +248,8 @@ body {
   border-color: var(--accent);
 }
 .btn:disabled {
-  opacity: 0.5;
-  cursor: default;
+  /* Non-interactive, but keep the label fully legible — no text dimming. */
+  cursor: not-allowed;
 }
 .btn.primary {
   background: var(--accent);
@@ -531,9 +531,12 @@ body {
   border-color: var(--accent);
   color: var(--text);
 }
+/* Disabled = not interactive, but never dim the TEXT — keep it fully legible. The muted
+   border/background conveys the disabled state instead. */
 .palette-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
+  cursor: not-allowed;
+  border-color: var(--border);
+  background: transparent;
 }
 .cat-header {
   display: flex;
