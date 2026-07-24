@@ -115,3 +115,14 @@ export const LIBRARY: ComponentDef[] = [
 ];
 
 export const LIBRARY_BY_ID = new Map(LIBRARY.map((c) => [c.id, c]));
+
+// A widget and a catalog block sharing an id silently shadows one of them (the palette
+// shows both, but every node resolves to whichever this map kept). Surface it in dev.
+if (import.meta.env?.DEV && LIBRARY_BY_ID.size !== LIBRARY.length) {
+  const seen = new Set<string>();
+  const dupes = LIBRARY.filter((c) => (seen.has(c.id) ? true : (seen.add(c.id), false)));
+  console.error(
+    "Duplicate component ids (one shadows the other):",
+    dupes.map((c) => `${c.id} (${c.title})`),
+  );
+}

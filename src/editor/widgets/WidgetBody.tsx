@@ -23,6 +23,11 @@ import { WaveDraw } from "./WaveDraw";
 import { TransferCurve } from "./TransferCurve";
 import { MultiSlider } from "./MultiSlider";
 import { EqCurve } from "./EqCurve";
+import { DrumGrid } from "./DrumGrid";
+import { Transport } from "./Transport";
+import { PianoRoll } from "./PianoRoll";
+import { EuclidCircle } from "./EuclidCircle";
+import { TuringMachine } from "./TuringMachine";
 
 /** Renders the custom body for a widget node, dispatched by its `widget` type. */
 export function WidgetBody({ node }: { node: WidgetNode }) {
@@ -76,6 +81,16 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
       return <MultiSlider node={node} />;
     case "eq-curve":
       return <EqCurve node={node} />;
+    case "drumgrid":
+      return <DrumGrid node={node} />;
+    case "transport":
+      return <Transport node={node} />;
+    case "pianoroll":
+      return <PianoRoll node={node} />;
+    case "euclid":
+      return <EuclidCircle node={node} />;
+    case "turing":
+      return <TuringMachine node={node} />;
     default:
       return null;
   }

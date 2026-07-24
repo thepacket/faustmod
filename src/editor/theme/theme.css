@@ -856,3 +856,76 @@
 .comment::placeholder {
   color: var(--muted);
 }
+
+/* ---- Transport ---- */
+.transport {
+  padding: 3px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.transport-row {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.tp-btn {
+  background: #191b21;
+  border: 1px solid #0b0c10;
+  border-radius: 4px;
+  color: #cfd4e0;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.tp-btn.wide {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+.tp-btn.on {
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.tp-bpm {
+  width: 48px;
+  background: #0f1116;
+  border: 1px solid #0b0c10;
+  border-radius: 4px;
+  color: #9fe6c4;
+  font: 11px ui-monospace, monospace;
+  text-align: center;
+  padding: 3px 2px;
+}
+.tp-steps {
+  display: flex;
+  gap: 2px;
+}
+.tp-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #23262f;
+}
+.tp-dot.beat {
+  background: #31353f;
+}
+.tp-dot.on {
+  background: var(--accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+
+/* ---- Turing machine register ---- */
+.turing {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 4px;
+  height: 34px;
+}
+.turing-bar {
+  width: 5px;
+  background: linear-gradient(180deg, #9775fa, #6741d9);
+  border-radius: 1px;
+}

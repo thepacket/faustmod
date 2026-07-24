@@ -24,6 +24,7 @@ import {
   Monitors,
 } from "./monitors";
 import { TableUnit, MultiCVUnit, EqCurveUnit } from "./tableUnits";
+import { PatternUnit } from "./seqUnits";
 import type { AudioUnit, InputSpec } from "./types";
 import { resolveComponent } from "../components/customBlocks";
 import { SavedPatches } from "../patch/savedPatches";
@@ -316,6 +317,33 @@ class AudioGraphImpl {
           case "eq-curve":
             widgetUnit = new EqCurveUnit(ctx, Number(def.widgetConfig?.bands ?? 10));
             break;
+          case "transport":
+          case "drumgrid":
+          case "pianoroll":
+          case "euclid":
+          case "turing":
+          case "prob-gate": {
+            const mode =
+              def.widget === "drumgrid"
+                ? "grid"
+                : def.widget === "pianoroll"
+                  ? "roll"
+                  : def.widget === "transport"
+                    ? "clock"
+                    : def.widget === "euclid"
+                      ? "euclid"
+                      : def.widget === "turing"
+                        ? "turing"
+                        : "probability";
+            widgetUnit = await PatternUnit.create(ctx, mode, {
+              numInputs: def.inputs.length,
+              numOutputs: def.outputs.length,
+              defaults: def.inputs.map((i) => i.default),
+              lanes: Number(def.widgetConfig?.lanes ?? 1),
+              steps: Number(def.widgetConfig?.steps ?? 16),
+            });
+            break;
+          }
           case "comment":
             widgetUnit = new NullUnit();
             break;

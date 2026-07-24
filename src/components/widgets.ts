@@ -409,4 +409,95 @@ export const WIDGETS: ComponentDef[] = [
     resizable: true,
     defaultSize: { w: 240, h: 110 },
   },
+
+  // ---- Sequencing & timing ------------------------------------------------
+  {
+    id: "transport",
+    title: "Transport",
+    category: "Sequencers",
+    kind: "widget",
+    widget: "transport",
+    tooltip:
+      "Master clock: run/stop, reset and tap tempo. Outputs a 16th-note clock to drive " +
+      "the grid, roll and Euclid widgets.",
+    inputs: [
+      { label: "run", default: 0, min: 0, max: 1, tooltip: "Above 0.5 forces run." },
+      { label: "bpm", default: 120, min: 20, max: 300, tooltip: "Tempo (the panel drives this when unwired)." },
+    ],
+    outputs: [
+      { label: "clock", tooltip: "16th-note trigger." },
+      { label: "reset", tooltip: "Fires on step 1 of each bar." },
+      { label: "bar", tooltip: "Position through the bar, 0..1." },
+    ],
+  },
+  {
+    id: "drumgrid",
+    title: "Drum Grid",
+    category: "Sequencers",
+    kind: "widget",
+    widget: "drumgrid",
+    widgetConfig: { lanes: 8, steps: 16 },
+    tooltip: "8 lanes x 16 steps, one trigger output per lane. Click toggles, drag paints.",
+    inputs: [{ label: "clock" }, { label: "reset" }],
+    outputs: Array.from({ length: 8 }, (_, i) => ({ label: `${i + 1}` })),
+    resizable: true,
+    defaultSize: { w: 240, h: 104 },
+  },
+  {
+    id: "pianoroll",
+    title: "Piano Roll",
+    category: "Sequencers",
+    kind: "widget",
+    widget: "pianoroll",
+    widgetConfig: { steps: 32 },
+    tooltip:
+      "Clip editor: notes with pitch, start and length over 32 steps. Click places, " +
+      "drag right lengthens, click again removes.",
+    inputs: [{ label: "clock" }, { label: "reset" }],
+    outputs: [{ label: "freq" }, { label: "gate" }, { label: "vel" }],
+    resizable: true,
+    defaultSize: { w: 320, h: 160 },
+  },
+  {
+    id: "euclid-circle",
+    title: "Euclid Circle",
+    category: "Sequencers",
+    kind: "widget",
+    widget: "euclid",
+    tooltip:
+      "Euclidean rhythm circle. Drag x for pulses, y for steps, shift-drag to rotate.",
+    inputs: [{ label: "clock" }, { label: "reset" }],
+    outputs: [{ label: "trig" }],
+    resizable: true,
+    defaultSize: { w: 110, h: 110 },
+  },
+  {
+    id: "turing",
+    title: "Turing Machine",
+    category: "Sequencers",
+    kind: "widget",
+    widget: "turing",
+    tooltip:
+      "Shift-register random sequencer: chance 0 locks the loop, 1 randomises it, " +
+      "in between it mutates slowly.",
+    inputs: [
+      { label: "clock" },
+      { label: "chance", default: 0.15, min: 0, max: 1 },
+      { label: "range", default: 1, min: 0, max: 10 },
+    ],
+    outputs: [{ label: "cv" }, { label: "trig" }],
+  },
+  {
+    id: "prob-gate",
+    title: "Probability Gate",
+    category: "Sequencers",
+    kind: "widget",
+    widget: "prob-gate",
+    tooltip: "Passes each clock trigger with probability `chance`.",
+    inputs: [
+      { label: "clock" },
+      { label: "chance", default: 0.5, min: 0, max: 1 },
+    ],
+    outputs: [{ label: "trig" }],
+  },
 ];
