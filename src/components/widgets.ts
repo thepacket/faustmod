@@ -27,7 +27,7 @@ export const WIDGETS: ComponentDef[] = [
     widget: "xyscope",
     // Square 1:1 (vectorscope); resize keeps the aspect via widgetConfig.square.
     widgetConfig: { square: true },
-    tooltip: "XY / vectorscope (Lissajous). Plots x (horizontal) against y (vertical); both 0…1.",
+    tooltip: "XY / vectorscope (Lissajous). Plots x (horizontal) against y (vertical); both −1…1.",
     inputs: [{ label: "x" }, { label: "y" }],
     outputs: [],
     resizable: true,

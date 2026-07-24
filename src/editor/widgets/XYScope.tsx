@@ -4,8 +4,8 @@ import type { WidgetNode } from "./WidgetBridge";
 
 /**
  * XY / vectorscope (Lissajous). Plots input x on the horizontal axis and y on the
- * vertical, one point per sample pair. Both inputs range 0…1: 0 = left/bottom edge,
- * 1 = right/top. Always square.
+ * vertical, one point per sample pair. Both inputs range −1…1: −1 = left/bottom edge,
+ * +1 = right/top. Always square.
  */
 export function XYScope({ node }: { node: WidgetNode }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -25,9 +25,9 @@ export function XYScope({ node }: { node: WidgetNode }) {
     canvas.height = size * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Map a sample value in [0, 1] to a pixel coordinate; y is flipped (screen down).
-    const px = (v: number) => v * size;
-    const py = (v: number) => (1 - v) * size;
+    // Map a sample value in [-1, 1] to a pixel coordinate; y is flipped (screen down).
+    const px = (v: number) => ((v + 1) / 2) * size;
+    const py = (v: number) => (1 - (v + 1) / 2) * size;
 
     const draw = () => {
       const m = Monitors.get(node.id) as XYScopeMonitor | undefined;
