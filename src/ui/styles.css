@@ -646,12 +646,44 @@ body {
   border-radius: 2px;
   pointer-events: none;
 }
+.canvas-host {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
 .canvas {
   flex: 1;
   min-width: 0;
   position: relative;
   background: radial-gradient(circle at 1px 1px, #2a2f3d 1px, transparent 0) 0 0 / 22px 22px,
     var(--bg);
+}
+/* Shown over the blank canvas when no patch is open (no tab). Non-interactive. */
+.canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 0 24px;
+  pointer-events: none;
+  user-select: none;
+}
+.canvas-empty p {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+.canvas-empty span {
+  font-size: 14px;
+  color: var(--muted);
+  max-width: 360px;
+  line-height: 1.5;
 }
 
 /* ---- AI panel ---- */

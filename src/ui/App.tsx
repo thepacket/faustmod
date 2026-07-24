@@ -460,6 +460,7 @@ export function App() {
       />
       <div className="body">
         <LibraryPanel disabled={!ready} />
+        <div className="canvas-host">
         <div
           className="canvas"
           ref={canvasRef}
@@ -487,6 +488,16 @@ export function App() {
             void editor.addComponent(def, pos);
           }}
         />
+        {ready && tabs.length === 0 && (
+          <div className="canvas-empty">
+            <p>No patch open</p>
+            <span>
+              Create or open one from <strong>Patches</strong> — <strong>New</strong>,{" "}
+              <strong>Load</strong>, or double-click a saved patch.
+            </span>
+          </div>
+        )}
+        </div>
         <ModulePanel
           disabled={!ready}
           onNewPatch={newPatch}
