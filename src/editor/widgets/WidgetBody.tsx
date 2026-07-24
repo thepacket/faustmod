@@ -36,6 +36,13 @@ import { Randomize } from "./Randomize";
 import { PanelFrame } from "./PanelFrame";
 import { MidiOut } from "./MidiOut";
 import { MidiMonitor } from "./MidiMonitor";
+import { CorrelationMeter } from "./CorrelationMeter";
+import { LoudnessMeter } from "./LoudnessMeter";
+import { MultiScope } from "./MultiScope";
+import { CvPlotter } from "./CvPlotter";
+import { ValueMonitor } from "./ValueMonitor";
+import { Looper } from "./Looper";
+import { IrLoader } from "./IrLoader";
 
 /** Renders the custom body for a widget node, dispatched by its `widget` type. */
 export function WidgetBody({ node }: { node: WidgetNode }) {
@@ -115,6 +122,20 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
       return <MidiOut node={node} />;
     case "midi-monitor":
       return <MidiMonitor node={node} />;
+    case "correlation":
+      return <CorrelationMeter node={node} />;
+    case "loudness":
+      return <LoudnessMeter node={node} />;
+    case "multiscope":
+      return <MultiScope node={node} />;
+    case "cv-plot":
+      return <CvPlotter node={node} />;
+    case "value-monitor":
+      return <ValueMonitor node={node} />;
+    case "looper":
+      return <Looper node={node} />;
+    case "ir-loader":
+      return <IrLoader node={node} />;
     default:
       return null;
   }

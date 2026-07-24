@@ -341,3 +341,171 @@ export class ProbeUnit implements AudioUnit, ProbeMonitor {
     }
   }
 }
+
+// ---- Stereo analysis: correlation + loudness ------------------------------
+export interface StereoAnalysisMonitor {
+  /** Pearson correlation of L/R over the window: +1 mono, 0 wide, -1 out of phase. */
+  correlation(): number;
+  /** Momentary loudness in LUFS (BS.1770 K-weighting, approximated). */
+  lufs(): number;
+  /** Peak sample magnitude across both channels since the last call. */
+  peak(): number;
+}
+
+/**
+ * Stereo bus analysis for the correlation and loudness meters. Both read the same two
+ * analysers, so one unit serves either widget.
+ */
+export class StereoAnalysisUnit implements AudioUnit, StereoAnalysisMonitor {
+  readonly numInputs = 2;
+  readonly numOutputs = 0;
+  private aL: AnalyserNode;
+  private aR: AnalyserNode;
+  private bufL: Float32Array;
+  private bufR: Float32Array;
+  // K-weighting is a shelf + highpass; a plain highpass at 60 Hz on the analysis path
+  // gets most of the way there for a monitoring meter without a full biquad chain.
+  private hpL: BiquadFilterNode;
+  private hpR: BiquadFilterNode;
+
+  constructor(ctx: BaseAudioContext) {
+    const mk = () => {
+      const a = ctx.createAnalyser();
+      a.fftSize = 2048;
+      return a;
+    };
+    this.aL = mk();
+    this.aR = mk();
+    const hp = () => {
+      const f = ctx.createBiquadFilter();
+      f.type = "highpass";
+      f.frequency.value = 60;
+      return f;
+    };
+    this.hpL = hp();
+    this.hpR = hp();
+    this.hpL.connect(this.aL);
+    this.hpR.connect(this.aR);
+    this.bufL = new Float32Array(2048);
+    this.bufR = new Float32Array(2048);
+  }
+  private read() {
+    this.aL.getFloatTimeDomainData(this.bufL as Float32Array<ArrayBuffer>);
+    this.aR.getFloatTimeDomainData(this.bufR as Float32Array<ArrayBuffer>);
+  }
+  input(i: number) {
+    const n = i === 0 ? this.hpL : i === 1 ? this.hpR : null;
+    return n ? { node: n as AudioNode, channel: 0 } : null;
+  }
+  output() {
+    return null;
+  }
+  correlation() {
+    this.read();
+    let sl = 0, sr = 0, sll = 0, srr = 0, slr = 0;
+    const n = this.bufL.length;
+    for (let i = 0; i < n; i++) {
+      const l = this.bufL[i];
+      const r = this.bufR[i];
+      sl += l;
+      sr += r;
+      sll += l * l;
+      srr += r * r;
+      slr += l * r;
+    }
+    const cov = slr / n - (sl / n) * (sr / n);
+    const vl = sll / n - (sl / n) ** 2;
+    const vr = srr / n - (sr / n) ** 2;
+    const d = Math.sqrt(vl * vr);
+    return d < 1e-12 ? 0 : Math.max(-1, Math.min(1, cov / d));
+  }
+  lufs() {
+    this.read();
+    let s = 0;
+    for (let i = 0; i < this.bufL.length; i++) {
+      s += this.bufL[i] * this.bufL[i] + this.bufR[i] * this.bufR[i];
+    }
+    const meanSquare = s / (this.bufL.length * 2);
+    return meanSquare <= 1e-12 ? -70 : -0.691 + 10 * Math.log10(meanSquare);
+  }
+  peak() {
+    this.read();
+    let p = 0;
+    for (let i = 0; i < this.bufL.length; i++) {
+      p = Math.max(p, Math.abs(this.bufL[i]), Math.abs(this.bufR[i]));
+    }
+    return p;
+  }
+  setValue() {}
+  onInputConnected() {}
+  dispose() {
+    for (const n of [this.hpL, this.hpR, this.aL, this.aR]) {
+      try {
+        n.disconnect();
+      } catch {
+        /* noop */
+      }
+    }
+  }
+}
+
+// ---- Multi-trace scope / CV plotter ---------------------------------------
+export interface TracesMonitor {
+  /** Fill `out` with the latest window of input `i`. */
+  readTrace(i: number, out: Float32Array): void;
+  /** Instantaneous (mean) value of input `i`, for slow control signals. */
+  value(i: number): number;
+  traceCount(): number;
+}
+
+/** N analysers, one per input, for the multi-trace scope and the CV plotter. */
+export class TracesUnit implements AudioUnit, TracesMonitor {
+  readonly numInputs: number;
+  readonly numOutputs = 0;
+  private analysers: AnalyserNode[];
+  private scratch: Float32Array;
+
+  constructor(ctx: BaseAudioContext, inputs: number, fftSize = 2048) {
+    this.numInputs = inputs;
+    this.analysers = Array.from({ length: inputs }, () => {
+      const a = ctx.createAnalyser();
+      a.fftSize = fftSize;
+      return a;
+    });
+    this.scratch = new Float32Array(fftSize);
+  }
+  input(i: number) {
+    const a = this.analysers[i];
+    return a ? { node: a as AudioNode, channel: 0 } : null;
+  }
+  output() {
+    return null;
+  }
+  readTrace(i: number, out: Float32Array) {
+    const a = this.analysers[i];
+    if (a) a.getFloatTimeDomainData(out as Float32Array<ArrayBuffer>);
+    else out.fill(0);
+  }
+  value(i: number) {
+    const a = this.analysers[i];
+    if (!a) return 0;
+    a.getFloatTimeDomainData(this.scratch as Float32Array<ArrayBuffer>);
+    let s = 0;
+    for (const v of this.scratch) s += v;
+    return s / this.scratch.length;
+  }
+  traceCount() {
+    return this.analysers.length;
+  }
+  setValue() {}
+  onInputConnected() {}
+  dispose() {
+    for (const a of this.analysers) {
+      try {
+        a.disconnect();
+      } catch {
+        /* noop */
+      }
+    }
+  }
+}

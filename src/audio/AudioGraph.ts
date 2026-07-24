@@ -23,8 +23,16 @@ import {
   NullUnit,
   Monitors,
 } from "./monitors";
-import { TableUnit, MultiCVUnit, EqCurveUnit, ProbeUnit } from "./tableUnits";
+import {
+  TableUnit,
+  MultiCVUnit,
+  EqCurveUnit,
+  ProbeUnit,
+  StereoAnalysisUnit,
+  TracesUnit,
+} from "./tableUnits";
 import { PatternUnit } from "./seqUnits";
+import { ConvolverUnit, LooperUnit } from "./fileUnits";
 import type { AudioUnit, InputSpec } from "./types";
 import { resolveComponent } from "../components/customBlocks";
 import { SavedPatches } from "../patch/savedPatches";
@@ -360,6 +368,21 @@ class AudioGraphImpl {
             break;
           case "midi-out":
             widgetUnit = new ProbeUnit(ctx, def.inputs.length);
+            break;
+          case "ir-loader":
+            widgetUnit = new ConvolverUnit(ctx);
+            break;
+          case "looper":
+            widgetUnit = await LooperUnit.create(ctx);
+            break;
+          case "correlation":
+          case "loudness":
+            widgetUnit = new StereoAnalysisUnit(ctx);
+            break;
+          case "multiscope":
+          case "cv-plot":
+          case "value-monitor":
+            widgetUnit = new TracesUnit(ctx, def.inputs.length);
             break;
           case "panel-frame":
           case "midi-monitor":

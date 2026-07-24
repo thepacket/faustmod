@@ -548,6 +548,9 @@ class SamplerProcessor extends AudioWorkletProcessor {
     this.playing = false;
     this.prev = 0;
     this.sr = 1;
+    this.start = 0;   // region start, in frames
+    this.end = 0;     // region end (0 = end of buffer)
+    this.loop = false;
     this.port.onmessage = (e) => {
       const d = e.data;
       if (d.buffer) {
@@ -558,6 +561,11 @@ class SamplerProcessor extends AudioWorkletProcessor {
         this.pos = 0;
         this.playing = false;
       }
+      if (d.region) {
+        this.start = Math.max(0, Math.floor(d.region.start * this.len));
+        this.end = Math.min(this.len, Math.floor(d.region.end * this.len));
+        this.loop = !!d.region.loop;
+      }
     };
   }
   process(inputs, outputs) {
@@ -567,12 +575,16 @@ class SamplerProcessor extends AudioWorkletProcessor {
     const outR = outputs[0][1];
     for (let i = 0; i < outL.length; i++) {
       const t = trig ? trig[i] : 0;
-      if (this.prev <= 0.5 && t > 0.5 && this.len > 1) { this.pos = 0; this.playing = true; }
+      if (this.prev <= 0.5 && t > 0.5 && this.len > 1) { this.pos = this.start; this.playing = true; }
       this.prev = t;
       let l = 0, r = 0;
       if (this.playing) {
+        const stop = this.end > this.start ? this.end : this.len;
         const p = this.pos | 0;
-        if (p >= this.len - 1) { this.playing = false; }
+        if (p >= stop - 1) {
+          if (this.loop) { this.pos = this.start; }
+          else { this.playing = false; }
+        }
         else {
           const frac = this.pos - p;
           l = this.chL[p] * (1 - frac) + this.chL[p + 1] * frac;
@@ -601,6 +613,8 @@ async function ensureSamplerModule(ctx: BaseAudioContext): Promise<void> {
 export interface SamplerMonitor {
   loadBuffer(channels: Float32Array[], bufferSampleRate: number): void;
   hasBuffer(): boolean;
+  /** Playback region as 0..1 fractions of the buffer, plus looping. */
+  setRegion?(start: number, end: number, loop: boolean): void;
 }
 
 export class SamplerUnit implements AudioUnit, SamplerMonitor {
@@ -653,6 +667,9 @@ export class SamplerUnit implements AudioUnit, SamplerMonitor {
   }
   hasBuffer() {
     return this.loaded;
+  }
+  setRegion(start: number, end: number, loop: boolean) {
+    this.node.port.postMessage({ region: { start, end, loop } });
   }
   setValue() {}
   onInputConnected(i: number, connected: boolean) {
