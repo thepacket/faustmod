@@ -144,6 +144,9 @@ body {
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  padding: 2px 8px;
   margin-right: 8px;
 }
 .menus {
