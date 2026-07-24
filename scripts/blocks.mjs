@@ -23,11 +23,13 @@ for (const [fn, title] of [
   ["sawtooth", "Saw Osc"],
   ["square", "Square Osc"],
   ["triangle", "Triangle Osc"],
-  ["pulsetrainpos", "Pulse Train"],
-  ["sawtoothpos", "Saw (0..1)"],
 ]) {
   B(`os-${fn}`, title, "Oscillators", [FREQ(), GAIN()], `os.${fn}(freq) * gain`);
 }
+B("os-pulsetrainpos", "Pulse Train (0..1)", "Oscillators",
+  [FREQ(), ctl("duty", "duty", 0.5, 0, 1), GAIN(1)], "os.lf_pulsetrainpos(freq, duty) * gain");
+B("os-sawtoothpos", "Saw (0..1)", "Oscillators", [FREQ(), GAIN(1)],
+  "(os.sawtooth(freq)*0.5 + 0.5) * gain");
 B("os-pulsetrain", "Pulse Train (duty)", "Oscillators",
   [FREQ(), ctl("duty", "duty", 0.5, 0, 1), GAIN()], "os.pulsetrain(freq, duty) * gain");
 for (const [fn, title] of [
@@ -100,14 +102,15 @@ B("de-echo", "Echo", "Delay", [sig("x", "in"), ctl("ms", "time", 250, 1, 2000, "
 B("de-sdelay", "Smooth Delay", "Delay", [sig("x", "in"), ctl("ms", "time", 250, 0, 2000, "ms")], "x : de.sdelay(96000, 1024, ma.SR*ms/1000)");
 B("de-pingpong", "Ping-Pong", "Delay",
   [sig("l", "L"), sig("r", "R"), ctl("ms", "time", 300, 1, 2000, "ms"), ctl("fb", "feedback", 0.4, 0, 0.9)],
-  "(l, r) : (\\(fl, fr).(l + de.fdelay(192000, ma.SR*ms/1000, fr)*fb, r + de.fdelay(192000, ma.SR*ms/1000, fl)*fb)) ~ (_, _)");
+  "(\\(fl, fr).(l + fr*fb, r + fl*fb)) ~ (de.fdelay(192000, ma.SR*ms/1000), de.fdelay(192000, ma.SR*ms/1000))");
 
 // ------------------------------------------------------------------ Reverb
 B("re-mono-freeverb", "Freeverb (mono)", "Reverb", [sig("x", "in"), ctl("room", "room", 0.6, 0, 1), ctl("damp", "damp", 0.5, 0, 1)], "x : re.mono_freeverb(room, damp, 0.5, 1)");
 B("re-stereo-freeverb", "Freeverb (stereo)", "Reverb", [sig("l", "L"), sig("r", "R"), ctl("room", "room", 0.6, 0, 1), ctl("damp", "damp", 0.5, 0, 1)], "l, r : re.stereo_freeverb(room, room, damp, 1)");
 B("re-jcrev", "JC Reverb", "Reverb", [sig("x", "in")], "x : re.jcrev");
 B("re-satrev", "Sat Reverb", "Reverb", [sig("x", "in")], "x : re.satrev");
-B("re-mono-fdn", "FDN Reverb", "Reverb", [sig("x", "in"), ctl("t60", "t60", 3, 0.1, 20, "s")], "x <: re.fdnrev0(2048, (778, 1601, 2451, 3307), (2, 3), t60, t60, 8000, 44100) :> _");
+B("re-mono-fdn", "FDN Reverb", "Reverb", [sig("x", "in"), ctl("t60", "t60", 3, 0.1, 20, "s")],
+  "x <: re.fdnrev0(2048, (778, 1601, 2451, 3307), 3, (200, 2000, 8000), (t60*1.2, t60, t60*0.7, t60*0.35), 1, 0) :> _*0.25");
 
 // ------------------------------------------------------------------ Envelopes (gate is a signal input)
 B("en-adsr", "ADSR", "Envelopes",
@@ -144,8 +147,8 @@ B("dist-bitcrush", "Bitcrusher", "Distortion", [sig("x", "in"), ctl("bits", "bit
 
 // ------------------------------------------------------------------ Modulation effects
 B("mod-tremolo", "Tremolo", "Modulation", [sig("x", "in"), ctl("rate", "rate", 5, 0.1, 20, "Hz"), ctl("depth", "depth", 0.5, 0, 1)], "x * (1 - depth * (0.5 + 0.5*os.osc(rate)))");
-B("mod-flanger", "Flanger", "Modulation", [sig("x", "in"), ctl("rate", "rate", 0.5, 0.01, 10, "Hz"), ctl("depth", "depth", 0.5, 0, 1), ctl("fb", "feedback", 0.5, 0, 0.95)],
-  "x : (+ ~ (@(ma.SR*(0.001 + 0.004*depth*(0.5+0.5*os.osc(rate)))) : *(fb)))");
+B("mod-flanger", "Flanger (fb)", "Modulation", [sig("x", "in"), ctl("rate", "rate", 0.5, 0.01, 10, "Hz"), ctl("depth", "depth", 0.5, 0, 1), ctl("fb", "feedback", 0.5, 0, 0.95)],
+  "x : (+ ~ (de.fdelay(4096, max(1, ma.SR*(0.001 + 0.004*depth*(0.5+0.5*os.osc(rate))))) : *(fb)))");
 B("mod-vibrato", "Vibrato", "Modulation", [sig("x", "in"), ctl("rate", "rate", 5, 0.1, 12, "Hz"), ctl("depth", "depth", 0.3, 0, 1)],
   "x : de.fdelay(4096, ma.SR*(0.002 + 0.002*depth*(0.5+0.5*os.osc(rate))))");
 B("mod-ringmod", "Ring Mod", "Modulation", [sig("x", "in"), ctl("freq", "freq", 200, 1, 5000, "Hz")], "x * os.osc(freq)");
@@ -159,7 +162,7 @@ B("sp-constant-power", "Balance", "Spatial", [sig("l", "L"), sig("r", "R"), ctl(
 B("an-amp-follower", "Amp Follower", "Analysis", [sig("x", "in"), ctl("rel", "release", 0.1, 0.001, 2, "s")], "x : an.amp_follower(rel)");
 B("an-amp-follower-ud", "Amp Follower UD", "Analysis", [sig("x", "in"), ctl("att", "attack", 0.01, 0.001, 1, "s"), ctl("rel", "release", 0.1, 0.001, 2, "s")], "x : an.amp_follower_ud(att, rel)");
 B("an-rms", "RMS", "Analysis", [sig("x", "in"), ctl("tau", "tau", 0.05, 0.001, 1, "s")], "x : an.rms_envelope_tau(tau)");
-B("an-zerocross", "Zero Crossing", "Analysis", [sig("x", "in")], "x : an.zcr");
+B("an-zerocross", "Zero Crossing", "Analysis", [sig("x", "in"), ctl("period", "period", 0.05, 0.001, 1, "s")], "x : an.zcr(period)");
 
 // ------------------------------------------------------------------ Math (2-in)
 for (const [id, title, op] of [
@@ -249,7 +252,7 @@ B("fi-highshelf2", "Bell", "Filters", [sig("x", "in"), ctl("g", "gain", 6, -24, 
 
 // ------------------------------------------------------------------ Effects
 B("ef-transpose", "Pitch Shift", "Effects", [sig("x", "in"), ctl("semi", "semitones", 0, -12, 12)], "x : ef.transpose(1024, 256, semi)");
-B("ef-mixLinearClamp", "Dry/Wet Clamp", "Effects", [sig("d", "dry"), sig("w", "wet"), ctl("mix", "mix", 0.5, 0, 1)], "ef.mixLinearClamp(64, mix, d, w)");
+B("ef-mixLinearClamp", "Dry/Wet Mix", "Effects", [sig("d", "dry"), sig("w", "wet"), ctl("mix", "mix", 0.5, 0, 1)], "(d, w) : ef.mixLinearClamp(2, 1, mix)");
 B("ef-speakerbp", "Speaker Sim", "Effects", [sig("x", "in")], "x : ef.speakerbp(130, 5000)");
 B("fx-autowah", "Auto Wah", "Effects", [sig("x", "in"), ctl("sens", "sens", 0.5, 0, 1)], "x : (\\(s).(s : fi.resonlp(200 + 4000*sens*(s : abs : an.amp_follower(0.02)), 8, 1.0)))");
 B("fx-wah", "Wah (LFO)", "Effects", [sig("x", "in"), ctl("rate", "rate", 1.5, 0.05, 8, "Hz"), ctl("depth", "depth", 0.7, 0, 1)], "x : fi.resonlp(400 + 2500*depth*(0.5+0.5*os.osc(rate)), 8, 1.0)");
@@ -257,7 +260,7 @@ B("fx-phaser", "Phaser", "Effects", [sig("x", "in"), ctl("rate", "rate", 0.5, 0.
   "x : seq(i, 4, fi.allpassnn(1, 0.5 + 0.45*depth*(0.5+0.5*os.osc(rate))))");
 B("fx-stereo-echo", "Stereo Echo", "Effects",
   [sig("l", "L"), sig("r", "R"), ctl("ms", "time", 300, 1, 2000, "ms"), ctl("fb", "feedback", 0.4, 0, 0.9)],
-  "l : (+ ~ (de.fdelay(192000, ma.SR*ms/1000) : *(fb))), r : (+ ~ (de.fdelay(192000, ma.SR*ms/1000) : *(fb)))");
+  "(l : (+ ~ (de.fdelay(192000, ma.SR*ms/1000) : *(fb)))), (r : (+ ~ (de.fdelay(192000, ma.SR*ms/1000) : *(fb))))");
 
 // ------------------------------------------------------------------ Reverb (more)
 B("re-dattorro", "Dattorro Plate", "Reverb", [sig("l", "L"), sig("r", "R")], "(l, r) : re.dattorro_rev_default");
@@ -274,8 +277,8 @@ B("en-asre", "ASR (exp)", "Envelopes", [sig("gate", "gate"), ctl("a", "attack", 
 // ------------------------------------------------------------------ Dynamics (more)
 B("co-limiter-stereo", "Limiter (st)", "Dynamics", [sig("l", "L"), sig("r", "R")], "(l, r) : co.limiter_1176_R4_stereo");
 B("co-expander", "Expander", "Dynamics",
-  [sig("x", "in"), ctl("ratio", "ratio", 2, 1, 20), ctl("thresh", "thresh", -40, -90, 0, "dB"), ctl("att", "attack", 0.01, 0.001, 1, "s"), ctl("hold", "hold", 0.05, 0, 1, "s"), ctl("rel", "release", 0.1, 0.001, 2, "s"), ctl("knee", "knee", 3, 0, 20, "dB")],
-  "x : co.expander_mono(ratio, thresh, att, hold, rel, knee)");
+  [sig("x", "in"), ctl("ratio", "ratio", 2, 1, 20), ctl("thresh", "thresh", -40, -90, 0, "dB"), ctl("att", "attack", 0.01, 0.001, 1, "s"), ctl("rel", "release", 0.1, 0.001, 2, "s")],
+  "x * (min(0, (x : abs : an.amp_follower_ud(att, rel) : ba.linear2db : -(thresh)) * (ratio - 1)) : ba.db2linear)");
 
 // ------------------------------------------------------------------ Analysis (more)
 B("an-abs-tau", "Abs Envelope", "Analysis", [sig("x", "in"), ctl("tau", "tau", 0.05, 0.001, 1, "s")], "x : an.abs_envelope_tau(tau)");
@@ -292,7 +295,7 @@ B("ba-latch", "Latch", "Signals", [sig("x", "in"), sig("clk", "clock")], "(x, cl
 // ------------------------------------------------------------------ Math (more unary)
 for (const [id, title, op] of [
   ["asin", "Asin", "asin(max(-1, min(1, x)))"], ["acos", "Acos", "acos(max(-1, min(1, x)))"], ["atan", "Atan", "atan(x)"],
-  ["sinh", "Sinh", "sinh(x)"], ["cosh", "Cosh", "cosh(x)"], ["log10", "Log10", "log10(abs(x) + 1e-9)"],
+  ["sinh", "Sinh", "ma.sinh(x)"], ["cosh", "Cosh", "ma.cosh(x)"], ["log10", "Log10", "log10(abs(x) + 1e-9)"],
   ["signum", "Sign", "ma.signum(x)"], ["trunc", "Truncate", "float(int(x))"], ["fract2", "Wrap 0..1", "ma.frac(x)"],
   ["clip01", "Clip 0..1", "max(0, min(1, x))"], ["bipolar2unipolar", "±1 → 0..1", "x*0.5 + 0.5"], ["unipolar2bipolar", "0..1 → ±1", "x*2 - 1"],
 ]) {
@@ -323,7 +326,7 @@ B("route-side-mid", "Mid/Side → L/R", "Routing", [sig("m", "M"), sig("s", "S")
 
 // ------------------------------------------------------------------ Synths (physical/synth models)
 B("sy-dubdub", "DubDub Synth", "Synths", [sig("gate", "gate"), FREQ(), ctl("ct", "cutoff", 500, 50, 8000, "Hz"), ctl("q", "q", 6, 0.5, 20)], "sy.dubDub(freq, ct, q, gate)");
-B("sy-sawtrombone", "Saw Trombone", "Synths", [sig("gate", "gate"), FREQ()], "sy.sawTrombone(freq) * gate");
+B("sy-sawtrombone", "Saw Trombone", "Synths", [sig("gate", "gate"), FREQ(), GAIN(0.8)], "sy.sawTrombone(freq, gain, gate)");
 B("sy-combstring", "Comb String", "Synths", [sig("gate", "gate"), FREQ(), ctl("res", "res", 0.9, 0, 1)], "sy.combString(freq, res, gate)");
 B("pm-ks", "Karplus-Strong", "Synths", [sig("trig", "trig"), FREQ(), ctl("t60", "decay", 4, 0.1, 20, "s")], "pm.ks(freq, t60, trig)");
 
@@ -415,7 +418,6 @@ for (const [id, name, f1, f2, f3] of [
 for (const N of [5, 6, 8]) {
   B(`fi-bandpass-${N}`, `Bandpass ${N}`, "Filters", [sig("x", "in"), ctl("fl", "low", 300, 20, 20000, "Hz"), ctl("fh", "high", 3000, 20, 20000, "Hz")], `x : fi.bandpass(${N}, fl, fh)`);
 }
-B("fi-crossover", "Crossover 2-band", "Filters", [sig("x", "in"), CUT()], "x : fi.lowpassLR4(cutoff), x : fi.highpassLR4(cutoff)");
 B("fi-allpass2", "Allpass x2", "Filters", [sig("x", "in"), ctl("g", "coeff", 0.5, -0.99, 0.99)], "x : seq(i, 2, fi.allpassnn(1, g))");
 B("fi-allpass4", "Allpass x4", "Filters", [sig("x", "in"), ctl("g", "coeff", 0.5, -0.99, 0.99)], "x : seq(i, 4, fi.allpassnn(1, g))");
 
@@ -440,11 +442,11 @@ for (const [id, title, body] of [
 }
 B("ws-asym-tanh", "Asym Tanh", "Distortion", [sig("x", "in"), ctl("drive", "drive", 3, 1, 20), ctl("bias", "bias", 0.2, -1, 1)], "ma.tanh(x*drive + bias) - ma.tanh(bias)");
 B("ws-tube", "Tube", "Distortion", [sig("x", "in"), ctl("drive", "drive", 3, 1, 20)], "(\\(y).(y - 0.15*y*y - 0.1*y*y*y))(ma.tanh(x*drive))");
-B("ws-fuzz", "Fuzz", "Distortion", [sig("x", "in"), ctl("drive", "drive", 20, 1, 100)], "ma.signum(x) * (1 - exp(-abs(x*drive)))");
+B("ws-fuzz", "Fuzz (exp)", "Distortion", [sig("x", "in"), ctl("drive", "drive", 20, 1, 100)], "ma.signum(x) * (1 - exp(0 - abs(x*drive)))");
 B("ws-rect-shape", "Rectifier Shape", "Distortion", [sig("x", "in"), ctl("mix", "mix", 0.5, 0, 1)], "x*(1-mix) + abs(x)*mix");
 B("ws-sine-stage", "Sine Shaper", "Distortion", [sig("x", "in"), ctl("drive", "drive", 1, 0.1, 4)], "sin(x*drive*ma.PI*0.5)");
 B("ws-crossover", "Crossover Dist", "Distortion", [sig("x", "in"), ctl("dead", "deadzone", 0.1, 0, 0.5)], "(abs(x) > dead) * (x - ma.signum(x)*dead)");
-B("ws-exp-shape", "Exp Shaper", "Distortion", [sig("x", "in"), ctl("amt", "amount", 2, 0.1, 10)], "ma.signum(x) * (1 - exp(-abs(x)*amt))");
+B("ws-exp-shape", "Exp Shaper", "Distortion", [sig("x", "in"), ctl("amt", "amount", 2, 0.1, 10)], "ma.signum(x) * (1 - exp(0 - abs(x)*amt))");
 B("ws-halfrect-sat", "Half-wave Sat", "Distortion", [sig("x", "in"), ctl("drive", "drive", 4, 1, 20)], "ma.tanh(max(0, x)*drive) - 0.5*ma.tanh(max(0, -x)*drive)");
 
 // ------------------------------------------------------------------ Modulation
@@ -511,9 +513,9 @@ B("sp-pan3", "Pan (3-way)", "Spatial", [sig("x", "in"), ctl("pan", "pan", 0.5, 0
 
 // ------------------------------------------------------------------ Synths / physical models
 B("pm-djembe", "Djembe", "Synths", [sig("trig", "trig"), FREQ(), ctl("pos", "strike pos", 0.3, 0, 1), ctl("sharp", "sharpness", 0.5, 0, 1), GAIN(0.8)], "pm.djembe(freq, pos, sharp, gain, trig)");
-B("pm-marimba", "Marimba", "Synths", [sig("trig", "trig"), FREQ(), ctl("pos", "strike pos", 0.3, 0, 1), GAIN(0.8)], "pm.marimbaModel(freq, pos) * gain : *(trig : en.ar(0.001, 1))");
-B("sy-popperc", "Pop Perc", "Synths", [sig("gate", "gate"), FREQ()], "sy.popFilterPerc(freq, gate)");
-B("sy-additive-drum", "Additive Drum", "Synths", [sig("gate", "gate"), FREQ(), ctl("ratio", "ratio", 1.5, 0.5, 5), GAIN(0.7)], "sy.additiveDrum(freq, (1, ratio, ratio*2), 0.8, 0.001, 0.3, gate) * gain");
+B("pm-marimba", "Marimba", "Synths", [sig("trig", "trig"), FREQ(), ctl("pos", "strike pos", 0.3, 0, 1), GAIN(0.8)], "(trig : pm.marimbaModel(freq, pos)) * gain");
+B("sy-popperc", "Filter Perc", "Synths", [sig("gate", "gate"), FREQ(), ctl("q", "q", 12, 1, 40)], "no.noise * (gate : en.ar(0.001, 0.12)) : fi.resonlp(freq, q, 1)");
+B("sy-additive-drum", "Additive Drum", "Synths", [sig("gate", "gate"), FREQ(), ctl("ratio", "ratio", 1.5, 0.5, 5), GAIN(0.7)], "sy.additiveDrum(freq, (1, ratio, ratio*2), (1, 0.6, 0.3), 0.8, 0.001, 0.3, gate) * gain");
 
 // ================================================================= BATCH 5
 // ------------------------------------------------------------------ 1/3-octave graphic EQ bands
