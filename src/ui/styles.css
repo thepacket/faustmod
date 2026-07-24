@@ -625,8 +625,9 @@ body {
 .comp:active {
   cursor: grabbing;
 }
+/* A non-draggable chip (e.g. a patch with no I/O terminals) is still fully usable —
+   just not embeddable — so it must NOT be dimmed. Only drop the grab cursor. */
 .comp[draggable="false"] {
-  opacity: 0.4;
   cursor: default;
 }
 
