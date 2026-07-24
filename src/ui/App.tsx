@@ -23,6 +23,7 @@ import { RecordBridge } from "../editor/widgets/RecordBridge";
 import { ContextMenuBridge, type ContextMenuTarget } from "../editor/widgets/ContextMenuBridge";
 import { SavedPatches } from "../patch/savedPatches";
 import { emptyPatch, parsePatch, PATCH_EXTENSION } from "../patch/format";
+import { buildAiBrief } from "../patch/aiBrief";
 import { buildBackup, importBackup } from "../patch/backup";
 import { download } from "../patch/download";
 import { TooltipLayer } from "./TooltipLayer";
@@ -340,6 +341,16 @@ export function App() {
     input.click();
   };
 
+  const exportBrief = () => {
+    const url = URL.createObjectURL(new Blob([buildAiBrief()], { type: "text/markdown" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "faustmod-catalog.md";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setStatus("Exported catalog");
+  };
+
   // Global keyboard shortcuts (rete handles ⌘Z/⌘Y on the canvas itself).
   useEffect(() => {
     if (!ready) return;
@@ -377,6 +388,8 @@ export function App() {
         // here. Only whole-library backup Export/Import, and Settings.
         { label: "Export All (backup)…", onClick: () => exportAll() },
         { label: "Import All (restore)…", onClick: () => importAll() },
+        { separator: true },
+        { label: "Export Catalog…", onClick: () => exportBrief() },
         { separator: true },
         { label: "Settings…", onClick: () => setModal("settings") },
       ],
