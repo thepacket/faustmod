@@ -24,5 +24,5 @@ SOFTWARE.
 
 This MIT license covers FaustMod's own source code. FaustMod is distributed
 together with third-party components under their own licenses — notably
-@grame/faustwasm (libfaust) and webpd, which are LGPL-3.0. See
+@grame/faustwasm (libfaust), which is LGPL-3.0. See
 THIRD_PARTY_NOTICES.md for the full list and the resulting obligations.

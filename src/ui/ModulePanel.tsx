@@ -5,13 +5,7 @@ import { FaustService } from "../audio/FaustService";
 import { derivePorts } from "../audio/faustIO";
 import { usePanelCollapsed, CollapsedStrip } from "./PanelCollapse";
 import { PatchPanel } from "./PatchPanel";
-import { PdPanel } from "./PdPanel";
 import { download, safeName } from "../patch/download";
-
-// Pd modules are fully implemented (WebPd engine, editor, AI generation) but the workflow
-// is too clunky to ship. Kept in the code; hidden from the UI. Flip to re-expose the
-// "Pd DSP" palette section (see PdPanel, PdEngine, pdModules, editorLangs.pdLang).
-const SHOW_PD_MODULES = false;
 
 interface Props {
   disabled: boolean;
@@ -25,8 +19,6 @@ interface Props {
   onOpenPatch: (id: string) => void;
   /** Rename a saved patch (and any open tab for it). */
   onRenamePatch: (id: string, name: string) => void;
-  /** Open the Pd code editor — with a module id to edit it, or undefined for a new one. */
-  onEditPd: (id?: string) => void;
 }
 
 const SPLIT_KEY = "faustmod.embedSplit";
@@ -47,7 +39,7 @@ const FAUST_DOCS = "https://faustdoc.grame.fr/manual/syntax/";
  * double-click to edit, rename (✎) and delete (×), drag onto the canvas. Dirty
  * (saved-but-not-compiled) modules show an amber dot.
  */
-export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenPatch, onRenamePatch, onEditPd }: Props) {
+export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenPatch, onRenamePatch }: Props) {
   const [panelCollapsed, togglePanel] = usePanelCollapsed("faustmod.panel.modules");
   const [query, setQuery] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -290,13 +282,6 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
           </button>
         </div>
       ))}
-
-        {SHOW_PD_MODULES && (
-          <>
-            <div className="section-divider" />
-            <PdPanel disabled={disabled} onEdit={onEditPd} />
-          </>
-        )}
       </section>
     </aside>
   );

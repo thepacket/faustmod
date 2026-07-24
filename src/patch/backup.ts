@@ -1,12 +1,11 @@
 import { CustomBlocks } from "../components/customBlocks";
-import { PdModules } from "./pdModules";
 import { SavedPatches } from "./savedPatches";
-import { OPENROUTER_SYSTEM, OPENROUTER_PD_SYSTEM, OPENROUTER_MODEL } from "../ai/openrouter";
+import { OPENROUTER_SYSTEM, OPENROUTER_MODEL } from "../ai/openrouter";
 
 /**
  * Portable backup of ALL of a user's localStorage-bound work, so it can be carried
  * between machines/browsers (localStorage never leaves the device it was made on). One
- * JSON file holds every Faust module, Pd module, embeddable patch and saved patch, plus
+ * JSON file holds every Faust module, embeddable patch and saved patch, plus
  * the portable settings. The OpenRouter API KEY is deliberately excluded — a secret must
  * not land in a plaintext export.
  */
@@ -14,11 +13,10 @@ const BACKUP_FORMAT = "faustmod-backup";
 const BACKUP_VERSION = 1;
 
 // Portable (non-secret, non-device) settings worth carrying between machines.
-const SETTING_KEYS = [OPENROUTER_SYSTEM, OPENROUTER_PD_SYSTEM, OPENROUTER_MODEL];
+const SETTING_KEYS = [OPENROUTER_SYSTEM, OPENROUTER_MODEL];
 
 export interface ImportResult {
   modules: number;
-  pdModules: number;
   saved: number;
   settings: number;
 }
@@ -39,7 +37,6 @@ export function buildBackup(): string {
       customBlocks: CustomBlocks.all()
         .map((d) => CustomBlocks.toDef(d.id))
         .filter((b): b is NonNullable<typeof b> => !!b),
-      pdModules: PdModules.all(),
       savedPatches: SavedPatches.all(),
       settings,
     },
@@ -57,15 +54,11 @@ export function importBackup(text: string): ImportResult {
   const data = JSON.parse(text) as Record<string, unknown>;
   if (data?.format !== BACKUP_FORMAT) throw new Error("Not a FaustMod backup file.");
 
-  const res: ImportResult = { modules: 0, pdModules: 0, saved: 0, settings: 0 };
+  const res: ImportResult = { modules: 0, saved: 0, settings: 0 };
 
   for (const b of (data.customBlocks as Parameters<typeof CustomBlocks.add>[0][]) ?? []) {
     CustomBlocks.add(b);
     res.modules++;
-  }
-  for (const m of (data.pdModules as Parameters<typeof PdModules.add>[0][]) ?? []) {
-    PdModules.add(m);
-    res.pdModules++;
   }
   for (const p of (data.savedPatches as Parameters<typeof SavedPatches.add>[0][]) ?? []) {
     SavedPatches.add(p);

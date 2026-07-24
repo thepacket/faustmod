@@ -8,7 +8,6 @@ import {
   InputUnit,
   TerminalUnit,
   PatchUnit,
-  StubUnit,
 } from "./units";
 import {
   MeterUnit,
@@ -248,12 +247,6 @@ class AudioGraphImpl {
         return new TerminalUnit(ctx, "out");
       case "patch":
         return this.realizePatch(ctx, def, data.seen);
-      case "pd": {
-        // Run the .pd via WebPd. Lazy-import keeps webpd out of the initial bundle.
-        if (!def.code) return new StubUnit(ctx, def.inputs.length, def.outputs.length);
-        const { createPdUnit } = await import("./PdUnit");
-        return createPdUnit(ctx as AudioContext, def.code, def.inputs, def.outputs.length);
-      }
       case "module": {
         // Ported Faust example: precompiled factory + params-as-control-inputs.
         const worklet = await FaustService.createFactoryNode(def.id, ctx);

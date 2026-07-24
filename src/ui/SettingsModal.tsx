@@ -12,10 +12,8 @@ import {
   OPENROUTER_KEY,
   OPENROUTER_MODEL,
   OPENROUTER_SYSTEM,
-  OPENROUTER_PD_SYSTEM,
   DEFAULT_MODEL,
   DEFAULT_SYSTEM_PROMPT,
-  DEFAULT_PD_SYSTEM_PROMPT,
   fetchModels,
 } from "../ai/openrouter";
 
@@ -38,9 +36,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [model, setModel] = useState(() => localStorage.getItem(OPENROUTER_MODEL) ?? DEFAULT_MODEL);
   const [system, setSystem] = useState(
     () => localStorage.getItem(OPENROUTER_SYSTEM) || DEFAULT_SYSTEM_PROMPT,
-  );
-  const [pdSystem, setPdSystem] = useState(
-    () => localStorage.getItem(OPENROUTER_PD_SYSTEM) || DEFAULT_PD_SYSTEM_PROMPT,
   );
   const [models, setModels] = useState<string[]>(MODEL_FALLBACK);
   const [modelsLoading, setModelsLoading] = useState(true);
@@ -82,11 +77,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
       localStorage.setItem(OPENROUTER_SYSTEM, system);
     } else {
       localStorage.removeItem(OPENROUTER_SYSTEM);
-    }
-    if (pdSystem.trim() && pdSystem.trim() !== DEFAULT_PD_SYSTEM_PROMPT) {
-      localStorage.setItem(OPENROUTER_PD_SYSTEM, pdSystem);
-    } else {
-      localStorage.removeItem(OPENROUTER_PD_SYSTEM);
     }
     onClose();
   };
@@ -150,32 +140,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             data-lpignore="true"
             value={system}
             onChange={(e) => setSystem(e.target.value)}
-          />
-        </label>
-        <label style={{ marginTop: 12 }}>
-          <span className="sys-label">
-            Pd system prompt
-            <button
-              type="button"
-              className="link-btn"
-              disabled={pdSystem.trim() === DEFAULT_PD_SYSTEM_PROMPT}
-              onClick={() => setPdSystem(DEFAULT_PD_SYSTEM_PROMPT)}
-            >
-              Reset to default
-            </button>
-          </span>
-          <textarea
-            className="sys-prompt"
-            rows={7}
-            spellCheck={false}
-            autoComplete="off"
-            data-gramm="false"
-            data-gramm_editor="false"
-            data-enable-grammarly="false"
-            data-1p-ignore="true"
-            data-lpignore="true"
-            value={pdSystem}
-            onChange={(e) => setPdSystem(e.target.value)}
           />
         </label>
       </section>

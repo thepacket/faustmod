@@ -299,7 +299,7 @@ their size (and the sequencer its notes) in the patch.
 
 ## License
 
-FaustMod's own source code is licensed under the [MIT License](LICENSE). It bundles two
-LGPL-3.0 dependencies — `@grame/faustwasm` (libfaust) and `webpd` — used unmodified; this
-does not change FaustMod's MIT license, but the distributed app carries LGPL notice/source
-obligations for those components. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+FaustMod's own source code is licensed under the [MIT License](LICENSE). It bundles one
+LGPL-3.0 dependency — `@grame/faustwasm` (libfaust) — used unmodified; this does not
+change FaustMod's MIT license, but the distributed app carries LGPL notice/source
+obligations for that component. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

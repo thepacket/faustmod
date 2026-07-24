@@ -17,10 +17,6 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
         <a href="https://github.com/grame-cncm/faustwasm" target="_blank" rel="noreferrer">
           @grame/faustwasm
         </a>{" "}
-        and{" "}
-        <a href="https://github.com/sebpiq/WebPd" target="_blank" rel="noreferrer">
-          webpd
-        </a>{" "}
         under LGPL-3.0.
       </p>
       <div className="modal-actions">

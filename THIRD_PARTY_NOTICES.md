@@ -7,21 +7,20 @@ and notice requirements.
 
 ## LGPL-3.0 components (weak copyleft)
 
-Two runtime dependencies are licensed under the **GNU Lesser General Public
-License v3.0 (LGPL-3.0)**. Using them does not change FaustMod's own MIT license,
-but the combined, distributed work carries these obligations for **these
-components only**: their copyright and license notices are preserved (this file),
-their source is available at the links below, and a user is free to obtain,
-modify, and substitute their own build of the library. FaustMod uses both
-packages **unmodified**, as published on npm.
+One runtime dependency is licensed under the **GNU Lesser General Public
+License v3.0 (LGPL-3.0)**. Using it does not change FaustMod's own MIT license,
+but the combined, distributed work carries these obligations for **this
+component only**: its copyright and license notices are preserved (this file),
+its source is available at the link below, and a user is free to obtain,
+modify, and substitute their own build of the library. FaustMod uses the
+package **unmodified**, as published on npm.
 
 | Package | Purpose | License | Source |
 | --- | --- | --- | --- |
 | `@grame/faustwasm` | libfaust — the Faust compiler, in-browser (Faust → WebAssembly AudioWorklet) | LGPL-3.0 | https://github.com/grame-cncm/faustwasm · libfaust: https://github.com/grame-cncm/faust |
-| `webpd` | Pure Data → JavaScript/WASM audio engine | LGPL-3.0 | https://github.com/sebpiq/WebPd |
 
 The full text of the LGPL-3.0 is available at
-https://www.gnu.org/licenses/lgpl-3.0.txt (and within each package on npm).
+https://www.gnu.org/licenses/lgpl-3.0.txt (and within the package on npm).
 
 **Note on the Faust compiler:** code *generated* by the Faust compiler (i.e. the
 DSP a user writes and compiles in FaustMod) is not covered by the compiler's

@@ -8,7 +8,7 @@ import type { EditorLang } from "./editorLangs";
 interface Props {
   title: string;
   initialCode: string;
-  /** Language config: syntax, AI generate, compile/validate (Faust or Pd). */
+  /** Language config: syntax, AI generate, compile/validate. */
   lang: EditorLang;
   /** Compile + apply the edited source. Rejects (with a message) on failure. Omitted when read-only. */
   onApply?: (code: string) => Promise<void>;
@@ -20,7 +20,7 @@ interface Props {
 }
 
 /**
- * Floating, draggable source editor shared by Faust and Pd modules. A full CodeMirror 6
+ * Floating, draggable source editor for Faust modules. A full CodeMirror 6
  * instance (undo/redo, find, multi-cursor, indent). The AI Make button generates from a
  * prompt; Compile validates; if compilation fails a Fix button feeds the error back to
  * the model. No menu — Cancel / Compile / Save / Done (or Close when read-only).

@@ -8,7 +8,6 @@
 export const OPENROUTER_KEY = "faustmod.openrouterKey";
 export const OPENROUTER_MODEL = "faustmod.openrouterModel";
 export const OPENROUTER_SYSTEM = "faustmod.systemPrompt";
-export const OPENROUTER_PD_SYSTEM = "faustmod.pdSystemPrompt";
 export const DEFAULT_MODEL = "anthropic/claude-3.5-sonnet";
 
 /** Default system prompt for the Faust Make button. Editable in File → Settings…. */
@@ -24,46 +23,9 @@ Rules:
 - Must be self-contained and real-time safe for an AudioWorklet: NO soundfile, NO ffunction/foreign functions, NO file or OS access. Use only stdfaust.lib.
 - Keep it stable (bounded feedback, no NaN/blow-ups).`;
 
-/** Default system prompt for the Pd Make button. Editable in File → Settings…. */
-export const DEFAULT_PD_SYSTEM_PROMPT = `You write Pure Data (Pd) patches for FaustMod, run in the browser by WebPd.
-
-Think through the signal flow and object indices first if it helps, then give the COMPLETE .pd file in a single \`\`\`pd code block. FaustMod extracts that block and runs it, so it must be the whole, valid .pd file — do not split it or leave placeholders.
-
-Rules:
-- Use ONLY vanilla Pd audio objects that WebPd supports, e.g.: osc~ phasor~ +~ -~ *~ /~ min~ max~ pow~ abs~ cos~ sqrt~ exp~ log~ wrap~ mtof~ ftom~ lop~ hip~ bp~ vcf~ noise~ delread~ delread4~ delwrite~ clip~ line~ vline~ sig~ snapshot~ samphold~ expr~ tabread4~ tabosc4~ send~ receive~ throw~ catch~. NO externals (no ELSE/cyclone), NO GUI objects, NO FFT/spectral objects, NO message-domain scheduling (metro, delay, trigger are control-rate and won't work for audio).
-- Audio I/O uses adc~ (inputs) and dac~ (outputs), NOT inlet~/outlet~. Each input PORT is one adc~ channel: [adc~ 1] = port 1, [adc~ 2] = port 2, and so on. Parameters are just extra input channels driven at audio rate. Output is [dac~ 1] for mono or [dac~] for stereo (max 2 channels).
-- Declare metadata as Pd comments (#X text):
-    @name <Title>
-    @desc <one short line>
-    @in <one name per input channel, space-separated, in channel order>
-    @out <one name per output channel>
-    @param <inputName> <default> <min> <max>   (one line per control input)
-- .pd format: first line is "#N canvas 0 0 <W> <H> 12;". Object: "#X obj <x> <y> <name> <args>;". Connection: "#X connect <srcIndex> <outlet> <dstIndex> <inlet>;". Comment: "#X text <x> <y> <content>;". Object indices in #X connect count EVERY object in file order INCLUDING comments. CRITICAL: write ALL #X obj lines first, THEN all #X connect lines, THEN all #X text comment lines at the very end — so comments never shift the object indices used by connections.
-- Compose something musically useful from multiple objects (a voice, an effect, a filter with modulation), not a single-object wrapper. Keep it stable (bounded feedback). Mono unless stereo is requested.
-
-Example (audio through a one-pole lowpass with a cutoff parameter):
-#N canvas 0 0 460 320 12;
-#X obj 40 60 adc~ 1;
-#X obj 160 60 adc~ 2;
-#X obj 40 130 lop~;
-#X obj 40 200 dac~ 1;
-#X connect 0 0 2 0;
-#X connect 1 0 2 1;
-#X connect 2 0 3 0;
-#X text 40 20 @name Lowpass;
-#X text 40 240 @desc One-pole lowpass filter.;
-#X text 40 260 @in audio cutoff;
-#X text 240 260 @out out;
-#X text 40 280 @param cutoff 1000 20 12000;`;
-
 /** The active Faust system prompt: the user's edited override (Settings) or the default. */
 export function systemPrompt(): string {
   return localStorage.getItem(OPENROUTER_SYSTEM)?.trim() || DEFAULT_SYSTEM_PROMPT;
-}
-
-/** The active Pd system prompt: the user's edited override (Settings) or the default. */
-export function pdSystemPrompt(): string {
-  return localStorage.getItem(OPENROUTER_PD_SYSTEM)?.trim() || DEFAULT_PD_SYSTEM_PROMPT;
 }
 
 /**
@@ -87,7 +49,7 @@ export async function fetchModels(): Promise<string[]> {
  * are no fences, assume the whole reply is the code.
  */
 function stripFences(s: string): string {
-  const fence = /```(?:faust|dsp|cpp|puredata|pd)?[ \t]*\n?([\s\S]*?)```/gi;
+  const fence = /```(?:faust|dsp|cpp)?[ \t]*\n?([\s\S]*?)```/gi;
   let last: string | null = null;
   for (const m of s.matchAll(fence)) last = m[1];
   return (last ?? s).trim();
@@ -146,16 +108,4 @@ export async function generateDsp(prompt: string, currentCode?: string): Promise
       ? `Current code:\n\n${currentCode}\n\nRequest: ${prompt}\n\nReturn the complete updated Faust program.`
       : prompt;
   return callModel(systemPrompt(), user, "code");
-}
-
-/**
- * Ask the configured model to write a Pure Data (.pd) module for FaustMod. `currentCode`
- * (if any) is sent so the model can iterate on it. Throws on missing key or API error.
- */
-export async function generatePd(prompt: string, currentCode?: string): Promise<string> {
-  const user =
-    currentCode && currentCode.trim()
-      ? `Current patch:\n\n${currentCode}\n\nRequest: ${prompt}\n\nReturn the complete updated .pd file.`
-      : prompt;
-  return callModel(pdSystemPrompt(), user, "patch");
 }
