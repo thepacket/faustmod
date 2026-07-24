@@ -676,6 +676,44 @@ body {
   background: radial-gradient(circle at 1px 1px, #2a2f3d 1px, transparent 0) 0 0 / 22px 22px,
     var(--bg);
 }
+/* Custom canvas scrollbars (rete pans via transform, so no native scroll). The tracks are
+   click-through; only the thumbs are draggable. */
+.canvas-scroll {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+}
+.canvas-scroll-h {
+  left: 0;
+  right: 11px;
+  bottom: 0;
+  height: 11px;
+}
+.canvas-scroll-v {
+  top: 0;
+  bottom: 11px;
+  right: 0;
+  width: 11px;
+}
+.canvas-scroll-thumb {
+  position: absolute;
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.canvas-scroll-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+.canvas-scroll-h .canvas-scroll-thumb {
+  top: 2px;
+  bottom: 2px;
+}
+.canvas-scroll-v .canvas-scroll-thumb {
+  left: 2px;
+  right: 2px;
+}
+
 /* Shown over the blank canvas when no patch is open (no tab). Non-interactive. */
 .canvas-empty {
   position: absolute;

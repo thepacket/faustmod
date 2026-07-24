@@ -770,6 +770,9 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   window.addEventListener("keyup", onSpace);
 
   const onCanvasPointerDown = (e: PointerEvent) => {
+    // Let the scrollbar thumbs handle their own drag (this capture-phase handler would
+    // otherwise stopImmediatePropagation and swallow the thumb's pointerdown).
+    if ((e.target as HTMLElement).closest(".canvas-scroll-thumb")) return;
     const nodeEl = (e.target as HTMLElement).closest(".dsp-node");
     if (nodeEl) {
       // Grabbing a node: preserve the whole selection when it's already selected (no
@@ -844,11 +847,139 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   };
   container.addEventListener("contextmenu", onContextMenu);
 
+  // --- Canvas scrollbars ----------------------------------------------------
+  // rete pans via CSS transform, so there is no native scroll. Draw our own scrollbars
+  // synced to the content bounds ∪ current viewport, and pan via area.area.translate().
+  const hTrack = document.createElement("div");
+  hTrack.className = "canvas-scroll canvas-scroll-h";
+  const hThumb = document.createElement("div");
+  hThumb.className = "canvas-scroll-thumb";
+  hTrack.appendChild(hThumb);
+  const vTrack = document.createElement("div");
+  vTrack.className = "canvas-scroll canvas-scroll-v";
+  const vThumb = document.createElement("div");
+  vThumb.className = "canvas-scroll-thumb";
+  vTrack.appendChild(vThumb);
+  container.appendChild(hTrack);
+  container.appendChild(vTrack);
+
+  const SCROLL_PAD = 300; // world padding so you can always scroll a little past content
+
+  // The scrollable region in world coords = every node's bounds ∪ the current viewport,
+  // padded — so the viewport is always representable and you can scroll back to content.
+  const scrollRange = () => {
+    const t = area.area.transform;
+    const vx0 = -t.x / t.k;
+    const vy0 = -t.y / t.k;
+    const vx1 = (container.clientWidth - t.x) / t.k;
+    const vy1 = (container.clientHeight - t.y) / t.k;
+    let minX = vx0;
+    let minY = vy0;
+    let maxX = vx1;
+    let maxY = vy1;
+    for (const node of editor.getNodes()) {
+      const view = area.nodeViews.get(node.id);
+      if (!view) continue;
+      const { x, y } = view.position;
+      const w = view.element.offsetWidth;
+      const h = view.element.offsetHeight;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x + w > maxX) maxX = x + w;
+      if (y + h > maxY) maxY = y + h;
+    }
+    return {
+      minX: minX - SCROLL_PAD,
+      minY: minY - SCROLL_PAD,
+      maxX: maxX + SCROLL_PAD,
+      maxY: maxY + SCROLL_PAD,
+      vx0,
+      vy0,
+      viewW: vx1 - vx0,
+      viewH: vy1 - vy0,
+    };
+  };
+
+  // Position/size a thumb from the last computed geometry (only writes on change).
+  let lastH = "";
+  let lastV = "";
+  const updateScrollbars = () => {
+    const s = scrollRange();
+    const rangeX = s.maxX - s.minX;
+    const rangeY = s.maxY - s.minY;
+    const trackW = hTrack.clientWidth;
+    const trackH = vTrack.clientHeight;
+    if (!trackW || !trackH || rangeX <= 0 || rangeY <= 0) return;
+    const hW = Math.max(28, (s.viewW / rangeX) * trackW);
+    const hLeft = Math.max(0, Math.min(trackW - hW, ((s.vx0 - s.minX) / rangeX) * trackW));
+    const h = `${hLeft.toFixed(1)}/${hW.toFixed(1)}`;
+    if (h !== lastH) {
+      hThumb.style.left = `${hLeft}px`;
+      hThumb.style.width = `${hW}px`;
+      lastH = h;
+    }
+    const vH = Math.max(28, (s.viewH / rangeY) * trackH);
+    const vTop = Math.max(0, Math.min(trackH - vH, ((s.vy0 - s.minY) / rangeY) * trackH));
+    const v = `${vTop.toFixed(1)}/${vH.toFixed(1)}`;
+    if (v !== lastV) {
+      vThumb.style.top = `${vTop}px`;
+      vThumb.style.height = `${vH}px`;
+      lastV = v;
+    }
+  };
+
+  // Keep the thumbs in sync via a rAF loop (robust across pan/zoom/edits/resize; the
+  // change-guard above avoids redundant style writes). Throttled to ~30fps.
+  let scrollRaf = 0;
+  let scrollLastT = 0;
+  const scrollTick = (ts: number) => {
+    if (ts - scrollLastT > 32) {
+      scrollLastT = ts;
+      updateScrollbars();
+    }
+    scrollRaf = requestAnimationFrame(scrollTick);
+  };
+  scrollRaf = requestAnimationFrame(scrollTick);
+
+  const startThumbDrag = (axis: "x" | "y") => (e: PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const s0 = scrollRange();
+    const track = axis === "x" ? hTrack.clientWidth : vTrack.clientHeight;
+    const range = axis === "x" ? s0.maxX - s0.minX : s0.maxY - s0.minY;
+    const worldMin = axis === "x" ? s0.minX : s0.minY;
+    const thumb = axis === "x" ? hThumb : vThumb;
+    const thumbSize = axis === "x" ? thumb.offsetWidth : thumb.offsetHeight;
+    const startClient = axis === "x" ? e.clientX : e.clientY;
+    const startPx = parseFloat((axis === "x" ? thumb.style.left : thumb.style.top) || "0");
+    const move = (ev: globalThis.PointerEvent) => {
+      const d = (axis === "x" ? ev.clientX : ev.clientY) - startClient;
+      const px = Math.max(0, Math.min(track - thumbSize, startPx + d));
+      // World coordinate the viewport's top-left should map to; pan there (the rAF loop
+      // repositions the thumb from the resulting transform).
+      const worldTopLeft = worldMin + (px / track) * range;
+      const t = area.area.transform;
+      if (axis === "x") void area.area.translate(-worldTopLeft * t.k, t.y);
+      else void area.area.translate(t.x, -worldTopLeft * t.k);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  hThumb.addEventListener("pointerdown", startThumbDrag("x"));
+  vThumb.addEventListener("pointerdown", startThumbDrag("y"));
+
   const destroy = () => {
     window.removeEventListener("keydown", onSpace);
     window.removeEventListener("keyup", onSpace);
     container.removeEventListener("pointerdown", onCanvasPointerDown, true);
     container.removeEventListener("contextmenu", onContextMenu);
+    cancelAnimationFrame(scrollRaf);
+    hTrack.remove();
+    vTrack.remove();
     area.destroy();
   };
 
