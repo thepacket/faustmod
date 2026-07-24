@@ -47,19 +47,14 @@ export function App() {
   const tabsRef = useRef<TabsManager | null>(null);
 
   const [ready, setReady] = useState(false);
-  const [status, setStatus] = useState("Loading…");
+  // Status text: still set on load/save/import so the messages exist for a future
+  // surface, but the menu-bar status field was removed — nothing displays it now.
+  const [, setStatus] = useState("Loading…");
   const [playing, setPlaying] = useState(false);
   const [recording, setRecording] = useState(false);
   const [patchName, setPatchName] = useState("Untitled");
   const [tabs, setTabs] = useState<TabInfo[]>([]);
   const [activeTab, setActiveTab] = useState(0);
-  const [nodeStyle, setNodeStyle] = useState<string>(
-    () => localStorage.getItem("faustmod.nodeStyle") || "studio",
-  );
-  const setStyle = (s: string) => {
-    localStorage.setItem("faustmod.nodeStyle", s);
-    setNodeStyle(s);
-  };
   const [modal, setModal] = useState<ModalKind>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
   const [ctxMenu, setCtxMenu] = useState<ContextMenuTarget | null>(null);
@@ -409,9 +404,6 @@ export function App() {
         { label: "Zoom In", shortcut: "⌘+", onClick: () => void ed()?.zoomIn() },
         { label: "Zoom Out", shortcut: "⌘−", onClick: () => void ed()?.zoomOut() },
         { label: "Reset Zoom", shortcut: "⌘0", onClick: () => void ed()?.resetZoom() },
-        { separator: true },
-        { label: `${nodeStyle === "studio" ? "✓ " : ""}Studio nodes`, onClick: () => setStyle("studio") },
-        { label: `${nodeStyle === "flat" ? "✓ " : ""}Compact nodes`, onClick: () => setStyle("flat") },
       ],
     },
     {
@@ -421,12 +413,11 @@ export function App() {
   ];
 
   return (
-    <div className="app" data-node-style={nodeStyle}>
+    <div className="app">
       <MenuBar
         menus={menus}
         playing={playing}
         recording={recording}
-        status={status}
         onTogglePlay={togglePlay}
         onToggleRecord={toggleRecord}
         onMasterVolume={(v) => {

@@ -229,10 +229,6 @@ body {
 .spacer {
   flex: 1;
 }
-.status {
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
 .vol {
   display: flex;
   align-items: center;

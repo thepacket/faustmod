@@ -16,7 +16,6 @@ interface Props {
   menus: Menu[];
   playing: boolean;
   recording: boolean;
-  status: string;
   onTogglePlay: () => void;
   onToggleRecord: () => void;
   onMasterVolume: (v: number) => void;
@@ -26,7 +25,6 @@ export function MenuBar({
   menus,
   playing,
   recording,
-  status,
   onTogglePlay,
   onToggleRecord,
   onMasterVolume,
@@ -83,7 +81,6 @@ export function MenuBar({
 
       <div className="spacer" />
 
-      <span className="status">{status}</span>
       <label className="vol">
         Master
         <input
@@ -100,7 +97,7 @@ export function MenuBar({
         onClick={onToggleRecord}
         title={recording ? "Stop recording & download" : "Record master output"}
       >
-        {recording ? "◼ Rec" : "● Rec"}
+        Record
       </button>
       <button className={playing ? "btn danger" : "btn primary"} onClick={onTogglePlay}>
         {playing ? "◼ Stop" : "▶ Start"}
