@@ -154,6 +154,10 @@ export class PatchManager {
 
   private async applyPatch(patch: PatchFile): Promise<void> {
     for (const block of patch.customBlocks) CustomBlocks.add(block);
+    // Set the name BEFORE rebuilding: editor.load fires change events that sync the active
+    // tab's title from this.name, so a stale name (e.g. "Untitled" from the empty state)
+    // would otherwise be stamped onto the tab on the first open.
+    this.name = patch.name || "Untitled";
     await this.editor.load({ nodes: patch.nodes, connections: patch.connections });
     if (typeof patch.masterVolume === "number") {
       AudioEngine.setMasterVolume(patch.masterVolume);
