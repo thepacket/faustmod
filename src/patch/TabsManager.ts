@@ -28,23 +28,28 @@ const newId = () => `tab-${++counter}`;
  * Switching captures the active graph, stops audio, then loads the target.
  */
 export class TabsManager {
-  private tabs: Tab[];
-  private active = 0;
+  // No tab exists until the user opens a patch from the library (New / Load / double-
+  // click). Patches are not files, so the app doesn't auto-create a scratch tab.
+  private tabs: Tab[] = [];
+  private active = -1;
   onChange: (() => void) | null = null;
   /** Called just before the active tab is left (switch/close/new) — lets App flush a
    *  pending autosave of the active tab before its editor state is replaced/discarded. */
   onBeforeLeaveTab: (() => void) | null = null;
 
-  constructor(private pm: PatchManager) {
-    this.tabs = [
-      { id: newId(), name: "Untitled", dirty: false, handle: null, patch: emptyPatch() },
-    ];
+  constructor(private pm: PatchManager) {}
+
+  /** Startup: no tab open → a blank canvas until the user opens a patch. */
+  async init(): Promise<void> {
+    await this.loadEmpty();
+    this.onChange?.();
   }
 
-  /** Load the initial tab into the editor (starter nodes on a fresh patch). */
-  async init(): Promise<void> {
-    await this.load(this.tabs[this.active]);
-    this.onChange?.();
+  /** Blank the editor (no tab open): stop audio and clear the graph. */
+  private async loadEmpty(): Promise<void> {
+    await AudioGraph.stop();
+    await this.pm.applyPatchObject({ ...emptyPatch(), nodes: [], connections: [] });
+    this.pm.setIdentity({ name: "Untitled", handle: null, dirty: false });
   }
 
   list(): TabInfo[] {
@@ -174,23 +179,17 @@ export class TabsManager {
     // scratch tab or an opened preset) and has unsaved edits.
     if (!t.savedId && t.dirty && !window.confirm(`Close "${t.name}" with unsaved changes?`)) return;
 
-    if (this.tabs.length === 1) {
-      const fresh: Tab = {
-        id: newId(),
-        name: "Untitled",
-        dirty: false,
-        handle: null,
-        patch: emptyPatch(),
-      };
-      this.tabs = [fresh];
-      this.active = 0;
-      await this.load(fresh);
+    const wasActive = index === this.active;
+    this.tabs.splice(index, 1);
+
+    // Closing the last tab leaves NO tab open — a blank canvas, not a fresh scratch tab.
+    if (this.tabs.length === 0) {
+      this.active = -1;
+      await this.loadEmpty();
       this.onChange?.();
       return;
     }
 
-    const wasActive = index === this.active;
-    this.tabs.splice(index, 1);
     if (this.active > index) this.active--;
     if (this.active >= this.tabs.length) this.active = this.tabs.length - 1;
     if (wasActive) await this.load(this.tabs[this.active]);
