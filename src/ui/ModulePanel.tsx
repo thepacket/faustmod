@@ -114,6 +114,15 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
     setRenamingId(null);
   };
 
+  const duplicate = (def: ComponentDef) => {
+    const block = CustomBlocks.toDef(def.id);
+    if (!block) return;
+    const taken = new Set(mods.map((m) => m.title));
+    let name = `${def.title} copy`;
+    for (let n = 2; taken.has(name); n++) name = `${def.title} copy ${n}`;
+    CustomBlocks.add({ ...block, id: `user-${Date.now().toString(36)}`, title: name });
+  };
+
   // Load a `.dsp` file as a new user module: compile to derive its connectors, then store.
   const fileRef = useRef<HTMLInputElement>(null);
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,6 +233,16 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
               {def.title}
             </span>
           )}
+          <button
+            className="comp-act"
+            title="Duplicate this DSP"
+            onClick={(e) => {
+              e.stopPropagation();
+              duplicate(def);
+            }}
+          >
+            Dup
+          </button>
           <button
             className="comp-act"
             title="Save this DSP to disk (.dsp)"

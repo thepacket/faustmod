@@ -36,6 +36,17 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
     setRenamingId(null);
   };
 
+  const duplicate = (id: string, name: string, patch: (typeof list)[number]["patch"]) => {
+    const taken = new Set(list.map((p) => p.name));
+    let copy = `${name} copy`;
+    for (let n = 2; taken.has(copy); n++) copy = `${name} copy ${n}`;
+    SavedPatches.add({
+      id: `saved-${Date.now().toString(36)}`,
+      name: copy,
+      patch: { ...structuredClone(patch), name: copy },
+    });
+  };
+
   return (
     <>
       <div className="library-head">
@@ -103,6 +114,16 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
             ) : (
               <span className="comp-name">{p.name}</span>
             )}
+            <button
+              className="comp-act"
+              title="Duplicate this patch"
+              onClick={(e) => {
+                e.stopPropagation();
+                duplicate(p.id, p.name, p.patch);
+              }}
+            >
+              Dup
+            </button>
             <button
               className="comp-act"
               title="Save this patch to disk (.faustmod)"
