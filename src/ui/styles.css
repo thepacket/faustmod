@@ -457,7 +457,8 @@ body {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
-.library-head .head-right {
+.library-head .head-right,
+.library-head .head-left {
   display: flex;
   align-items: center;
   gap: 8px;

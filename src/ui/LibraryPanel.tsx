@@ -64,11 +64,12 @@ export function LibraryPanel({ disabled }: Props) {
   return (
     <aside className="panel library">
       <div className="library-head">
-        <h2>Components</h2>
-        <div className="head-right">
-          <span className="count">{searching ? `${shown}/${total}` : total}</span>
+        {/* Right-docked panel: collapse arrow on the inner (left) edge, count on the right. */}
+        <div className="head-left">
           <PanelCollapseButton side="right" onClick={togglePanel} />
+          <h2>Components</h2>
         </div>
+        <span className="count">{searching ? `${shown}/${total}` : total}</span>
       </div>
       <input
         className="search"
