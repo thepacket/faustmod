@@ -13,7 +13,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
         </a>
       </p>
       <p className="hint">
-        © 2026 Andre Paquette. FaustMod&apos;s own code is MIT-licensed; it uses{" "}
+        Copyright © 2026 Andre Paquette. FaustMod&apos;s own code is MIT-licensed; it uses{" "}
         <a href="https://github.com/grame-cncm/faustwasm" target="_blank" rel="noreferrer">
           @grame/faustwasm
         </a>{" "}
