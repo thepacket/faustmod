@@ -185,8 +185,12 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     def: ComponentDef,
     position?: { x: number; y: number },
     overrideCode?: string,
+    state?: Record<string, unknown>,
   ): Promise<DspNode> => {
     const node = new DspNode(def, onValueChange);
+    // Restore widget state (knob/slider value, sequencer notes…) BEFORE the node mounts,
+    // so the React widget reads it in its initial render instead of the def default.
+    if (state) node.widgetState = { ...state };
     await editor.addNode(node);
 
     AudioGraph.setNode(node.id, def.id);
@@ -578,7 +582,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         console.warn(`Unknown component "${n.componentId}" in snapshot — skipped`);
         continue;
       }
-      const node = await instantiate(def, n.position, n.code || undefined);
+      const node = await instantiate(def, n.position, n.code || undefined, n.state);
       idMap.set(n.id, node.id);
       if (def.kind === "constant" && typeof n.value === "number") {
         const ctrl = node.controls.value as ClassicPreset.InputControl<"number">;
@@ -590,7 +594,6 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         node.width = n.size.w;
         node.height = n.size.h;
       }
-      if (n.state) node.widgetState = { ...n.state };
       await area.update("node", node.id);
     }
     for (const c of snap.connections) {
@@ -671,7 +674,12 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         def = resolveComponent(n.componentId) ?? null;
       }
       if (!def) continue;
-      const copy = await instantiate(def, { x: n.position.x + dx, y: n.position.y + dy }, n.code || undefined);
+      const copy = await instantiate(
+        def,
+        { x: n.position.x + dx, y: n.position.y + dy },
+        n.code || undefined,
+        n.state ? structuredClone(n.state) : undefined,
+      );
       idMap.set(n.id, copy.id);
       if (n.label) (copy as unknown as { label: string }).label = n.label;
       if (n.value !== undefined) {
@@ -683,7 +691,6 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         copy.width = n.size.w;
         copy.height = n.size.h;
       }
-      if (n.state) copy.widgetState = structuredClone(n.state);
       await area.update("node", copy.id);
     }
     for (const c of spec.connections) {
