@@ -25,7 +25,7 @@ import {
 } from "./monitors";
 import type { AudioUnit, InputSpec } from "./types";
 import { resolveComponent } from "../components/customBlocks";
-import { EmbeddablePatches } from "../patch/embeddablePatches";
+import { SavedPatches } from "../patch/savedPatches";
 import { derivePatchSignature } from "../patch/signature";
 import type { ComponentDef } from "../components/library";
 
@@ -345,7 +345,7 @@ class AudioGraphImpl {
       this.collectErrors?.push(`Patch "${def.title}" embeds itself — skipped`);
       return new PatchUnit([], nulls(def.inputs.length), nulls(def.outputs.length));
     }
-    const patchDef = EmbeddablePatches.get(def.id);
+    const patchDef = SavedPatches.get(def.id);
     if (!patchDef) return new PatchUnit([], nulls(def.inputs.length), nulls(def.outputs.length));
 
     const nextSeen = new Set(seen).add(def.id);

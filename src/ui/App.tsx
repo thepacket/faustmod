@@ -22,11 +22,10 @@ import { PdModules, parsePdPorts } from "../patch/pdModules";
 import { ModuleEditBridge } from "../editor/widgets/ModuleEditBridge";
 import { RecordBridge } from "../editor/widgets/RecordBridge";
 import { ContextMenuBridge, type ContextMenuTarget } from "../editor/widgets/ContextMenuBridge";
-import { EmbeddablePatches } from "../patch/embeddablePatches";
 import { SavedPatches } from "../patch/savedPatches";
+import { emptyPatch, parsePatch, PATCH_EXTENSION } from "../patch/format";
 import { buildBackup, importBackup } from "../patch/backup";
 import { download } from "../patch/download";
-import { derivePatchSignature } from "../patch/signature";
 import { TooltipLayer } from "./TooltipLayer";
 import { ContextMenu } from "./ContextMenu";
 import { CustomBlocks } from "../components/customBlocks";
@@ -86,6 +85,8 @@ export function App() {
   useEffect(() => {
     let disposed = false;
     let handle: EditorHandle | null = null;
+    let autosaveTimer: number | undefined;
+    let flushAutosaveRef: () => void = () => {};
 
     (async () => {
       await LibraryService.init();
@@ -108,6 +109,20 @@ export function App() {
 
       const mgr = new PatchManager(handle);
       const tabsMgr = new TabsManager(mgr);
+      // Autosave: a tab backed by a Saved Patches entry writes its edits back to that
+      // entry (debounced), so the library is always current.
+      const scheduleAutosave = (m: PatchManager, t: TabsManager) => {
+        const savedId = t.activeSavedId();
+        if (!savedId) return;
+        window.clearTimeout(autosaveTimer);
+        autosaveTimer = window.setTimeout(() => SavedPatches.update(savedId, m.build()), 600);
+      };
+      const flushAutosave = () => {
+        window.clearTimeout(autosaveTimer);
+        const savedId = tabsMgr.activeSavedId();
+        if (savedId) SavedPatches.update(savedId, mgr.build());
+      };
+      flushAutosaveRef = flushAutosave;
       mgr.onChange = () => {
         setPatchName(mgr.name);
         tabsMgr.syncActive();
@@ -116,7 +131,14 @@ export function App() {
         setTabs(tabsMgr.list());
         setActiveTab(tabsMgr.activeIndex());
       };
-      handle.setChangeListener(() => mgr.markDirty());
+      // Every edit reschedules the debounced autosave (markDirty alone only fires once).
+      handle.setChangeListener(() => {
+        mgr.markDirty();
+        scheduleAutosave(mgr, tabsMgr);
+      });
+      // Capture the final edit before a tab switch/close discards it, and on page unload.
+      tabsMgr.onBeforeLeaveTab = flushAutosave;
+      window.addEventListener("beforeunload", flushAutosave);
       patchRef.current = mgr;
       tabsRef.current = tabsMgr;
       setTabs(tabsMgr.list());
@@ -132,6 +154,8 @@ export function App() {
 
     return () => {
       disposed = true;
+      window.clearTimeout(autosaveTimer);
+      window.removeEventListener("beforeunload", flushAutosaveRef);
       handle?.destroy();
       if (AudioEngine.recording) void AudioEngine.stopRecording();
       void AudioGraph.stop();
@@ -240,38 +264,54 @@ export function App() {
     }
   };
 
-  // Register the current patch as an embeddable patch (its I/O terminals → ports).
-  const addCurrentPatch = () => {
-    const pm = patchRef.current;
-    if (!pm) return;
-    const patch = pm.build();
-    const sig = derivePatchSignature(patch.nodes);
-    const base = patch.name && patch.name !== "Untitled" ? patch.name : "Patch";
-    const taken = new Set(EmbeddablePatches.all().map((p) => p.title));
-    let title = base;
-    for (let n = 2; taken.has(title); n++) title = `${base} ${n}`;
-    const id = `patch-${Date.now().toString(36)}`;
-    EmbeddablePatches.add({ id, title, patch, inputs: sig.inputs, outputs: sig.outputs });
-    setStatus(`Added patch "${title}" — ${sig.inputs.length} in / ${sig.outputs.length} out`);
-  };
-
-  // Save the current patch document into the Saved Patches library (survives closing the
-  // tab). Names uniquely off the current patch name.
-  const saveCurrentPatch = () => {
-    const pm = patchRef.current;
-    if (!pm) return;
-    const patch = pm.build();
-    const base = patch.name?.trim() || "Untitled";
+  const uniquePatchName = (base: string) => {
     const taken = new Set(SavedPatches.all().map((p) => p.name));
     let name = base;
     for (let n = 2; taken.has(name); n++) name = `${base} ${n}`;
-    SavedPatches.add({ id: `saved-${Date.now().toString(36)}`, name, patch: { ...patch, name } });
-    setStatus(`Saved patch "${name}" to your library (${patch.nodes.length} nodes)`);
+    return name;
+  };
+
+  // New: create a fresh patch entry in the library and open it in a new (linked) tab.
+  const newPatch = () => {
+    const name = uniquePatchName("Untitled");
+    const patch = { ...emptyPatch(), name };
+    const id = `saved-${Date.now().toString(36)}`;
+    SavedPatches.add({ id, name, patch });
+    void tabsRef.current?.openPatch(structuredClone(patch), id);
+    setStatus(`New patch "${name}"`);
+  };
+
+  // Load a patch from disk straight into a (linked) tab, and add it to the library.
+  const loadPatchFromDisk = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = `${PATCH_EXTENSION},application/json`;
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const patch = parsePatch(await file.text());
+        const name = uniquePatchName(patch.name?.trim() || file.name.replace(/\.faustmod$/i, ""));
+        const id = `saved-${Date.now().toString(36)}`;
+        const stored = { ...patch, name };
+        SavedPatches.add({ id, name, patch: stored });
+        void tabsRef.current?.openPatch(structuredClone(stored), id);
+        setStatus(`Loaded patch "${name}"`);
+      } catch (e) {
+        setStatus(`Could not load patch: ${(e as Error).message}`);
+      }
+    };
+    input.click();
   };
 
   const openSavedPatch = (id: string) => {
     const p = SavedPatches.get(id);
-    if (p) void tabsRef.current?.openPatch(structuredClone(p.patch));
+    if (p) void tabsRef.current?.openPatch(structuredClone(p.patch), id);
+  };
+
+  const renamePatch = (id: string, name: string) => {
+    SavedPatches.rename(id, name);
+    tabsRef.current?.renameSaved(id, name.trim());
   };
 
   // Portable backup of ALL localStorage-bound work — carry it between machines/browsers
@@ -292,7 +332,7 @@ export function App() {
       try {
         const r = importBackup(await file.text());
         setStatus(
-          `Imported ${r.modules} modules, ${r.saved} saved patches, ${r.embeddable} embeddable, ${r.settings} settings`,
+          `Imported ${r.modules} modules, ${r.saved} patches, ${r.settings} settings`,
         );
       } catch (e) {
         setStatus(`Import failed: ${(e as Error).message}`);
@@ -469,9 +509,10 @@ export function App() {
         />
         <ModulePanel
           disabled={!ready}
-          onAddPatch={addCurrentPatch}
-          onSavePatch={saveCurrentPatch}
+          onNewPatch={newPatch}
+          onLoadPatch={loadPatchFromDisk}
           onOpenPatch={openSavedPatch}
+          onRenamePatch={renamePatch}
           onEdit={(def: ComponentDef, readOnly: boolean) => {
             if (!def.code) return;
             if (readOnly) setEditTarget({ kind: "example", title: def.title, code: def.code });

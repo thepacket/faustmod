@@ -587,6 +587,13 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Embeddable-patch marker (has I/O terminals → draggable onto a canvas as a node). */
+.comp-badge {
+  flex: none;
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1;
+}
 .dirty-dot {
   color: #e0a33a;
   font-size: 9px;

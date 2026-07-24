@@ -1,6 +1,6 @@
 import { LIBRARY_BY_ID, type ComponentDef } from "./library";
 import { MODULES_BY_ID } from "./modules";
-import { EmbeddablePatches } from "../patch/embeddablePatches";
+import { SavedPatches } from "../patch/savedPatches";
 import { PdModules } from "../patch/pdModules";
 import type { CustomBlockDef } from "../patch/format";
 
@@ -124,7 +124,7 @@ export function resolveComponent(id: string): ComponentDef | undefined {
     LIBRARY_BY_ID.get(id) ??
     MODULES_BY_ID.get(id) ??
     CustomBlocks.get(id) ??
-    EmbeddablePatches.def(id) ??
+    SavedPatches.def(id) ??
     PdModules.def(id)
   );
 }

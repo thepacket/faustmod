@@ -17,12 +17,14 @@ interface Props {
   disabled: boolean;
   /** Open the Faust editor for a user-defined DSP module. */
   onEdit: (def: ComponentDef, readOnly: boolean) => void;
-  /** Register the current patch as an embeddable patch. */
-  onAddPatch: () => void;
-  /** Save the current patch document into the Saved Patches library. */
-  onSavePatch: () => void;
-  /** Open a saved patch document into a new tab. */
+  /** Create a new patch entry and open it in a tab. */
+  onNewPatch: () => void;
+  /** Load a patch from disk into a tab. */
+  onLoadPatch: () => void;
+  /** Open a saved patch in a tab. */
   onOpenPatch: (id: string) => void;
+  /** Rename a saved patch (and any open tab for it). */
+  onRenamePatch: (id: string, name: string) => void;
   /** Open the Pd code editor — with a module id to edit it, or undefined for a new one. */
   onEditPd: (id?: string) => void;
 }
@@ -45,7 +47,7 @@ const FAUST_DOCS = "https://faustdoc.grame.fr/manual/syntax/";
  * double-click to edit, rename (✎) and delete (×), drag onto the canvas. Dirty
  * (saved-but-not-compiled) modules show an amber dot.
  */
-export function ModulePanel({ disabled, onEdit, onAddPatch, onSavePatch, onOpenPatch, onEditPd }: Props) {
+export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenPatch, onRenamePatch, onEditPd }: Props) {
   const [panelCollapsed, togglePanel] = usePanelCollapsed("faustmod.panel.modules");
   const [query, setQuery] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -273,9 +275,10 @@ export function ModulePanel({ disabled, onEdit, onAddPatch, onSavePatch, onOpenP
       <section className="pane pane-bottom">
         <PatchPanel
           disabled={disabled}
-          onAddPatch={onAddPatch}
-          onSavePatch={onSavePatch}
+          onNewPatch={onNewPatch}
+          onLoadPatch={onLoadPatch}
           onOpenPatch={onOpenPatch}
+          onRenamePatch={onRenamePatch}
         />
       </section>
     </aside>

@@ -15,6 +15,8 @@ interface Tab {
   handle: unknown;
   /** Serialized graph — the source of truth for INACTIVE tabs. */
   patch: PatchFile;
+  /** Saved-patch library id this tab is backed by (for rename sync + autosave). */
+  savedId?: string;
 }
 
 let counter = 0;
@@ -29,6 +31,9 @@ export class TabsManager {
   private tabs: Tab[];
   private active = 0;
   onChange: (() => void) | null = null;
+  /** Called just before the active tab is left (switch/close/new) — lets App flush a
+   *  pending autosave of the active tab before its editor state is replaced/discarded. */
+  onBeforeLeaveTab: (() => void) | null = null;
 
   constructor(private pm: PatchManager) {
     this.tabs = [
@@ -64,6 +69,7 @@ export class TabsManager {
   private captureActive(): void {
     const t = this.tabs[this.active];
     if (!t) return;
+    this.onBeforeLeaveTab?.(); // flush the active tab's pending autosave first
     t.patch = this.pm.build();
     const id = this.pm.getIdentity();
     t.name = id.name;
@@ -107,8 +113,18 @@ export class TabsManager {
     await this.pm.open(); // updates identity (name/handle) → syncActive refreshes the tab
   }
 
-  /** Open an in-memory patch (e.g. a bundled preset) into a new tab. */
-  async openPatch(patch: PatchFile): Promise<void> {
+  /**
+   * Open an in-memory patch into a new tab. If it's already open (same savedId), just
+   * switch to it. `savedId` links the tab to a Saved Patches library entry.
+   */
+  async openPatch(patch: PatchFile, savedId?: string): Promise<void> {
+    if (savedId) {
+      const existing = this.tabs.findIndex((t) => t.savedId === savedId);
+      if (existing >= 0) {
+        await this.switchTo(existing);
+        return;
+      }
+    }
     this.captureActive();
     const t: Tab = {
       id: newId(),
@@ -116,6 +132,7 @@ export class TabsManager {
       dirty: false,
       handle: null,
       patch,
+      savedId,
     };
     this.tabs.push(t);
     this.active = this.tabs.length - 1;
@@ -123,10 +140,35 @@ export class TabsManager {
     this.onChange?.();
   }
 
+  /** The saved-patch id backing the active tab, if any (for autosave). */
+  activeSavedId(): string | undefined {
+    return this.tabs[this.active]?.savedId;
+  }
+
+  /** Rename any open tab(s) backed by a saved-patch id (palette rename → tab title). */
+  renameSaved(savedId: string, name: string): void {
+    let changed = false;
+    for (const t of this.tabs) {
+      if (t.savedId === savedId && t.name !== name) {
+        t.name = name;
+        changed = true;
+      }
+    }
+    if (changed) {
+      // Keep the active tab's PatchManager identity in sync too.
+      if (this.tabs[this.active]?.savedId === savedId) {
+        const cur = this.pm.getIdentity();
+        this.pm.setIdentity({ ...cur, name });
+      }
+      this.onChange?.();
+    }
+  }
+
   async closeTab(index: number): Promise<void> {
     const t = this.tabs[index];
     if (!t) return;
     if (t.dirty && !window.confirm(`Close "${t.name}" with unsaved changes?`)) return;
+    if (index === this.active) this.onBeforeLeaveTab?.(); // persist its latest to the library
 
     if (this.tabs.length === 1) {
       const fresh: Tab = {

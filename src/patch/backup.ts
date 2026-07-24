@@ -1,6 +1,5 @@
 import { CustomBlocks } from "../components/customBlocks";
 import { PdModules } from "./pdModules";
-import { EmbeddablePatches } from "./embeddablePatches";
 import { SavedPatches } from "./savedPatches";
 import { OPENROUTER_SYSTEM, OPENROUTER_PD_SYSTEM, OPENROUTER_MODEL } from "../ai/openrouter";
 
@@ -20,7 +19,6 @@ const SETTING_KEYS = [OPENROUTER_SYSTEM, OPENROUTER_PD_SYSTEM, OPENROUTER_MODEL]
 export interface ImportResult {
   modules: number;
   pdModules: number;
-  embeddable: number;
   saved: number;
   settings: number;
 }
@@ -42,7 +40,6 @@ export function buildBackup(): string {
         .map((d) => CustomBlocks.toDef(d.id))
         .filter((b): b is NonNullable<typeof b> => !!b),
       pdModules: PdModules.all(),
-      embeddablePatches: EmbeddablePatches.all(),
       savedPatches: SavedPatches.all(),
       settings,
     },
@@ -60,7 +57,7 @@ export function importBackup(text: string): ImportResult {
   const data = JSON.parse(text) as Record<string, unknown>;
   if (data?.format !== BACKUP_FORMAT) throw new Error("Not a FaustMod backup file.");
 
-  const res: ImportResult = { modules: 0, pdModules: 0, embeddable: 0, saved: 0, settings: 0 };
+  const res: ImportResult = { modules: 0, pdModules: 0, saved: 0, settings: 0 };
 
   for (const b of (data.customBlocks as Parameters<typeof CustomBlocks.add>[0][]) ?? []) {
     CustomBlocks.add(b);
@@ -70,12 +67,13 @@ export function importBackup(text: string): ImportResult {
     PdModules.add(m);
     res.pdModules++;
   }
-  for (const p of (data.embeddablePatches as Parameters<typeof EmbeddablePatches.add>[0][]) ?? []) {
-    EmbeddablePatches.add(p);
-    res.embeddable++;
-  }
   for (const p of (data.savedPatches as Parameters<typeof SavedPatches.add>[0][]) ?? []) {
     SavedPatches.add(p);
+    res.saved++;
+  }
+  // Backward-compat: fold an old backup's embeddable patches into the single store.
+  for (const e of (data.embeddablePatches as { id: string; title: string; patch: unknown }[]) ?? []) {
+    SavedPatches.add({ id: e.id, name: e.title, patch: e.patch as never });
     res.saved++;
   }
   const settings = (data.settings as Record<string, unknown>) ?? {};
