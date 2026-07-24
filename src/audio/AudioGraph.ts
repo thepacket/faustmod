@@ -23,6 +23,7 @@ import {
   NullUnit,
   Monitors,
 } from "./monitors";
+import { TableUnit, MultiCVUnit, EqCurveUnit } from "./tableUnits";
 import type { AudioUnit, InputSpec } from "./types";
 import { resolveComponent } from "../components/customBlocks";
 import { SavedPatches } from "../patch/savedPatches";
@@ -299,6 +300,21 @@ class AudioGraphImpl {
             break;
           case "granular":
             widgetUnit = await GranularUnit.create(ctx);
+            break;
+          case "envelope":
+            widgetUnit = await TableUnit.create(ctx, "envelope", def.inputs);
+            break;
+          case "wavedraw":
+            widgetUnit = await TableUnit.create(ctx, "wavetable", def.inputs);
+            break;
+          case "curve":
+            widgetUnit = await TableUnit.create(ctx, "shaper", def.inputs);
+            break;
+          case "multislider":
+            widgetUnit = new MultiCVUnit(ctx, Number(def.widgetConfig?.bars ?? 8), 0.5);
+            break;
+          case "eq-curve":
+            widgetUnit = new EqCurveUnit(ctx, Number(def.widgetConfig?.bands ?? 10));
             break;
           case "comment":
             widgetUnit = new NullUnit();

@@ -332,4 +332,81 @@ export const WIDGETS: ComponentDef[] = [
     resizable: true,
     defaultSize: { w: 210, h: 120 },
   },
+
+  // ---- Drawable editors ---------------------------------------------------
+  // The drawn shape IS the parameter: these persist their points/cells in the patch
+  // and push them to the running unit (see src/audio/tableUnits.ts).
+  {
+    id: "envelope",
+    title: "Envelope",
+    category: "Envelopes",
+    kind: "widget",
+    widget: "envelope",
+    tooltip:
+      "Draw a multi-stage envelope. A rising edge on gate sweeps the shape once over " +
+      "time seconds. Drag points, double-click to add, right-click to remove.",
+    inputs: [
+      { label: "gate", tooltip: "Rising edge starts the envelope." },
+      { label: "time", default: 0.5, min: 0.01, max: 10, unit: "s", tooltip: "Sweep duration." },
+    ],
+    outputs: [{ label: "env", tooltip: "The drawn contour, 0..1." }],
+    resizable: true,
+    defaultSize: { w: 220, h: 110 },
+  },
+  {
+    id: "wavedraw",
+    title: "Wavetable Draw",
+    category: "Oscillators",
+    kind: "widget",
+    widget: "wavedraw",
+    tooltip: "Draw one cycle; the oscillator scans it at the freq input.",
+    inputs: [
+      { label: "freq", default: 220, min: 20, max: 20000, unit: "Hz" },
+      { label: "gain", default: 0.5, min: 0, max: 1 },
+    ],
+    outputs: [{ label: "out" }],
+    resizable: true,
+    defaultSize: { w: 200, h: 110 },
+  },
+  {
+    id: "curve",
+    title: "Transfer Curve",
+    category: "Distortion",
+    kind: "widget",
+    widget: "curve",
+    tooltip: "Waveshaper you draw: x is the input sample (-1..1), y the output.",
+    inputs: [{ label: "in" }],
+    outputs: [{ label: "out" }],
+    resizable: true,
+    defaultSize: { w: 150, h: 150 },
+  },
+  ...([8, 16] as const).map(
+    (bars): ComponentDef => ({
+      id: `multislider-${bars}`,
+      title: `Multislider x${bars}`,
+      category: "Controls",
+      kind: "widget",
+      widget: "multislider",
+      widgetConfig: { bars },
+      tooltip: `${bars} bars, each its own control output. Sweep across them to draw a contour.`,
+      inputs: [],
+      outputs: Array.from({ length: bars }, (_, i) => ({ label: `${i + 1}` })),
+      resizable: true,
+      defaultSize: { w: Math.max(120, bars * 14), h: 90 },
+    }),
+  ),
+  {
+    id: "eq-curve",
+    title: "Graphic EQ",
+    category: "EQ",
+    kind: "widget",
+    widget: "eq-curve",
+    widgetConfig: { bands: 10 },
+    tooltip:
+      "10-band graphic EQ (31 Hz - 16 kHz). Drag the curve; double-click flattens it.",
+    inputs: [{ label: "in" }],
+    outputs: [{ label: "out" }],
+    resizable: true,
+    defaultSize: { w: 240, h: 110 },
+  },
 ];

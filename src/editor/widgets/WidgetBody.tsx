@@ -18,6 +18,11 @@ import { XYPad } from "./XYPad";
 import { Sampler } from "./Sampler";
 import { RecordWidget } from "./RecordWidget";
 import { Button } from "./Button";
+import { EnvelopeEditor } from "./EnvelopeEditor";
+import { WaveDraw } from "./WaveDraw";
+import { TransferCurve } from "./TransferCurve";
+import { MultiSlider } from "./MultiSlider";
+import { EqCurve } from "./EqCurve";
 
 /** Renders the custom body for a widget node, dispatched by its `widget` type. */
 export function WidgetBody({ node }: { node: WidgetNode }) {
@@ -61,6 +66,16 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
       return <RecordWidget node={node} />;
     case "button":
       return <Button node={node} />;
+    case "envelope":
+      return <EnvelopeEditor node={node} />;
+    case "wavedraw":
+      return <WaveDraw node={node} />;
+    case "curve":
+      return <TransferCurve node={node} />;
+    case "multislider":
+      return <MultiSlider node={node} />;
+    case "eq-curve":
+      return <EqCurve node={node} />;
     default:
       return null;
   }
