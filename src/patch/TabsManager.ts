@@ -167,8 +167,12 @@ export class TabsManager {
   async closeTab(index: number): Promise<void> {
     const t = this.tabs[index];
     if (!t) return;
-    if (t.dirty && !window.confirm(`Close "${t.name}" with unsaved changes?`)) return;
-    if (index === this.active) this.onBeforeLeaveTab?.(); // persist its latest to the library
+    // Persist the active tab's latest edits to the library BEFORE any close logic.
+    if (index === this.active) this.onBeforeLeaveTab?.();
+    // A library-backed patch (savedId) is stored transparently — closing loses nothing,
+    // so never prompt. Only warn for a tab that isn't in the library (e.g. an untitled
+    // scratch tab or an opened preset) and has unsaved edits.
+    if (!t.savedId && t.dirty && !window.confirm(`Close "${t.name}" with unsaved changes?`)) return;
 
     if (this.tabs.length === 1) {
       const fresh: Tab = {
