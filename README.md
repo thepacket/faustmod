@@ -30,14 +30,27 @@ runs as WebAssembly AudioWorklets in the browser.
 - **Mixing & modulation** — a **Mixer 4** (level/pan/send → L, R, aux), an 8→mono
   sub-mixer, a constant-power **Pan**, a **2×2 mod matrix**, an attenuverting **CV mixer**,
   and a morphing **Wavetable** oscillator.
-- **Instrument/widget nodes** — oscilloscope (signal + trigger, resizable), spectrogram
-  (resizable), analog VU meter, digital voltmeter, R/G/B/Y LEDs, and 8/16-step
-  sequencers (drag for pitch, click to mute, shift-drag for velocity → frequency,
-  gate and velocity outputs).
-- **Control / playability** — on-screen **Keyboard** (mouse or A–K keys) and **MIDI In**
-  (Web MIDI) outputting frequency + gate (+ velocity), a rotary **Knob**, an **XY Pad**
-  macro, a **Comment** note, a **Clock (BPM)**, and an **Env VCA** (gate-driven ADSR).
-- **Sample player** — load an audio file; a trigger plays it, with a rate/pitch control
+- **Instrument/widget nodes** — oscilloscope (signal + trigger, resizable), a
+  four-trace **Scope x4**, spectrogram, spectrum analyzer, analog VU meter, digital
+  voltmeter, R/G/B/Y LEDs, stereo **Correlation** and **Loudness** (LUFS + peak) meters,
+  a control-rate **CV Plotter**, a numeric **Value Monitor**, and 8/16-step sequencers
+  (drag for pitch, click to mute, shift-drag for velocity → frequency, gate and velocity
+  outputs).
+- **Drawable editors** — widgets whose drawn shape *is* the parameter: a breakpoint
+  **Envelope**, a **Wavetable Draw** cycle, a **Transfer Curve** waveshaper, a
+  **Multislider** bank and a 10-band **Graphic EQ**.
+- **Sequencing** — a master **Transport** (run/stop/reset/tap generating the 16th
+  clock), an 8×16 **Drum Grid** with a trigger out per lane, a **Piano Roll** clip
+  editor, a **Euclid Circle**, a **Turing Machine** shift register and a **Probability
+  Gate**.
+- **Control / playability** — on-screen **Keyboard** (mouse or A–K keys), **MIDI In**
+  and **MIDI Out** (Web MIDI) plus a **MIDI Monitor**, a rotary **Knob**, an **XY Pad**
+  macro, a **Selector** switch, a typed **Number Box**, a **Morph Pad** (four snapshots
+  blended by a puck), **Pads x8**, a **Randomize** dice, a **Group Frame**, a
+  **Comment** note, a **Clock (BPM)**, and an **Env VCA** (gate-driven ADSR).
+- **Sample player** — load an audio file; a trigger plays it, with a rate/pitch control,
+  a waveform view with draggable start/end markers and a loop toggle. Plus a **Looper**
+  (record/play/overdub) and **Convolution** reverb from a loaded impulse response
   and stereo output.
 - **Granular** — load a file and get a continuous windowed grain cloud with position,
   grain size, density, pitch and spray control inputs (scan/modulate them for textures).
@@ -291,11 +304,20 @@ Copy/paste, duplicate, marquee selection and group-drag already work.
 ## Widget nodes
 
 Instrument nodes (scope, meters, LEDs, sequencer…) are `kind: "widget"` components
-(`src/components/widgets.ts`). Each realizes into a custom audio unit in
-`src/audio/monitors.ts` (an AnalyserNode tap, or the sequencer's AudioWorklet) that
-registers in a `Monitors` map keyed by node id. The matching React body in
-`src/editor/widgets/` reads that map each frame to animate. Resizable widgets persist
-their size (and the sequencer its notes) in the patch.
+(`src/components/widgets.ts`). Each realizes into a custom audio unit — in
+`src/audio/monitors.ts` (AnalyserNode taps, the sequencer worklet),
+`src/audio/tableUnits.ts` (drawable editors, multi-output CV, stereo analysis),
+`src/audio/seqUnits.ts` (the clocked pattern worklet) or `src/audio/fileUnits.ts`
+(convolver, looper) — that registers in a `Monitors` map keyed by node id. The matching
+React body in `src/editor/widgets/` reads that map each frame to animate. Resizable
+widgets persist their size, and any widget state (drawn points, grid cells, notes) in
+the patch node's `state`.
+
+Drawable widgets share `src/editor/widgets/DrawCanvas.tsx`: a DPR-correct canvas,
+pointer drags reported in normalized 0..1 coordinates (so editor zoom cancels out),
+`usePersistedState` for patch-backed state, and helpers that push the drawn shape to the
+running unit. Momentary widgets must push values synchronously when they fire — a
+browser that throttles timers will otherwise swallow a short pulse.
 
 ## License
 
