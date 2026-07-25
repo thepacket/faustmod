@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { Monitors } from "../../audio/monitors";
 import type { TableMonitor } from "../../audio/tableUnits";
 import { WidgetBridge, type WidgetNode } from "./WidgetBridge";
@@ -102,6 +108,35 @@ export function useTableSync(nodeId: string, build: () => Float32Array, deps: un
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId, ...deps]);
+}
+
+/**
+ * Measure the element a widget body is placed in, so a canvas can fill it exactly.
+ * Needed because a node's height is set by its port stack (16 outputs make a tall node),
+ * which the widget can't know up front — a fixed-size canvas would leave dead space.
+ * The canvas must be positioned absolutely inside the returned ref, or it would inflate
+ * the box it is measuring.
+ */
+export function useFilledSize(fallback: { w: number; h: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState(fallback);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      // Divide out the editor zoom so the backing store matches CSS pixels.
+      const zoom = WidgetBridge.zoom() || 1;
+      const w = Math.max(20, Math.round(r.width / zoom));
+      const h = Math.max(20, Math.round(r.height / zoom));
+      setSize((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, size] as const;
 }
 
 interface DrawCanvasProps {

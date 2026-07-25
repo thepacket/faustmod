@@ -1301,3 +1301,23 @@
   border-color: var(--accent);
   color: #fff;
 }
+
+/* ---- Multislider: the bars fill the node body ----
+   The node's height comes from its port stack (one output per bar), so the canvas is
+   stretched to the row rather than centred at a fixed size. It is positioned absolutely
+   so it can't inflate the box it is measuring. */
+.dsp-node[data-widget-kind="multislider"] .dsp-widget-row {
+  align-items: stretch;
+}
+.dsp-node[data-widget-kind="multislider"] .dsp-widget-body {
+  flex: 1;
+}
+.msl-fill {
+  position: relative;
+  flex: 1;
+  align-self: stretch;
+}
+.msl-fill > .msl-canvas {
+  position: absolute;
+  inset: 0;
+}
