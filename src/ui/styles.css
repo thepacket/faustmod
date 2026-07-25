@@ -1060,3 +1060,15 @@ body {
   margin-top: 4px;
   font-size: 13px;
 }
+
+/* Settings: a checkbox sits inline with its label, unlike the stacked selects. */
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.settings-check input {
+  width: auto;
+  margin: 0;
+}

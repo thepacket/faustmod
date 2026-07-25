@@ -1,6 +1,6 @@
 import type { FaustMonoAudioWorkletNode } from "@grame/faustwasm";
 import type { AudioUnit, InputSpec } from "./types";
-import { AudioDevices } from "./devices";
+import { inputConstraints } from "./devices";
 
 /** Drop the leading `/<dsp-name>` segment so param addresses match regardless of the
  *  (cache-dependent) compile name Faust baked into them. */
@@ -296,10 +296,8 @@ export class InputUnit implements AudioUnit {
 
   async open() {
     if (this.source) return;
-    const id = AudioDevices.inputDeviceId;
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: id ? { deviceId: { exact: id } } : true,
-    });
+    // Raw by default: the browser's voice-processing chain mangles music input.
+    this.stream = await navigator.mediaDevices.getUserMedia(inputConstraints());
     this.source = (this.ctx as AudioContext).createMediaStreamSource(this.stream);
     this.source.connect(this.splitter);
   }

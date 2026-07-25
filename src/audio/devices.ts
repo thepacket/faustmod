@@ -1,3 +1,28 @@
+/** localStorage key for the input voice-processing preference. */
+export const INPUT_DSP_KEY = "faustmod.inputVoiceDsp";
+
+/**
+ * Whether to let the browser run its voice-processing chain (echo cancellation, noise
+ * suppression, auto gain) on the hardware input. Chrome enables all three by default,
+ * which gates and resamples the signal — fine for a call, wrong for music, where it
+ * shows up as dropouts and pumping. Off unless the user asks for it.
+ */
+export function inputVoiceDsp(): boolean {
+  return localStorage.getItem(INPUT_DSP_KEY) === "1";
+}
+
+/** Constraints for the hardware input, honouring the preference above. */
+export function inputConstraints(): MediaStreamConstraints {
+  const on = inputVoiceDsp();
+  const audio: MediaTrackConstraints = {
+    echoCancellation: on,
+    noiseSuppression: on,
+    autoGainControl: on,
+  };
+  if (AudioDevices.inputDeviceId) audio.deviceId = { exact: AudioDevices.inputDeviceId };
+  return { audio };
+}
+
 /** Selected audio input/output devices, shared across the app. */
 export const AudioDevices: { inputDeviceId: string | null; outputDeviceId: string | null } = {
   inputDeviceId: null,

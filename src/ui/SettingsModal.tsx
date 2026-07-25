@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
 import {
   AudioDevices,
+  INPUT_DSP_KEY,
+  inputVoiceDsp,
   listAudioDevices,
   requestDevicePermission,
   canSelectOutput,
@@ -38,6 +40,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     () => localStorage.getItem(OPENROUTER_SYSTEM) || DEFAULT_SYSTEM_PROMPT,
   );
   const [latency, setLatency] = useState<LatencyHint>(storedLatencyHint);
+  const [voiceDsp, setVoiceDsp] = useState(inputVoiceDsp);
   const [models, setModels] = useState<string[]>(MODEL_FALLBACK);
   const [modelsLoading, setModelsLoading] = useState(true);
 
@@ -187,6 +190,23 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           ))}
         </select>
       </label>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={voiceDsp}
+          onChange={(e) => {
+            setVoiceDsp(e.target.checked);
+            localStorage.setItem(INPUT_DSP_KEY, e.target.checked ? "1" : "0");
+            setNote("Input processing applies to Audio Input nodes on next Start.");
+          }}
+        />
+        Clean up input for speech (echo cancel, noise suppression, auto gain)
+      </label>
+      <p className="hint">
+        Off by default. The browser enables all three unless asked not to, and on music
+        they gate and resample the signal — which sounds like dropouts. Turn them on only
+        if the input is a voice mic.
+      </p>
       <label style={{ marginTop: 12 }}>
         Output (speakers)
         <select
