@@ -691,4 +691,18 @@ export const WIDGETS: ComponentDef[] = [
     inputs: [{ label: "in" }],
     outputs: [{ label: "out" }],
   },
+
+  {
+    id: "audio-health",
+    title: "Audio Health",
+    category: "Meters",
+    kind: "widget",
+    widget: "audio-health",
+    tooltip:
+      "Counts late render callbacks on the audio thread. Rising numbers mean the audio " +
+      "really is glitching (raise the buffer in Settings); steady numbers while other " +
+      "meters look choppy mean only the UI stalled.",
+    inputs: [],
+    outputs: [],
+  },
 ];

@@ -33,6 +33,7 @@ import {
 } from "./tableUnits";
 import { PatternUnit } from "./seqUnits";
 import { ConvolverUnit, LooperUnit } from "./fileUnits";
+import { HealthUnit } from "./healthUnit";
 import type { AudioUnit, InputSpec } from "./types";
 import { resolveComponent } from "../components/customBlocks";
 import { SavedPatches } from "../patch/savedPatches";
@@ -371,6 +372,9 @@ class AudioGraphImpl {
             break;
           case "ir-loader":
             widgetUnit = new ConvolverUnit(ctx);
+            break;
+          case "audio-health":
+            widgetUnit = await HealthUnit.create(ctx);
             break;
           case "looper":
             widgetUnit = await LooperUnit.create(ctx);

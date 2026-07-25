@@ -1395,3 +1395,40 @@
 .canvas div:has(> span > .dsp-node[data-widget-kind="panel-frame"]) {
   z-index: 0;
 }
+
+/* ---- Audio health probe ---- */
+.health {
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 118px;
+}
+.health-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font: 9px ui-monospace, monospace;
+}
+.health-label {
+  color: var(--muted);
+}
+.health-val {
+  color: #9fe6c4;
+}
+.health-val.bad {
+  color: #ff5b6e;
+}
+.health-val.dim {
+  color: #6d7484;
+}
+.health-reset {
+  margin-top: 2px;
+  background: #191b21;
+  border: 1px solid #0b0c10;
+  border-radius: 3px;
+  color: var(--muted);
+  font-size: 9px;
+  padding: 2px 4px;
+  cursor: pointer;
+}

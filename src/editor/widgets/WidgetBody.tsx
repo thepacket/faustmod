@@ -43,6 +43,7 @@ import { CvPlotter } from "./CvPlotter";
 import { ValueMonitor } from "./ValueMonitor";
 import { Looper } from "./Looper";
 import { IrLoader } from "./IrLoader";
+import { AudioHealth } from "./AudioHealth";
 
 /** Renders the custom body for a widget node, dispatched by its `widget` type. */
 export function WidgetBody({ node }: { node: WidgetNode }) {
@@ -136,6 +137,8 @@ export function WidgetBody({ node }: { node: WidgetNode }) {
       return <Looper node={node} />;
     case "ir-loader":
       return <IrLoader node={node} />;
+    case "audio-health":
+      return <AudioHealth node={node} />;
     default:
       return null;
   }
