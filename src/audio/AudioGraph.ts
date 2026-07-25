@@ -34,6 +34,7 @@ import {
 import { PatternUnit } from "./seqUnits";
 import { ConvolverUnit, LooperUnit } from "./fileUnits";
 import { HealthUnit } from "./healthUnit";
+import { PlotUnit } from "./plotUnit";
 import type { AudioUnit, InputSpec } from "./types";
 import { resolveComponent } from "../components/customBlocks";
 import { SavedPatches } from "../patch/savedPatches";
@@ -383,8 +384,11 @@ class AudioGraphImpl {
           case "loudness":
             widgetUnit = new StereoAnalysisUnit(ctx);
             break;
-          case "multiscope":
           case "cv-plot":
+            // Pushes from the audio thread, so the trace survives a background tab.
+            widgetUnit = await PlotUnit.create(ctx, def.inputs);
+            break;
+          case "multiscope":
           case "value-monitor":
             widgetUnit = new TracesUnit(ctx, def.inputs.length);
             break;
