@@ -176,6 +176,16 @@ export class TableUnit implements AudioUnit, TableMonitor {
 }
 
 // ---- Drawn EQ curve: a chain of peaking biquads --------------------------
+
+/**
+ * Log-spaced band centres. Exported so the widget can label its dots with the same
+ * frequencies the filters actually use, even before the audio graph is built.
+ */
+export function eqBandFrequencies(bands = 10, low = 31.25, high = 16000): number[] {
+  const ratio = Math.pow(high / low, 1 / Math.max(1, bands - 1));
+  return Array.from({ length: bands }, (_, i) => low * Math.pow(ratio, i));
+}
+
 export interface EqCurveMonitor {
   setGains(gainsDb: number[]): void;
   bandFrequencies(): number[];
@@ -194,7 +204,7 @@ export class EqCurveUnit implements AudioUnit, EqCurveMonitor {
 
   constructor(ctx: BaseAudioContext, bands = 10, low = 31.25, high = 16000) {
     const ratio = Math.pow(high / low, 1 / Math.max(1, bands - 1));
-    this.freqs = Array.from({ length: bands }, (_, i) => low * Math.pow(ratio, i));
+    this.freqs = eqBandFrequencies(bands, low, high);
     // Q that makes adjacent bands overlap smoothly across one step of the ratio.
     const q = Math.sqrt(ratio) / (ratio - 1);
     this.filters = this.freqs.map((f) => {

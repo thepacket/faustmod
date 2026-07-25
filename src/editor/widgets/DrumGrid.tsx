@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Monitors } from "../../audio/monitors";
 import type { PatternMonitor } from "../../audio/seqUnits";
-import { DrawCanvas, usePersistedState, type Pt } from "./DrawCanvas";
+import { DrawCanvas, useFilledSize, usePersistedState, type Pt } from "./DrawCanvas";
 import type { WidgetNode } from "./WidgetBridge";
 
 const LANE_COLORS = ["#ff6b6b", "#ffa94d", "#ffd43b", "#69db7c", "#4dabf7", "#9775fa", "#f783ac", "#ced4da"];
@@ -10,12 +10,17 @@ const LANE_COLORS = ["#ff6b6b", "#ffa94d", "#ffd43b", "#69db7c", "#4dabf7", "#97
  * Trigger matrix: `lanes` independent drum tracks over `steps`, one trigger output per
  * lane. Click a cell to toggle it, drag to paint a run of hits. The playhead column
  * tracks the clock input.
+ *
+ * The grid fills the node body: one output port per lane sets the node's height, so a
+ * fixed-size canvas would leave dead space, and the rows would not line up with the
+ * ports they drive.
  */
 export function DrumGrid({ node }: { node: WidgetNode }) {
   const lanes = Number(node.widgetConfig?.lanes ?? 8);
   const steps = Number(node.widgetConfig?.steps ?? 16);
   const w = node.width ?? steps * 15;
   const h = node.height ?? lanes * 13;
+  const [boxRef, size] = useFilledSize({ w, h });
   const [getCells, setCells] = usePersistedState<boolean[][]>(node, "cells", () =>
     Array.from({ length: lanes }, () => Array.from({ length: steps }, () => false)),
   );
@@ -78,37 +83,39 @@ export function DrumGrid({ node }: { node: WidgetNode }) {
   };
 
   return (
-    <DrawCanvas
-      className="draw-canvas grid-canvas"
-      width={w}
-      height={h}
-      revision={rev}
-      title={`${lanes} lanes x ${steps} steps — click toggles, drag paints`}
-      onDown={onDown}
-      onDrag={onDrag}
-      onUp={() => (painting.current = null)}
-      draw={(ctx, cw, ch) => {
-        const bw = cw / steps;
-        const bh = ch / lanes;
-        ctx.fillStyle = "rgba(0,0,0,0.22)";
-        ctx.fillRect(0, 0, cw, ch);
-        if (playhead.current >= 0) {
-          ctx.fillStyle = "rgba(255,255,255,0.10)";
-          ctx.fillRect(playhead.current * bw, 0, bw, ch);
-        }
-        for (let l = 0; l < lanes; l++) {
-          for (let s = 0; s < steps; s++) {
-            const on = cells[l]?.[s];
-            // Beat shading (every 4th step) keeps the bar readable when empty.
-            ctx.fillStyle = on
-              ? LANE_COLORS[l % LANE_COLORS.length]
-              : s % 4 === 0
-                ? "rgba(255,255,255,0.09)"
-                : "rgba(255,255,255,0.04)";
-            ctx.fillRect(s * bw + 1, l * bh + 1, bw - 2, bh - 2);
+    <div className="grid-fill" ref={boxRef} style={{ width: w, minHeight: h }}>
+      <DrawCanvas
+        className="draw-canvas grid-canvas"
+        width={size.w}
+        height={size.h}
+        revision={rev}
+        title={`${lanes} lanes x ${steps} steps — click toggles, drag paints`}
+        onDown={onDown}
+        onDrag={onDrag}
+        onUp={() => (painting.current = null)}
+        draw={(ctx, cw, ch) => {
+          const bw = cw / steps;
+          const bh = ch / lanes;
+          ctx.fillStyle = "rgba(0,0,0,0.22)";
+          ctx.fillRect(0, 0, cw, ch);
+          if (playhead.current >= 0) {
+            ctx.fillStyle = "rgba(255,255,255,0.10)";
+            ctx.fillRect(playhead.current * bw, 0, bw, ch);
           }
-        }
-      }}
-    />
+          for (let l = 0; l < lanes; l++) {
+            for (let s = 0; s < steps; s++) {
+              const on = cells[l]?.[s];
+              // Beat shading (every 4th step) keeps the bar readable when empty.
+              ctx.fillStyle = on
+                ? LANE_COLORS[l % LANE_COLORS.length]
+                : s % 4 === 0
+                  ? "rgba(255,255,255,0.09)"
+                  : "rgba(255,255,255,0.04)";
+              ctx.fillRect(s * bw + 1, l * bh + 1, bw - 2, bh - 2);
+            }
+          }
+        }}
+      />
+    </div>
   );
 }

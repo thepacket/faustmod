@@ -403,11 +403,13 @@ export const WIDGETS: ComponentDef[] = [
     widget: "eq-curve",
     widgetConfig: { bands: 10 },
     tooltip:
-      "10-band graphic EQ (31 Hz - 16 kHz). Drag the curve; double-click flattens it.",
+      "10-band graphic EQ (31 Hz - 16 kHz). Drag the curve; double-click flattens it. " +
+      "Each dot is labelled with its band frequency.",
     inputs: [{ label: "in" }],
     outputs: [{ label: "out" }],
     resizable: true,
-    defaultSize: { w: 240, h: 110 },
+    // Wide enough for all ten frequency labels; narrower and they thin out.
+    defaultSize: { w: 300, h: 120 },
   },
 
   // ---- Sequencing & timing ------------------------------------------------
