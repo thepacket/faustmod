@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Monitors } from "../../audio/monitors";
-import type { StereoAnalysisMonitor } from "../../audio/tableUnits";
+import type { StereoAnalysisMonitor } from "../../audio/loudnessUnit";
 import type { WidgetNode } from "./WidgetBridge";
 
 /**

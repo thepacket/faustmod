@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Monitors } from "../../audio/monitors";
-import type { StereoAnalysisMonitor } from "../../audio/tableUnits";
+import type { StereoAnalysisMonitor } from "../../audio/loudnessUnit";
 import type { WidgetNode } from "./WidgetBridge";
 
 const FLOOR = -40; // bottom of the scale, LUFS
 
 /**
- * Momentary loudness and true-ish peak for the stereo bus. Peak tells you about
- * clipping, LUFS tells you how loud it will actually sound — the number every delivery
- * target is specified in, and the one an RMS meter can't give you.
+ * Momentary loudness and sample peak for the stereo bus. Peak tells you about clipping,
+ * LUFS tells you how loud it will actually sound — the number every delivery target is
+ * specified in, and the one an RMS meter can't give you.
+ *
+ * Both are measured in the audio thread (loudnessUnit.ts) and pushed here, so the peak is
+ * a real peak over every sample rather than a sample of whatever the poll happened to
+ * catch. Reading drains the held peak, so nothing between two polls is missed.
  */
 export function LoudnessMeter({ node }: { node: WidgetNode }) {
   const w = node.width ?? 130;

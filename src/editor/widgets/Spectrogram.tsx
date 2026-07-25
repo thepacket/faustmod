@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Monitors, type SpectrumMonitor } from "../../audio/monitors";
+import { Monitors } from "../../audio/monitors";
+import type { SpectrogramMonitor } from "../../audio/spectrogramUnit";
 import type { WidgetNode } from "./WidgetBridge";
 
 /** Intensity 0..1 → heat colour (black → red → yellow → white). */
@@ -10,6 +11,15 @@ function heat(v: number): string {
   return `rgb(${r | 0},${g | 0},${b | 0})`;
 }
 
+/**
+ * Scrolling waterfall of the spectrum over time.
+ *
+ * The columns are computed in the audio thread (spectrogramUnit.ts) and pushed here; this
+ * only scrolls the canvas and paints whatever arrived. That is the difference between a
+ * waterfall and a hole in one: a dropped frame used to mean a column that was never
+ * computed, and there was no way to get it back. Now a stall just means several columns
+ * are drawn at once when the tab wakes up.
+ */
 export function Spectrogram({ node }: { node: WidgetNode }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const w = node.width ?? 280;
@@ -23,29 +33,27 @@ export function Spectrogram({ node }: { node: WidgetNode }) {
     canvas.height = h;
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, w, h);
-    let buf: Uint8Array | null = null;
     let raf = 0;
 
     const draw = () => {
-      const m = Monitors.get(node.id) as SpectrumMonitor | undefined;
-      // Scroll left by 1px.
-      ctx.drawImage(canvas, -1, 0);
-      // New column on the right.
-      if (m) {
-        const bins = m.binCount();
-        if (!buf || buf.length !== bins) buf = new Uint8Array(bins);
-        m.readFreq(buf);
-        // Only show up to ~half the spectrum (more useful range).
-        const shown = Math.floor(bins * 0.6);
-        for (let y = 0; y < h; y++) {
-          const bin = Math.floor(((h - 1 - y) / h) * shown);
-          const v = buf[bin] / 255;
-          ctx.fillStyle = heat(v);
-          ctx.fillRect(w - 1, y, 1, 1);
-        }
-      } else {
-        ctx.fillStyle = "#000";
-        ctx.fillRect(w - 1, 0, 1, h);
+      const m = Monitors.get(node.id) as SpectrogramMonitor | undefined;
+      // A backlog longer than the canvas can only fill it, so drop what would scroll
+      // straight off the left edge.
+      const cols = (m?.take?.() ?? []).slice(-w);
+      if (cols.length) {
+        const n = cols.length;
+        ctx.drawImage(canvas, -n, 0);
+        // Only the lower ~60% of the spectrum is worth the pixels; above that a musical
+        // signal is almost always empty.
+        const shown = Math.floor((m?.bins?.() ?? 512) * 0.6);
+        cols.forEach((col, i) => {
+          const x = w - n + i;
+          for (let y = 0; y < h; y++) {
+            const bin = Math.floor(((h - 1 - y) / h) * shown);
+            ctx.fillStyle = heat(col[bin] / 255);
+            ctx.fillRect(x, y, 1, 1);
+          }
+        });
       }
       raf = requestAnimationFrame(draw);
     };

@@ -28,13 +28,15 @@ import {
   MultiCVUnit,
   EqCurveUnit,
   ProbeUnit,
-  StereoAnalysisUnit,
   TracesUnit,
 } from "./tableUnits";
+import { StereoAnalysisUnit } from "./loudnessUnit";
 import { PatternUnit } from "./seqUnits";
 import { ConvolverUnit, LooperUnit } from "./fileUnits";
 import { HealthUnit } from "./healthUnit";
 import { PlotUnit } from "./plotUnit";
+import { RecordUnit } from "./recordUnit";
+import { SpectrogramUnit } from "./spectrogramUnit";
 import type { AudioUnit, InputSpec } from "./types";
 import { resolveComponent } from "../components/customBlocks";
 import { SavedPatches } from "../patch/savedPatches";
@@ -274,6 +276,10 @@ class AudioGraphImpl {
             widgetUnit = new XYScopeUnit(ctx);
             break;
           case "spectrogram":
+            // FFT columns pushed from the audio thread; a waterfall is all history, so a
+            // missed frame would be a column that never existed.
+            widgetUnit = await SpectrogramUnit.create(ctx);
+            break;
           case "spectrum":
             widgetUnit = new SpectrumUnit(ctx);
             break;
@@ -382,7 +388,9 @@ class AudioGraphImpl {
             break;
           case "correlation":
           case "loudness":
-            widgetUnit = new StereoAnalysisUnit(ctx);
+            // Pushes from the audio thread: a true sample peak, not whatever 46 ms an
+            // analyser happened to be holding when the widget polled.
+            widgetUnit = await StereoAnalysisUnit.create(ctx);
             break;
           case "cv-plot":
             // Pushes from the audio thread, so the trace survives a background tab.
@@ -398,7 +406,9 @@ class AudioGraphImpl {
             widgetUnit = new NullUnit();
             break;
           case "record":
-            widgetUnit = new MeterUnit(ctx); // taps the "on" input; body drives the recorder
+            // Watches the "on" input in the audio thread and pushes gate edges, so a
+            // trigger shorter than a UI frame still starts the recorder.
+            widgetUnit = await RecordUnit.create(ctx);
             break;
           default:
             widgetUnit = new MeterUnit(ctx); // meters + LEDs
