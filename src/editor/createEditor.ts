@@ -168,6 +168,10 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   // Node drags mark the patch dirty too.
   area.addPipe((ctx) => {
     if (ctx.type === "nodetranslated") notifyChange();
+    // Double-click means something inside the patch — open a module's source, add an
+    // envelope point, hit a widget twice — so rete's zoom-on-double-click only gets in
+    // the way. Zoom stays on the wheel, ⌘+/−, and the View menu.
+    if (ctx.type === "zoom" && ctx.data.source === "dblclick") return;
     return ctx;
   });
 
