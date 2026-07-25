@@ -8,7 +8,7 @@ const LOW_MIDI = 48; // C3 at the bottom of the roll
 const ROWS = 25; // two octaves + 1
 const BLACK = [1, 3, 6, 8, 10];
 const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-const KEYS_W = 22; // keyboard gutter on the left
+const KEYS_W = 26; // keyboard gutter on the left
 const VEL_H = 26; // velocity lane along the bottom
 
 interface Note {
@@ -146,20 +146,55 @@ export function PianoRoll({ node }: { node: WidgetNode }) {
         ctx.fillRect(0, 0, w, h);
 
         // ---- keyboard gutter ----
+        // Real key geometry, matching the Keyboard widget: white keys run the full
+        // depth of the gutter with a seam between adjacent ones, black keys sit on top
+        // at 62% depth. Equal-height rows keep every key aligned with its grid row.
+        const whiteGrad = ctx.createLinearGradient(0, 0, KEYS_W, 0);
+        whiteGrad.addColorStop(0, "#f4f4f0");
+        whiteGrad.addColorStop(1, "#d8d8d2");
+        ctx.fillStyle = whiteGrad;
+        ctx.fillRect(0, 0, KEYS_W, gridH);
+
+        const rowTop = (r: number) => gridH - (r + 1) * rowH;
+        // Seams between adjacent white keys (E|F and B|C have no black key between).
+        ctx.strokeStyle = "rgba(11,12,16,0.55)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let r = 0; r < ROWS - 1; r++) {
+          const s0 = (LOW_MIDI + r) % 12;
+          const s1 = (LOW_MIDI + r + 1) % 12;
+          if (BLACK.includes(s0) || BLACK.includes(s1)) continue;
+          const y = rowTop(r);
+          ctx.moveTo(0, y + 0.5);
+          ctx.lineTo(KEYS_W, y + 0.5);
+        }
+        ctx.stroke();
+
+        const blackGrad = ctx.createLinearGradient(0, 0, KEYS_W * 0.62, 0);
+        blackGrad.addColorStop(0, "#2a2e37");
+        blackGrad.addColorStop(1, "#111318");
         for (let r = 0; r < ROWS; r++) {
           const midi = LOW_MIDI + r;
-          const black = BLACK.includes(midi % 12);
-          const y = gridH - (r + 1) * rowH;
-          ctx.fillStyle = black ? "#16181e" : "#c8cdd8";
-          ctx.fillRect(0, y, KEYS_W - 2, rowH - 0.5);
-          if (midi % 12 === 0) {
-            // Label each C, the only anchor you need to read the rest.
-            ctx.fillStyle = "#4a5060";
-            ctx.font = "7px ui-monospace, monospace";
-            ctx.textAlign = "left";
-            ctx.fillText(noteName(midi), 2, y + rowH - 1);
-          }
+          if (!BLACK.includes(midi % 12)) continue;
+          ctx.fillStyle = blackGrad;
+          ctx.fillRect(0, rowTop(r) + 0.5, KEYS_W * 0.62, rowH - 1);
         }
+
+        // Label each C on its (white) key — the only anchor needed to read the rest.
+        ctx.fillStyle = "#4a5060";
+        ctx.font = "7px ui-monospace, monospace";
+        ctx.textAlign = "right";
+        for (let r = 0; r < ROWS; r++) {
+          const midi = LOW_MIDI + r;
+          if (midi % 12 !== 0) continue;
+          ctx.fillText(noteName(midi), KEYS_W - 2, rowTop(r) + rowH - 1.5);
+        }
+        // Edge of the keyboard against the grid.
+        ctx.strokeStyle = "rgba(0,0,0,0.8)";
+        ctx.beginPath();
+        ctx.moveTo(KEYS_W - 0.5, 0);
+        ctx.lineTo(KEYS_W - 0.5, gridH);
+        ctx.stroke();
 
         // ---- grid ----
         for (let r = 0; r < ROWS; r++) {
