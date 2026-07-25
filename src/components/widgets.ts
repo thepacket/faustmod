@@ -454,11 +454,13 @@ export const WIDGETS: ComponentDef[] = [
     widgetConfig: { steps: 32 },
     tooltip:
       "Clip editor: notes with pitch, start and length over 32 steps. Click places, " +
-      "drag right lengthens, click again removes.",
+      "drag right lengthens, click again removes. Drag in the bottom lane to set a " +
+      "note's velocity; the keyboard on the left names the rows.",
     inputs: [{ label: "clock" }, { label: "reset" }],
     outputs: [{ label: "freq" }, { label: "gate" }, { label: "vel" }],
     resizable: true,
-    defaultSize: { w: 320, h: 160 },
+    // Room for the keyboard gutter and the velocity lane on top of the grid itself.
+    defaultSize: { w: 340, h: 180 },
   },
   {
     id: "euclid-circle",
