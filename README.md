@@ -22,8 +22,9 @@ runs as WebAssembly AudioWorklets in the browser.
 
 ## Features
 
-- **400+ built-in DSP blocks** (oscillators, filters, EQ, delays, reverbs, envelopes,
-  dynamics, distortion, modulation, math, routing…), searchable palette.
+- **500+ palette components** — 440+ precompiled Faust DSP blocks (oscillators, filters,
+  delays, reverbs, envelopes, dynamics, distortion, modulation, math, routing…) plus 60+
+  interactive widgets, all in one searchable palette.
 - **Sequencing & pitch** — clock **divider**/**multiplier**, **Euclidean** sequencer
   (steps/pulses/rotation), **arpeggiators** (chord shapes clocked), and per-scale
   **quantizers** (major, minor, modes, pentatonic, blues, whole-tone, chromatic).
@@ -40,14 +41,14 @@ runs as WebAssembly AudioWorklets in the browser.
   **Envelope**, a **Wavetable Draw** cycle, a **Transfer Curve** waveshaper, a
   **Multislider** bank and a 10-band **Graphic EQ**.
 - **Sequencing** — a master **Transport** (run/stop/reset/tap generating the 16th
-  clock), an 8×16 **Drum Grid** with a trigger out per lane, a **Piano Roll** clip
-  editor, a **Euclid Circle**, a **Turing Machine** shift register and a **Probability
-  Gate**.
+  clock), an 8×16 **Drum Grid** with a trigger out per lane, a **Piano Roll** clip editor
+  (keyboard gutter, notes you stretch and move, a velocity lane feeding the vel output),
+  a **Euclid Circle**, a **Turing Machine** shift register and a **Probability Gate**.
 - **Control / playability** — on-screen **Keyboard** (mouse or A–K keys), **MIDI In**
   and **MIDI Out** (Web MIDI) plus a **MIDI Monitor**, a rotary **Knob**, an **XY Pad**
   macro, a **Selector** switch, a typed **Number Box**, a **Morph Pad** (four snapshots
-  blended by a puck), **Pads x8**, a **Randomize** dice, a **Group Frame**, a
-  **Comment** note, a **Clock (BPM)**, and an **Env VCA** (gate-driven ADSR).
+  blended by a puck), **Pads x8**, a **Randomize** dice, a **Group Frame** (sits behind
+  its contents and carries them when moved), a **Comment** note, a **Clock (BPM)**, and an **Env VCA** (gate-driven ADSR).
 - **Sample player** — load an audio file; a trigger plays it, with a rate/pitch control,
   a waveform view with draggable start/end markers and a loop toggle. Plus a **Looper**
   (record/play/overdub) and **Convolution** reverb from a loaded impulse response
@@ -131,7 +132,7 @@ compilation happens at startup (see below).
 
 ## Block catalog & precompiled factories (scaling)
 
-The built-in library is **hundreds of DSP blocks**, and it must not slow startup.
+The built-in library is **440+ DSP blocks**, and it must not slow startup.
 So blocks are **precompiled at build time**, never in the browser:
 
 - `scripts/blocks.mjs` declares candidate blocks as families of Faust functions.
@@ -149,6 +150,16 @@ libfaust (the ~3 MB compiler) is only loaded for *user-authored* DSP (the New DS
 and imported blocks), not for the built-in library.
 
 To add blocks: extend the families in `scripts/blocks.mjs` and run `npm run catalog`.
+
+Two rules the families follow. **Vary only what Faust needs at compile time** — filter
+order, stage count, channel count. A block whose only variable is a value that could be
+an input port should be one parametric block instead: 30 fixed-frequency EQ bands were
+removed for exactly this, since `Peak EQ` takes the frequency as a port and can be swept.
+And **never trust a remembered Faust signature** — the build prunes anything that fails to
+compile or whose real I/O count doesn't match, so a wrong guess ships as a silently
+missing palette entry. Check the real signature (the `.lib` sources are inside
+`node_modules/@grame/faustwasm/libfaust-wasm/libfaust-wasm.data`) and offline-render new
+blocks before committing.
 The palette, audio graph, and AI all scale to the new count with no other changes.
 
 ## The node model: control inputs, not knobs
@@ -288,18 +299,21 @@ src/
 
 Not built yet (rough priority):
 
-- **Nested patches (patches-as-components)** — use a whole patch as a node inside another
-  patch, with arbitrary embedding depth (à la Reaktor ensembles/macros). The key enabler
-  for genuinely complex patches, and the planned next major step.
-- **Polyphony** — voice allocation (Faust supports poly DSP); poly Keyboard/MIDI.
-- **Global transport / master clock** — one BPM synced across sequencers; play/stop.
-- **MIDI** — in/out, MIDI clock sync, MIDI CC → control node. Deferred to the very end;
-  FaustMod is a patching/composition tool, not a real-time performance instrument.
+- **Polyphony** — voice allocation (Faust supports poly DSP); poly Keyboard/MIDI. Note
+  that the Piano Roll, Keyboard and MIDI In are all monophonic today: each emits a single
+  freq/gate/vel triple, so stacked notes are stored and drawn but only one sounds.
+- **MIDI clock sync and CC mapping** — MIDI In/Out and a MIDI Monitor exist; syncing to
+  external clock and mapping CC to a control node do not.
+- **DSP gaps** — stereo/tape/dub delay, drum-synth voices, hard-sync oscillator, octave
+  divider, de-esser, multiband compressor, frequency shifter.
 - **Example patches** — a browser of bundled `.faustmod` demos (user-authored).
-- **Recording** — WAV export (currently `.webm`), loop/overdub.
+- **Recording** — WAV export (currently `.webm`).
 - **Sharing** — export/import patch links; a small gallery.
 
-Copy/paste, duplicate, marquee selection and group-drag already work.
+Already working: nested patches (a saved patch with I/O terminals is draggable into
+another patch as a node, nested to any depth), a master **Transport** driving the
+sequencing widgets, a **Looper** for record/play/overdub, copy/paste, duplicate, marquee
+selection and group-drag.
 
 ## Widget nodes
 
@@ -318,6 +332,13 @@ pointer drags reported in normalized 0..1 coordinates (so editor zoom cancels ou
 `usePersistedState` for patch-backed state, and helpers that push the drawn shape to the
 running unit. Momentary widgets must push values synchronously when they fire — a
 browser that throttles timers will otherwise swallow a short pulse.
+
+**No dead space.** A widget with one port per element (multislider, drum grid, pads,
+morph pad) is as tall as its port stack, so its body must fill that height rather than
+float in the middle of it: `useFilledSize` measures the body with a `ResizeObserver` and
+the canvas is positioned absolutely inside it, so it can't inflate the box it measures.
+The same applies to text bodies — the Value Monitor spreads its rows so each lines up
+with the input it reads.
 
 ## License
 
