@@ -197,16 +197,53 @@ export function PianoRoll({ node }: { node: WidgetNode }) {
         ctx.stroke();
 
         // ---- grid ----
+        // Row boundaries are snapped to whole pixels so the shading and the dividers
+        // land on the same lines (rowH is fractional at most node sizes).
+        const rowY = (r: number) => Math.round(gridH - r * rowH);
         for (let r = 0; r < ROWS; r++) {
           if (!BLACK.includes((LOW_MIDI + r) % 12)) continue;
-          ctx.fillStyle = "rgba(255,255,255,0.035)";
-          ctx.fillRect(KEYS_W, gridH - (r + 1) * rowH, gridW, rowH);
+          ctx.fillStyle = "rgba(255,255,255,0.05)";
+          ctx.fillRect(KEYS_W, rowY(r + 1), gridW, rowY(r) - rowY(r + 1));
         }
-        ctx.strokeStyle = "rgba(255,255,255,0.07)";
+        // Row dividers: one per semitone, with the octave boundary (below each C) drawn
+        // stronger so you can count octaves without reading the labels. Half-pixel
+        // offsets keep them a crisp 1px.
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "rgba(255,255,255,0.16)";
+        ctx.beginPath();
+        for (let r = 0; r <= ROWS; r++) {
+          if ((LOW_MIDI + r) % 12 === 0) continue; // octave lines drawn separately
+          const y = rowY(r) + 0.5;
+          ctx.moveTo(KEYS_W, y);
+          ctx.lineTo(w, y);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,0.34)";
+        ctx.beginPath();
+        for (let r = 0; r <= ROWS; r++) {
+          if ((LOW_MIDI + r) % 12 !== 0) continue;
+          const y = rowY(r) + 0.5;
+          ctx.moveTo(KEYS_W, y);
+          ctx.lineTo(w, y);
+        }
+        ctx.stroke();
+
+        // Step dividers: every step faint, every beat (4 steps) stronger.
+        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.beginPath();
+        for (let s = 0; s <= steps; s++) {
+          if (s % 4 === 0) continue;
+          const x = Math.round(KEYS_W + s * stepW) + 0.5;
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, gridH);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,0.22)";
         ctx.beginPath();
         for (let s = 0; s <= steps; s += 4) {
-          ctx.moveTo(KEYS_W + s * stepW, 0);
-          ctx.lineTo(KEYS_W + s * stepW, gridH);
+          const x = Math.round(KEYS_W + s * stepW) + 0.5;
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, gridH);
         }
         ctx.stroke();
         if (playhead.current >= 0) {
@@ -221,9 +258,9 @@ export function PianoRoll({ node }: { node: WidgetNode }) {
           ctx.fillStyle = `rgba(105,219,124,${(0.35 + 0.65 * n.vel).toFixed(2)})`;
           ctx.fillRect(
             KEYS_W + n.step * stepW + 1,
-            gridH - (r + 1) * rowH + 1,
+            rowY(r + 1) + 1,
             n.len * stepW - 2,
-            rowH - 2,
+            rowY(r) - rowY(r + 1) - 1,
           );
         }
 
