@@ -45,7 +45,7 @@ export function MultiSlider({ node }: { node: WidgetNode }) {
 
   const paint = (p: Pt) => {
     const i = Math.min(bars - 1, Math.max(0, Math.floor(p.x * bars)));
-    const next = values.slice();
+    const next = getValues().slice(); // live state, so sweeping across bars accumulates
     next[i] = clamp01(p.y);
     commit(next);
   };

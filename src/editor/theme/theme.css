@@ -1277,3 +1277,27 @@
   font-size: 9px;
   color: var(--muted);
 }
+
+/* ---- Wavetable draw ---- */
+.wavedraw {
+  padding: 2px;
+}
+.wavedraw-row {
+  display: flex;
+  gap: 3px;
+  margin-top: 3px;
+}
+.wd-btn {
+  flex: 1;
+  font-size: 9px;
+  padding: 3px 4px;
+  background: #191b21;
+  border: 1px solid #0b0c10;
+  border-radius: 4px;
+  color: #aab1c0;
+  cursor: pointer;
+}
+.wd-btn:hover {
+  border-color: var(--accent);
+  color: #fff;
+}

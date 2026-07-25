@@ -61,7 +61,7 @@ export function DrumGrid({ node }: { node: WidgetNode }) {
 
   const onDown = (p: Pt) => {
     const { lane, step } = at(p);
-    const next = cells.map((r) => r.slice());
+    const next = getCells().map((r) => r.slice());
     painting.current = !next[lane][step];
     next[lane][step] = painting.current;
     commit(next);
@@ -70,8 +70,9 @@ export function DrumGrid({ node }: { node: WidgetNode }) {
   const onDrag = (p: Pt) => {
     if (painting.current == null) return;
     const { lane, step } = at(p);
-    if (cells[lane][step] === painting.current) return;
-    const next = cells.map((r) => r.slice());
+    const live = getCells(); // live state, so painting a run keeps earlier cells
+    if (live[lane][step] === painting.current) return;
+    const next = live.map((r) => r.slice());
     next[lane][step] = painting.current;
     commit(next);
   };

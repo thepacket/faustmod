@@ -17,9 +17,8 @@ export function TransferCurve({ node }: { node: WidgetNode }) {
   const h = node.height ?? 150;
   const [getCells, setCells] = usePersistedState<number[]>(node, "curve", defaultCurve);
   const [rev, bump] = useState(0);
-  const last = useRef<number | null>(null);
+  const last = useRef<{ idx: number; v: number } | null>(null);
 
-  const cells = getCells();
   const commit = (next: number[]) => {
     setCells(next);
     bump((n) => n + 1);
@@ -41,15 +40,20 @@ export function TransferCurve({ node }: { node: WidgetNode }) {
     [rev],
   );
 
+  /** Paint from the stroke's previous sample to this one, ramping across the gap. */
   const paint = (p: Pt) => {
     const idx = Math.min(CELLS - 1, Math.max(0, Math.round(p.x * (CELLS - 1))));
     const v = clamp01(p.y) * 2 - 1;
-    const next = cells.slice();
-    const from = last.current ?? idx;
-    const lo = Math.min(from, idx);
-    const hi = Math.max(from, idx);
-    for (let i = lo; i <= hi; i++) next[i] = v;
-    last.current = idx;
+    const next = getCells().slice(); // live state, so a drag accumulates
+    const from = last.current ?? { idx, v };
+    const span = Math.abs(idx - from.idx);
+    if (span === 0) {
+      next[idx] = v;
+    } else {
+      const step = idx > from.idx ? 1 : -1;
+      for (let k = 0; k <= span; k++) next[from.idx + k * step] = from.v + ((v - from.v) * k) / span;
+    }
+    last.current = { idx, v };
     commit(next);
   };
 
@@ -64,6 +68,7 @@ export function TransferCurve({ node }: { node: WidgetNode }) {
       onDrag={paint}
       onUp={() => (last.current = null)}
       draw={(ctx, cw, ch) => {
+        const cells = getCells();
         ctx.fillStyle = "rgba(0,0,0,0.18)";
         ctx.fillRect(0, 0, cw, ch);
         ctx.strokeStyle = "rgba(255,255,255,0.08)";

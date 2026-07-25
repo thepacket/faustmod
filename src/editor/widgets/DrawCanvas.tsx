@@ -142,6 +142,11 @@ export function DrawCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawRef = useRef(draw);
   drawRef.current = draw;
+  // The pointermove/up listeners are registered once per press, so they must call the
+  // LATEST handlers — otherwise every move edits the state as it was at pointer-down
+  // and each new segment throws away the previous one.
+  const handlers = useRef({ onDown, onDrag, onUp });
+  handlers.current = { onDown, onDrag, onUp };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -168,12 +173,13 @@ export function DrawCanvas({
   const onPointerDown = (e: ReactPointerEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    onDown?.(toNorm(e.clientX, e.clientY), e);
-    const move = (ev: PointerEvent) => onDrag?.(toNorm(ev.clientX, ev.clientY), ev);
+    handlers.current.onDown?.(toNorm(e.clientX, e.clientY), e);
+    const move = (ev: PointerEvent) =>
+      handlers.current.onDrag?.(toNorm(ev.clientX, ev.clientY), ev);
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-      onUp?.();
+      handlers.current.onUp?.();
       WidgetBridge.onChange();
     };
     window.addEventListener("pointermove", move);
