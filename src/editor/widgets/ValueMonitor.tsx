@@ -35,6 +35,7 @@ export function ValueMonitor({ node }: { node: WidgetNode }) {
   const fmt = (v: number) =>
     !Number.isFinite(v) ? "—" : Math.abs(v) >= 100 ? v.toFixed(1) : v.toFixed(4);
 
+  // Rows are spread across the body so each one lines up with the input port it reads.
   return (
     <div className="vmon" onPointerDown={(e) => e.stopPropagation()}>
       {rows.map((r, i) => (

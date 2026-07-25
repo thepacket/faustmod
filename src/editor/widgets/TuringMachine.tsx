@@ -26,7 +26,13 @@ export function TuringMachine({ node }: { node: WidgetNode }) {
   return (
     <div className="turing" ref={barsRef} onPointerDown={(e) => e.stopPropagation()}>
       {(reg.length ? reg : new Array(16).fill(0)).map((v, i) => (
-        <span key={i} className="turing-bar" style={{ height: `${8 + v * 22}px`, opacity: reg.length ? 1 : 0.3 }} />
+        <span
+          key={i}
+          className="turing-bar"
+          // Percentage height so the register fills whatever the node is; its port
+          // stack (clock/chance/range in, cv/trig out) sets the height.
+          style={{ height: `${(12 + v * 88).toFixed(0)}%`, opacity: reg.length ? 1 : 0.3 }}
+        />
       ))}
     </div>
   );

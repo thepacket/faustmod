@@ -555,6 +555,8 @@ export const WIDGETS: ComponentDef[] = [
     tooltip: "Eight momentary trigger pads (click, or press 1-8 when focused).",
     inputs: [],
     outputs: Array.from({ length: 8 }, (_, i) => ({ label: `${i + 1}` })),
+    resizable: true,
+    defaultSize: { w: 132, h: 96 },
   },
   {
     id: "randomize",

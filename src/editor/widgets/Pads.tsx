@@ -52,6 +52,9 @@ export function Pads({ node }: { node: WidgetNode }) {
   return (
     <div
       className="pads"
+      // The grid fills whatever the node is: its height is driven by the port stack
+      // (one output per pad) and by the resize handle, and the pads share it equally.
+      style={{ width: node.width ?? undefined, minHeight: node.height ?? undefined }}
       tabIndex={0}
       onPointerDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => {

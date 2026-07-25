@@ -922,7 +922,9 @@
   align-items: flex-end;
   gap: 2px;
   padding: 4px;
-  height: 34px;
+  min-height: 34px;
+  flex: 1;
+  align-self: stretch;
 }
 .turing-bar {
   width: 5px;
@@ -1176,7 +1178,9 @@
   padding: 3px 5px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  justify-content: space-around;
+  flex: 1;
+  align-self: stretch;
 }
 .vmon-row {
   display: flex;
@@ -1324,11 +1328,15 @@
 
 /* ---- Morph pad / pads: fill the body, which the port stack makes tall ---- */
 .dsp-node[data-widget-kind="morphpad"] .dsp-widget-row,
-.dsp-node[data-widget-kind="pads"] .dsp-widget-row {
+.dsp-node[data-widget-kind="pads"] .dsp-widget-row,
+.dsp-node[data-widget-kind="turing"] .dsp-widget-row,
+.dsp-node[data-widget-kind="value-monitor"] .dsp-widget-row {
   align-items: stretch;
 }
 .dsp-node[data-widget-kind="morphpad"] .dsp-widget-body,
-.dsp-node[data-widget-kind="pads"] .dsp-widget-body {
+.dsp-node[data-widget-kind="pads"] .dsp-widget-body,
+.dsp-node[data-widget-kind="turing"] .dsp-widget-body,
+.dsp-node[data-widget-kind="value-monitor"] .dsp-widget-body {
   flex: 1;
 }
 .morph {
