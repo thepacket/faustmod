@@ -1,5 +1,22 @@
 import { AudioDevices } from "./devices";
 
+/** localStorage key for the buffer-size preference (see LATENCY_HINTS). */
+export const LATENCY_KEY = "faustmod.latencyHint";
+
+/**
+ * How much buffer the AudioContext asks for. Every worklet in the graph shares one audio
+ * thread with a hard deadline per quantum, so a small buffer glitches as soon as another
+ * tab competes for CPU. FaustMod is a composition tool, so a larger buffer is the better
+ * default; low latency only matters when playing the Keyboard/Pads/MIDI by hand.
+ */
+export const LATENCY_HINTS = ["interactive", "balanced", "playback"] as const;
+export type LatencyHint = (typeof LATENCY_HINTS)[number];
+
+export function storedLatencyHint(): LatencyHint {
+  const v = localStorage.getItem(LATENCY_KEY) as LatencyHint | null;
+  return v && (LATENCY_HINTS as readonly string[]).includes(v) ? v : "balanced";
+}
+
 /**
  * Owns the AudioContext and the master output chain. Created lazily on the first
  * user gesture (browsers require a gesture before audio can start). Also handles
@@ -27,7 +44,9 @@ class AudioEngineImpl {
   /** Ensure the context + master gain exist. Safe to call repeatedly. */
   async ensure(): Promise<AudioContext> {
     if (!this.ctx) {
-      this.ctx = new AudioContext({ latencyHint: "interactive" });
+      // Fixed for the lifetime of the context, so a change only takes effect on the
+      // next Start (Settings says so).
+      this.ctx = new AudioContext({ latencyHint: storedLatencyHint() });
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.8;
       this.master.connect(this.ctx.destination);

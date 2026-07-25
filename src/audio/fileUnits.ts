@@ -103,6 +103,7 @@ class LooperProcessor extends AudioWorkletProcessor {
     this.len = 0;
     this.pos = 0;
     this.mode = "idle";
+    this.uiCountdown = 0;
     this.port.onmessage = (e) => {
       const d = e.data;
       if (d.mode) {
@@ -129,7 +130,13 @@ class LooperProcessor extends AudioWorkletProcessor {
         out[i] = x;
       }
     }
-    this.port.postMessage({ pos: this.len ? this.pos / this.len : 0, len: this.len / sampleRate });
+    // The playhead only feeds a UI poll running at 60 ms, so posting every quantum
+    // (375 messages a second, each an allocation on the audio thread) buys nothing and
+    // adds cross-thread pressure exactly when the machine is already busy.
+    if (--this.uiCountdown <= 0) {
+      this.uiCountdown = 16; // ~43 ms at 128-sample quanta
+      this.port.postMessage({ pos: this.len ? this.pos / this.len : 0, len: this.len / sampleRate });
+    }
     return true;
   }
 }

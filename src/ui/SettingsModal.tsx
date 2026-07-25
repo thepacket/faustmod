@@ -7,7 +7,7 @@ import {
   canSelectOutput,
   type DeviceList,
 } from "../audio/devices";
-import { AudioEngine } from "../audio/AudioEngine";
+import { AudioEngine, LATENCY_KEY, storedLatencyHint, type LatencyHint } from "../audio/AudioEngine";
 import {
   OPENROUTER_KEY,
   OPENROUTER_MODEL,
@@ -37,6 +37,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [system, setSystem] = useState(
     () => localStorage.getItem(OPENROUTER_SYSTEM) || DEFAULT_SYSTEM_PROMPT,
   );
+  const [latency, setLatency] = useState<LatencyHint>(storedLatencyHint);
   const [models, setModels] = useState<string[]>(MODEL_FALLBACK);
   const [modelsLoading, setModelsLoading] = useState(true);
 
@@ -143,6 +144,29 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           />
         </label>
       </section>
+
+      <h3 style={{ marginTop: 20 }}>Audio</h3>
+      <label>
+        Buffer size
+        <select
+          value={latency}
+          onChange={(e) => {
+            const v = e.target.value as LatencyHint;
+            setLatency(v);
+            localStorage.setItem(LATENCY_KEY, v);
+            setNote("Buffer size applies on the next Start.");
+          }}
+        >
+          <option value="interactive">Small — lowest latency, glitches under load</option>
+          <option value="balanced">Balanced (default)</option>
+          <option value="playback">Large — most robust, noticeable latency</option>
+        </select>
+      </label>
+      <p className="hint">
+        Every node in a patch shares one audio thread. A small buffer drops samples as soon
+        as another browser tab competes for CPU; a larger one rides through it at the cost
+        of response time when playing the Keyboard, Pads or MIDI by hand.
+      </p>
 
       <h3 style={{ marginTop: 20 }}>Audio interfaces</h3>
       <label>
