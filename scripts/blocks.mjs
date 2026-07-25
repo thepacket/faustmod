@@ -402,11 +402,10 @@ B("dyn-transient", "Transient Shaper", "Dynamics", [sig("x", "in"), ctl("amt", "
   "x * (1 + amt*((x : an.amp_follower(0.003)) - (x : an.amp_follower(0.05))))");
 
 // ================================================================= BATCH 4
-// ------------------------------------------------------------------ Graphic EQ bands
-for (const f of [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]) {
-  const label = f >= 1000 ? `${f / 1000}k` : `${f}`;
-  B(`eq-band-${f}`, `EQ ${label}`, "EQ", [sig("x", "in"), ctl("gain", "gain", 0, -18, 18, "dB")], `x : fi.peak_eq(gain, ${f}, ${Math.round(f * 0.7)})`);
-}
+// Fixed-frequency EQ bands used to live here — 30 copies of fi.peak_eq with the centre
+// frozen. They are covered by the parametric Peak EQ / Bell blocks (frequency as a port,
+// so it can be swept) and by the Graphic EQ widget, which is one node for the whole
+// curve. Don't reintroduce a block whose only variable is a value that could be an input.
 // Formant / vowel filters
 for (const [id, name, f1, f2, f3] of [
   ["a", "A", 700, 1220, 2600], ["e", "E", 400, 1700, 2600], ["i", "I", 240, 2400, 2900], ["o", "O", 360, 750, 2400], ["u", "U", 250, 595, 2400],
@@ -518,12 +517,6 @@ B("sy-popperc", "Filter Perc", "Synths", [sig("gate", "gate"), FREQ(), ctl("q", 
 B("sy-additive-drum", "Additive Drum", "Synths", [sig("gate", "gate"), FREQ(), ctl("ratio", "ratio", 1.5, 0.5, 5), GAIN(0.7)], "sy.additiveDrum(freq, (1, ratio, ratio*2), (1, 0.6, 0.3), 0.8, 0.001, 0.3, gate) * gain");
 
 // ================================================================= BATCH 5
-// ------------------------------------------------------------------ 1/3-octave graphic EQ bands
-for (const f of [25, 40, 50, 80, 100, 160, 200, 315, 400, 630, 800, 1250, 1600, 2500, 3150, 5000, 6300, 10000, 12500, 20000]) {
-  const label = f >= 1000 ? `${(f / 1000).toString().replace(/\.0$/, "")}k` : `${f}`;
-  B(`eq-band-${f}`, `EQ ${label}`, "EQ", [sig("x", "in"), ctl("gain", "gain", 0, -18, 18, "dB")], `x : fi.peak_eq(gain, ${f}, ${Math.max(10, Math.round(f * 0.23))})`);
-}
-
 // ------------------------------------------------------------------ Filters (fixes + more)
 B("fi-crossover2", "Crossover 2-band", "Filters", [sig("x", "in"), CUT()], "x <: fi.lowpassLR4(cutoff), fi.highpassLR4(cutoff)");
 B("fi-crossover3", "Crossover 3-band", "Filters", [sig("x", "in"), ctl("f1", "low", 300, 20, 5000, "Hz"), ctl("f2", "high", 3000, 100, 20000, "Hz")],
