@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Monitors } from "../../audio/monitors";
 import type { MultiCVMonitor } from "../../audio/tableUnits";
-import { DrawCanvas, clamp01, usePersistedState, type Pt } from "./DrawCanvas";
+import { DrawCanvas, clamp01, useFilledSize, usePersistedState, type Pt } from "./DrawCanvas";
 import type { WidgetNode } from "./WidgetBridge";
 
 const OUTS = 8;
@@ -19,6 +19,8 @@ const randomVector = () => Array.from({ length: OUTS }, () => Math.random());
 export function MorphPad({ node }: { node: WidgetNode }) {
   const w = node.width ?? 130;
   const h = node.height ?? 130;
+  // One output port per value makes the node taller than the pad; stretch to fill it.
+  const [boxRef, size] = useFilledSize({ w, h });
   const [getSnaps, setSnaps] = usePersistedState<Snapshots>(node, "snapshots", () => [
     Array.from({ length: OUTS }, () => 0.2),
     Array.from({ length: OUTS }, () => 0.5),
@@ -72,44 +74,46 @@ export function MorphPad({ node }: { node: WidgetNode }) {
 
   return (
     <div className="morph" onPointerDown={(e) => e.stopPropagation()}>
-      <DrawCanvas
-        className="draw-canvas morph-canvas"
-        width={w}
-        height={h}
-        revision={rev}
-        title="Morph pad — drag to blend the four corner snapshots"
-        onDown={move}
-        onDrag={move}
-        draw={(ctx, cw, ch) => {
-          ctx.fillStyle = "rgba(0,0,0,0.22)";
-          ctx.fillRect(0, 0, cw, ch);
-          ctx.strokeStyle = "rgba(255,255,255,0.07)";
-          ctx.beginPath();
-          ctx.moveTo(cw / 2, 0);
-          ctx.lineTo(cw / 2, ch);
-          ctx.moveTo(0, ch / 2);
-          ctx.lineTo(cw, ch / 2);
-          ctx.stroke();
-          ctx.fillStyle = "rgba(255,255,255,0.35)";
-          ctx.font = "9px ui-monospace, monospace";
-          ctx.fillText("A", 3, 10);
-          ctx.fillText("B", cw - 11, 10);
-          ctx.fillText("C", 3, ch - 3);
-          ctx.fillText("D", cw - 11, ch - 3);
-          // The puck, plus a bar row showing the blended vector.
-          const px = pos.x * cw;
-          const py = ch - pos.y * ch;
-          ctx.beginPath();
-          ctx.arc(px, py, 5, 0, Math.PI * 2);
-          ctx.fillStyle = "#4dabf7";
-          ctx.fill();
-          const bw = cw / OUTS;
-          valuesRef.current.forEach((v, i) => {
-            ctx.fillStyle = "rgba(77,171,247,0.35)";
-            ctx.fillRect(i * bw + 1, ch - v * 12 - 1, bw - 2, v * 12);
-          });
-        }}
-      />
+      <div className="morph-fill" ref={boxRef} style={{ width: w, minHeight: h }}>
+        <DrawCanvas
+          className="draw-canvas morph-canvas"
+          width={size.w}
+          height={size.h}
+          revision={rev}
+          title="Morph pad — drag to blend the four corner snapshots"
+          onDown={move}
+          onDrag={move}
+          draw={(ctx, cw, ch) => {
+            ctx.fillStyle = "rgba(0,0,0,0.22)";
+            ctx.fillRect(0, 0, cw, ch);
+            ctx.strokeStyle = "rgba(255,255,255,0.07)";
+            ctx.beginPath();
+            ctx.moveTo(cw / 2, 0);
+            ctx.lineTo(cw / 2, ch);
+            ctx.moveTo(0, ch / 2);
+            ctx.lineTo(cw, ch / 2);
+            ctx.stroke();
+            ctx.fillStyle = "rgba(255,255,255,0.35)";
+            ctx.font = "9px ui-monospace, monospace";
+            ctx.fillText("A", 3, 10);
+            ctx.fillText("B", cw - 11, 10);
+            ctx.fillText("C", 3, ch - 3);
+            ctx.fillText("D", cw - 11, ch - 3);
+            // The puck, plus a bar row showing the blended vector.
+            const px = pos.x * cw;
+            const py = ch - pos.y * ch;
+            ctx.beginPath();
+            ctx.arc(px, py, 5, 0, Math.PI * 2);
+            ctx.fillStyle = "#4dabf7";
+            ctx.fill();
+            const bw = cw / OUTS;
+            valuesRef.current.forEach((v, i) => {
+              ctx.fillStyle = "rgba(77,171,247,0.35)";
+              ctx.fillRect(i * bw + 1, ch - v * 12 - 1, bw - 2, v * 12);
+            });
+          }}
+        />
+      </div>
       <div className="morph-row">
         {CORNERS.map((label, i) => (
           <span key={label} className="morph-corner">

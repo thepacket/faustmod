@@ -1321,3 +1321,41 @@
   position: absolute;
   inset: 0;
 }
+
+/* ---- Morph pad / pads: fill the body, which the port stack makes tall ---- */
+.dsp-node[data-widget-kind="morphpad"] .dsp-widget-row,
+.dsp-node[data-widget-kind="pads"] .dsp-widget-row {
+  align-items: stretch;
+}
+.dsp-node[data-widget-kind="morphpad"] .dsp-widget-body,
+.dsp-node[data-widget-kind="pads"] .dsp-widget-body {
+  flex: 1;
+}
+.morph {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  align-self: stretch;
+}
+.morph-fill {
+  position: relative;
+  flex: 1;
+}
+.morph-fill > .morph-canvas {
+  position: absolute;
+  inset: 0;
+}
+/* The pad grid stretches: rows and columns share the space equally. The widget body is
+   a flex box with align-items:center, so the grid needs align-self to fill it. */
+.pads {
+  flex: 1;
+  align-self: stretch;
+  grid-auto-rows: 1fr;
+  align-content: stretch;
+}
+.pads .pad {
+  width: auto;
+  height: auto;
+  min-width: 26px;
+  min-height: 22px;
+}
