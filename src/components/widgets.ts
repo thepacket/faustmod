@@ -453,9 +453,10 @@ export const WIDGETS: ComponentDef[] = [
     widget: "pianoroll",
     widgetConfig: { steps: 32 },
     tooltip:
-      "Clip editor: notes with pitch, start and length over 32 steps. Click places, " +
-      "drag right lengthens, click again removes. Drag in the bottom lane to set a " +
-      "note's velocity; the keyboard on the left names the rows.",
+      "Clip editor: notes with pitch, start and length over 32 steps. Click places a " +
+      "note, drag its right edge to stretch it to any length, drag its body to move it, " +
+      "click (or right-click) to remove. The bottom lane sets each note's velocity; the " +
+      "keyboard on the left names the rows.",
     inputs: [{ label: "clock" }, { label: "reset" }],
     outputs: [{ label: "freq" }, { label: "gate" }, { label: "vel" }],
     resizable: true,

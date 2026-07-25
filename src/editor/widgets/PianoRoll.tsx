@@ -34,7 +34,16 @@ export function PianoRoll({ node }: { node: WidgetNode }) {
   const h = node.height ?? 180;
   const [getNotes, setNotes] = usePersistedState<Note[]>(node, "notes", () => []);
   const [rev, bump] = useState(0);
-  const drawing = useRef<Note | null>(null);
+  // What the current gesture is doing to which note.
+  const gesture = useRef<{
+    note: Note;
+    mode: "resize" | "move";
+    fromStep: number;
+    fromMidi: number;
+    origStep: number;
+    origMidi: number;
+    moved: boolean;
+  } | null>(null);
   const velTarget = useRef<Note | null>(null);
   const playhead = useRef(-1);
 
@@ -89,8 +98,12 @@ export function PianoRoll({ node }: { node: WidgetNode }) {
   const noteAt = (step: number, midi: number) =>
     getNotes().find((n) => n.midi === midi && step >= n.step && step < n.step + n.len);
 
-  const onDown = (p: Pt) => {
-    const { inKeys, inVel, step, midi } = at(p);
+  /** Grab zone at a note's right edge, where a drag resizes instead of moves. */
+  const nearRightEdge = (n: Note, x: number) =>
+    Math.abs(x - (KEYS_W + (n.step + n.len) * stepW)) <= Math.min(6, stepW * 0.45);
+
+  const onDown = (p: Pt, e: { button: number }) => {
+    const { x, inKeys, inVel, step, midi } = at(p);
     if (inKeys) return; // the gutter is a ruler, not a target
     const live = getNotes();
     if (inVel) {
@@ -102,29 +115,82 @@ export function PianoRoll({ node }: { node: WidgetNode }) {
       if (target) onDrag(p);
       return;
     }
-    const hit = noteAt(step, midi);
+    // The edge grab has to come first: a note ending at step N does not *contain*
+    // step N, so a pointer sitting on its right edge would otherwise miss it and
+    // start a new note instead of stretching this one.
+    const edge = live.find((n) => n.midi === midi && e.button !== 2 && nearRightEdge(n, x));
+    const hit = edge ?? noteAt(step, midi);
     if (hit) {
-      commit(live.filter((n) => n !== hit));
+      if (e.button === 2) {
+        commit(live.filter((n) => n !== hit));
+        return;
+      }
+      // Right edge resizes, the body moves; a click that never moves deletes.
+      gesture.current = {
+        note: hit,
+        mode: edge || nearRightEdge(hit, x) ? "resize" : "move",
+        fromStep: step,
+        fromMidi: midi,
+        origStep: hit.step,
+        origMidi: hit.midi,
+        moved: false,
+      };
       return;
     }
+    if (e.button === 2) return;
+    // A new note starts one step long and stretches while the pointer is still down.
     const note: Note = { step, midi, len: 1, vel: 0.8 };
-    drawing.current = note;
+    gesture.current = {
+      note,
+      mode: "resize",
+      fromStep: step,
+      fromMidi: midi,
+      origStep: step,
+      origMidi: midi,
+      moved: true, // it exists already; releasing must not delete it
+    };
     commit([...live, note]);
   };
 
   const onDrag = (p: Pt) => {
-    const { y, step } = at(p);
+    const { y, step, midi } = at(p);
     const target = velTarget.current;
     if (target) {
       const vel = clamp01(1 - (y - gridH) / VEL_H);
       commit(getNotes().map((n) => (n === target ? Object.assign(n, { vel }) : n)));
       return;
     }
-    const note = drawing.current;
-    if (!note) return;
-    const len = Math.max(1, Math.min(steps - note.step, step - note.step + 1));
-    if (len === note.len) return;
-    commit(getNotes().map((n) => (n === note ? Object.assign(n, { len }) : n)));
+    const g = gesture.current;
+    if (!g) return;
+    const { note } = g;
+    if (g.mode === "resize") {
+      const len = Math.max(1, Math.min(steps - note.step, step - note.step + 1));
+      if (len === note.len) return;
+      g.moved = true;
+      commit(getNotes().map((n) => (n === note ? Object.assign(n, { len }) : n)));
+      return;
+    }
+    const nextStep = Math.max(
+      0,
+      Math.min(steps - note.len, g.origStep + (step - g.fromStep)),
+    );
+    const nextMidi = Math.max(
+      LOW_MIDI,
+      Math.min(LOW_MIDI + ROWS - 1, g.origMidi + (midi - g.fromMidi)),
+    );
+    if (nextStep === note.step && nextMidi === note.midi) return;
+    g.moved = true;
+    commit(
+      getNotes().map((n) => (n === note ? Object.assign(n, { step: nextStep, midi: nextMidi }) : n)),
+    );
+  };
+
+  const onUp = () => {
+    const g = gesture.current;
+    // A press with no drag is still "click to remove".
+    if (g && !g.moved) commit(getNotes().filter((n) => n !== g.note));
+    gesture.current = null;
+    velTarget.current = null;
   };
 
   return (
@@ -133,13 +199,13 @@ export function PianoRoll({ node }: { node: WidgetNode }) {
       width={w}
       height={h}
       revision={rev}
-      title="Piano roll — click places a note, drag right to lengthen, click again to remove. Drag in the bottom lane for velocity."
+      title={
+        "Piano roll — click places a note, drag its right edge to stretch it, drag its " +
+        "body to move it, click it (or right-click) to remove. Bottom lane sets velocity."
+      }
       onDown={onDown}
       onDrag={onDrag}
-      onUp={() => {
-        drawing.current = null;
-        velTarget.current = null;
-      }}
+      onUp={onUp}
       draw={(ctx) => {
         const notes = getNotes();
         ctx.fillStyle = "rgba(0,0,0,0.22)";
