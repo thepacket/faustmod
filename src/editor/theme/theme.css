@@ -1065,34 +1065,35 @@
 
 /* ---- Group frame: a backdrop, so it must not swallow clicks meant for nodes ---- */
 .panel-frame {
+  position: relative;
   border: 1px dashed;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
   pointer-events: none;
 }
-.panel-frame-bar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 4px;
-  border-radius: 6px 6px 0 0;
+/* The one interactive bit: everything else must stay click-through. */
+.panel-frame-color {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.75;
   pointer-events: auto;
 }
-.panel-frame-label {
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #0b0c10;
-  font-size: 10px;
-  font-weight: 600;
-  width: 100%;
+.panel-frame-color:hover {
+  opacity: 1;
 }
-.panel-frame-color {
+/* A frame is a backdrop: keep its own chrome quiet so the nodes inside stay the focus. */
+.dsp-node[data-widget-kind="panel-frame"] {
   background: transparent;
-  border: none;
-  color: #0b0c10;
-  cursor: pointer;
-  font-size: 9px;
+  border-color: transparent;
+  box-shadow: none;
+}
+.dsp-node[data-widget-kind="panel-frame"] .dsp-widget-row {
+  padding: 0;
 }
 
 /* ---- MIDI out / monitor ---- */
@@ -1374,4 +1375,15 @@
 .grid-fill > .grid-canvas {
   position: absolute;
   inset: 0;
+}
+
+/* ---- Group frame stacking ----
+   rete's simpleNodesOrder re-appends whichever node you touch to the end of the DOM, so
+   DOM order alone can't keep a frame behind its contents. Give every node wrapper a
+   layer and drop frames one below it. */
+.canvas div:has(> span > .dsp-node) {
+  z-index: 1;
+}
+.canvas div:has(> span > .dsp-node[data-widget-kind="panel-frame"]) {
+  z-index: 0;
 }

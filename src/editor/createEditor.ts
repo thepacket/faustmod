@@ -165,6 +165,57 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     return ctx;
   });
 
+  // --- group frames carry their contents ----------------------------------
+  const isFrame = (id: string) => (editor.getNode(id) as DspNode | undefined)?.widget === "panel-frame";
+
+  /** World-space box of a node, from its view position and rendered size. */
+  const nodeBox = (id: string) => {
+    const view = area.nodeViews.get(id);
+    if (!view) return null;
+    const el = view.element;
+    return {
+      x: view.position.x,
+      y: view.position.y,
+      w: el.offsetWidth,
+      h: el.offsetHeight,
+    };
+  };
+
+  /** Nodes wholly inside the frame, captured when the frame is grabbed. */
+  const nodesInside = (frameId: string): string[] => {
+    const f = nodeBox(frameId);
+    if (!f) return [];
+    return editor
+      .getNodes()
+      .filter((n) => n.id !== frameId)
+      .filter((n) => {
+        const b = nodeBox(n.id);
+        if (!b) return false;
+        return b.x >= f.x && b.y >= f.y && b.x + b.w <= f.x + f.w && b.y + b.h <= f.y + f.h;
+      })
+      .map((n) => n.id);
+  };
+
+  // Membership is fixed at pointer-down: recomputing mid-drag would let a node fall out
+  // of the group the moment the frame's edge passed it.
+  let carried: string[] = [];
+
+  area.addPipe((ctx) => {
+    if (ctx.type === "nodepicked") carried = isFrame(ctx.data.id) ? nodesInside(ctx.data.id) : [];
+    if (ctx.type === "nodetranslated" && carried.length && isFrame(ctx.data.id)) {
+      const dx = ctx.data.position.x - ctx.data.previous.x;
+      const dy = ctx.data.position.y - ctx.data.previous.y;
+      if (dx || dy) {
+        // Children are never frames' own translations, so this cannot recurse.
+        for (const id of carried) {
+          const b = nodeBox(id);
+          if (b) void area.translate(id, { x: b.x + dx, y: b.y + dy });
+        }
+      }
+    }
+    return ctx;
+  });
+
   // Node drags mark the patch dirty too.
   area.addPipe((ctx) => {
     if (ctx.type === "nodetranslated") notifyChange();
