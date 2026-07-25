@@ -514,7 +514,7 @@ export const WIDGETS: ComponentDef[] = [
       category: "Controls",
       kind: "widget",
       widget: "selector",
-      widgetConfig: { options, style: "radio" },
+      widgetConfig: { options },
       tooltip: `Discrete ${options}-way switch. Outputs the selected index (0..${options - 1}).`,
       inputs: [],
       outputs: [{ label: "sel" }],

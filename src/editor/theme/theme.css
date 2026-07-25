@@ -953,7 +953,6 @@
   border-color: var(--accent);
   color: #fff;
 }
-.sel-menu,
 .midiout-port {
   background: #0f1116;
   border: 1px solid #0b0c10;
