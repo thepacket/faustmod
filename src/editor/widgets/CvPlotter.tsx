@@ -10,6 +10,12 @@ const HISTORY = 240; // samples of history, one per poll
  * Scrolling plot of slow control signals — LFOs, envelopes, sequencer CV. An audio
  * scope shows 40 ms at a time, which is useless for something that moves over seconds;
  * this samples at control rate and keeps a rolling window.
+ *
+ * Each channel reports the *mean* of its window, so an audio-rate signal reads ~0: this
+ * is a CV plotter, not a scope. Channels that never leave zero (unconnected, or silent
+ * audio) are skipped rather than drawn as identical flat lines stacked on the baseline,
+ * and every live channel gets a colour-coded readout, so overlapping traces can still
+ * be told apart.
  */
 export function CvPlotter({ node }: { node: WidgetNode }) {
   const w = node.width ?? 220;
@@ -36,15 +42,20 @@ export function CvPlotter({ node }: { node: WidgetNode }) {
         if (hist.length > HISTORY) hist.shift();
       }
 
+      // A channel pinned at exactly zero is either unconnected or silent; drawing it
+      // would put identical flat lines on the baseline and hide the live ones.
+      const live = history.current.map((hist) => hist.some((v) => v !== 0));
+
       // Autoscale to what's actually in view, so both 0..1 gates and Hz-scale CV read.
       let lo = 0;
       let hi = 1;
-      for (const hist of history.current) {
+      history.current.forEach((hist, t) => {
+        if (!live[t]) return;
         for (const v of hist) {
           if (v < lo) lo = v;
           if (v > hi) hi = v;
         }
-      }
+      });
       const span = hi - lo || 1;
 
       ctx.clearRect(0, 0, w, h);
@@ -57,7 +68,7 @@ export function CvPlotter({ node }: { node: WidgetNode }) {
       ctx.stroke();
 
       history.current.forEach((hist, t) => {
-        if (hist.length < 2) return;
+        if (hist.length < 2 || !live[t]) return;
         ctx.strokeStyle = COLORS[t % COLORS.length];
         ctx.lineWidth = 1.4;
         ctx.beginPath();
@@ -70,10 +81,23 @@ export function CvPlotter({ node }: { node: WidgetNode }) {
         ctx.stroke();
       });
 
-      ctx.fillStyle = "rgba(255,255,255,0.45)";
       ctx.font = "9px ui-monospace, monospace";
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.textAlign = "left";
       ctx.fillText(hi.toFixed(2), 3, 10);
       ctx.fillText(lo.toFixed(2), 3, h - 3);
+
+      // Current value per live channel, in its own colour: overlapping traces are
+      // indistinguishable on their own.
+      ctx.textAlign = "right";
+      let row = 10;
+      history.current.forEach((hist, t) => {
+        if (!live[t] || hist.length === 0) return;
+        const v = hist[hist.length - 1];
+        ctx.fillStyle = COLORS[t % COLORS.length];
+        ctx.fillText(`${t + 1}: ${Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(3)}`, w - 3, row);
+        row += 10;
+      });
     }, 50);
     return () => window.clearInterval(timer);
   }, [node.id, w, h]);
