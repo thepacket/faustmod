@@ -4,7 +4,13 @@ import type { TracesMonitor } from "../../audio/tableUnits";
 import type { WidgetNode } from "./WidgetBridge";
 
 const COLORS = ["#57d977", "#6ab7ff", "#ffb454", "#f783ac"];
-const HISTORY = 240; // samples of history, one per poll
+const WINDOW_MS = 12000; // how much history the width represents
+const POLL_MS = 50;
+
+interface Sample {
+  t: number; // performance.now() when it was read
+  v: number;
+}
 
 /**
  * Scrolling plot of slow control signals — LFOs, envelopes, sequencer CV. An audio
@@ -16,12 +22,18 @@ const HISTORY = 240; // samples of history, one per poll
  * audio) are skipped rather than drawn as identical flat lines stacked on the baseline,
  * and every live channel gets a colour-coded readout, so overlapping traces can still
  * be told apart.
+ *
+ * Samples are plotted against the clock, not against their index. Polling happens on the
+ * main thread, so a busy or backgrounded tab delivers them at irregular intervals; drawing
+ * those evenly would put kinks and flat spots into a signal that is actually clean, and
+ * make the plotter blame the audio for its own scheduling. On a real time axis a stall
+ * shows up honestly, as a long straight segment between two distant samples.
  */
 export function CvPlotter({ node }: { node: WidgetNode }) {
   const w = node.width ?? 220;
   const h = node.height ?? 90;
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const history = useRef<number[][]>([[], [], [], []]);
+  const history = useRef<Sample[][]>([[], [], [], []]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -35,25 +47,27 @@ export function CvPlotter({ node }: { node: WidgetNode }) {
     const timer = window.setInterval(() => {
       const m = Monitors.get(node.id) as TracesMonitor | undefined;
       const count = m?.traceCount ? m.traceCount() : 0;
+      const now = performance.now();
+      const cutoff = now - WINDOW_MS;
       for (let t = 0; t < 4; t++) {
         const v = t < count && m ? m.value(t) : 0;
         const hist = history.current[t];
-        hist.push(v);
-        if (hist.length > HISTORY) hist.shift();
+        hist.push({ t: now, v });
+        while (hist.length && hist[0].t < cutoff) hist.shift();
       }
 
       // A channel pinned at exactly zero is either unconnected or silent; drawing it
       // would put identical flat lines on the baseline and hide the live ones.
-      const live = history.current.map((hist) => hist.some((v) => v !== 0));
+      const live = history.current.map((hist) => hist.some((s) => s.v !== 0));
 
       // Autoscale to what's actually in view, so both 0..1 gates and Hz-scale CV read.
       let lo = 0;
       let hi = 1;
       history.current.forEach((hist, t) => {
         if (!live[t]) return;
-        for (const v of hist) {
-          if (v < lo) lo = v;
-          if (v > hi) hi = v;
+        for (const s of hist) {
+          if (s.v < lo) lo = s.v;
+          if (s.v > hi) hi = s.v;
         }
       });
       const span = hi - lo || 1;
@@ -67,19 +81,34 @@ export function CvPlotter({ node }: { node: WidgetNode }) {
       ctx.lineTo(w, h - ((0 - lo) / span) * h);
       ctx.stroke();
 
-      history.current.forEach((hist, t) => {
-        if (hist.length < 2 || !live[t]) return;
-        ctx.strokeStyle = COLORS[t % COLORS.length];
+      // x is elapsed time, so irregular polling stretches the spacing instead of
+      // distorting the shape.
+      const xAt = (t: number) => w - ((now - t) / WINDOW_MS) * w;
+      history.current.forEach((hist, ch) => {
+        if (hist.length < 2 || !live[ch]) return;
+        ctx.strokeStyle = COLORS[ch % COLORS.length];
         ctx.lineWidth = 1.4;
         ctx.beginPath();
-        hist.forEach((v, i) => {
-          const x = (i / (HISTORY - 1)) * w;
-          const y = h - ((v - lo) / span) * h;
+        hist.forEach((s, i) => {
+          const x = xAt(s.t);
+          const y = h - ((s.v - lo) / span) * h;
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
         ctx.stroke();
       });
+
+      // Mark stalls: a gap far longer than the poll interval means the main thread was
+      // blocked or the tab was backgrounded, and nothing was sampled in between.
+      const ref = history.current.find((hist, ch) => live[ch] && hist.length > 1);
+      if (ref) {
+        ctx.fillStyle = "rgba(255,91,110,0.16)";
+        for (let i = 1; i < ref.length; i++) {
+          const dt = ref[i].t - ref[i - 1].t;
+          if (dt < POLL_MS * 4) continue;
+          ctx.fillRect(xAt(ref[i - 1].t), 0, xAt(ref[i].t) - xAt(ref[i - 1].t), h);
+        }
+      }
 
       ctx.font = "9px ui-monospace, monospace";
       ctx.fillStyle = "rgba(255,255,255,0.45)";
@@ -91,14 +120,14 @@ export function CvPlotter({ node }: { node: WidgetNode }) {
       // indistinguishable on their own.
       ctx.textAlign = "right";
       let row = 10;
-      history.current.forEach((hist, t) => {
-        if (!live[t] || hist.length === 0) return;
-        const v = hist[hist.length - 1];
-        ctx.fillStyle = COLORS[t % COLORS.length];
-        ctx.fillText(`${t + 1}: ${Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(3)}`, w - 3, row);
+      history.current.forEach((hist, ch) => {
+        if (!live[ch] || hist.length === 0) return;
+        const v = hist[hist.length - 1].v;
+        ctx.fillStyle = COLORS[ch % COLORS.length];
+        ctx.fillText(`${ch + 1}: ${Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(3)}`, w - 3, row);
         row += 10;
       });
-    }, 50);
+    }, POLL_MS);
     return () => window.clearInterval(timer);
   }, [node.id, w, h]);
 
