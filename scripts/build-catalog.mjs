@@ -89,6 +89,7 @@ async function main() {
         title: block.title,
         category: block.category,
         kind: "faust",
+        ...(block.tooltip ? { tooltip: block.tooltip } : {}),
         inputs: block.args.map((a) => ({
           label: a.label,
           ...(a.default !== undefined ? { default: a.default } : {}),

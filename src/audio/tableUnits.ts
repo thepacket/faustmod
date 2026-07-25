@@ -465,6 +465,11 @@ export interface TracesMonitor {
   readTrace(i: number, out: Float32Array): void;
   /** Instantaneous (mean) value of input `i`, for slow control signals. */
   value(i: number): number;
+  /**
+   * Mean plus the extremes of the window. A slow CV has min ≈ mean ≈ max; an
+   * audio-rate signal averages to ~0, and only min/max show that it is there at all.
+   */
+  stats(i: number): { min: number; max: number; mean: number };
   traceCount(): number;
 }
 
@@ -497,12 +502,21 @@ export class TracesUnit implements AudioUnit, TracesMonitor {
     else out.fill(0);
   }
   value(i: number) {
+    return this.stats(i).mean;
+  }
+  stats(i: number) {
     const a = this.analysers[i];
-    if (!a) return 0;
+    if (!a) return { min: 0, max: 0, mean: 0 };
     a.getFloatTimeDomainData(this.scratch as Float32Array<ArrayBuffer>);
-    let s = 0;
-    for (const v of this.scratch) s += v;
-    return s / this.scratch.length;
+    let sum = 0;
+    let min = Infinity;
+    let max = -Infinity;
+    for (const v of this.scratch) {
+      sum += v;
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    return { min, max, mean: sum / this.scratch.length };
   }
   traceCount() {
     return this.analysers.length;

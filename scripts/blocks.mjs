@@ -11,7 +11,14 @@ const sig = (name, label = name) => ({ name, label });
 const ctl = (name, label, def, min, max, unit) => ({ name, label, default: def, min, max, unit });
 
 const blocks = [];
-const B = (id, title, category, args, body) => blocks.push({ id, title, category, args, body });
+const B = (id, title, category, args, body, tooltip) =>
+  blocks.push({ id, title, category, args, body, ...(tooltip ? { tooltip } : {}) });
+
+// Band-limited (DPW) oscillators synthesise their shape by differentiating a polynomial,
+// so their amplitude scales with frequency and collapses below roughly 20 Hz — measured
+// at 0.7 Hz, os.triangle/os.square/os.pulsetrain output under 5% of full scale. Say so on
+// the blocks rather than leaving people to discover a silent LFO.
+const BL_NOTE = "Band-limited: output collapses below ~20 Hz. Use the LFO variants for modulation rates.";
 
 // ------------------------------------------------------------------ Oscillators
 const FREQ = () => ctl("freq", "freq", 220, 20, 20000, "Hz");
@@ -24,14 +31,16 @@ for (const [fn, title] of [
   ["square", "Square Osc"],
   ["triangle", "Triangle Osc"],
 ]) {
-  B(`os-${fn}`, title, "Oscillators", [FREQ(), GAIN()], `os.${fn}(freq) * gain`);
+  const bandLimited = fn === "square" || fn === "triangle";
+  B(`os-${fn}`, title, "Oscillators", [FREQ(), GAIN()], `os.${fn}(freq) * gain`,
+    bandLimited ? BL_NOTE : undefined);
 }
 B("os-pulsetrainpos", "Pulse Train (0..1)", "Oscillators",
   [FREQ(), ctl("duty", "duty", 0.5, 0, 1), GAIN(1)], "os.lf_pulsetrainpos(freq, duty) * gain");
 B("os-sawtoothpos", "Saw (0..1)", "Oscillators", [FREQ(), GAIN(1)],
   "(os.sawtooth(freq)*0.5 + 0.5) * gain");
 B("os-pulsetrain", "Pulse Train (duty)", "Oscillators",
-  [FREQ(), ctl("duty", "duty", 0.5, 0, 1), GAIN()], "os.pulsetrain(freq, duty) * gain");
+  [FREQ(), ctl("duty", "duty", 0.5, 0, 1), GAIN()], "os.pulsetrain(freq, duty) * gain", BL_NOTE);
 for (const [fn, title] of [
   ["lf_saw", "LFO Saw"],
   ["lf_triangle", "LFO Triangle"],
