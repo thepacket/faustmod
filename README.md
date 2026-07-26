@@ -22,9 +22,14 @@ runs as WebAssembly AudioWorklets in the browser.
 
 ## Features
 
-- **500+ palette components** — 440+ precompiled Faust DSP blocks (oscillators, filters,
-  delays, reverbs, envelopes, dynamics, distortion, modulation, math, routing…) plus 60+
+- **~700 palette components** — 647 precompiled Faust DSP blocks (oscillators, filters,
+  delays, reverbs, envelopes, dynamics, distortion, modulation, math, routing…) plus 52
   interactive widgets, all in one searchable palette.
+- **Every block documents itself** — hovering a palette entry or a node header shows the
+  block's own Faust standard-library documentation (description, usage, parameters,
+  source library and licence), extracted at build time from the `.lib` sources inside the
+  compiler that builds the factories, so it can't drift. The DSP editor's title bar links
+  the [Faust libraries reference](https://faustlibraries.grame.fr/libs/).
 - **Sequencing & pitch** — clock **divider**/**multiplier**, **Euclidean** sequencer
   (steps/pulses/rotation), **arpeggiators** (chord shapes clocked), and per-scale
   **quantizers** (major, minor, modes, pentatonic, blues, whole-tone, chromatic).
@@ -34,7 +39,8 @@ runs as WebAssembly AudioWorklets in the browser.
 - **Instrument/widget nodes** — oscilloscope (signal + trigger, resizable), a
   four-trace **Scope x4**, spectrogram, spectrum analyzer, analog VU meter, digital
   voltmeter, R/G/B/Y LEDs, stereo **Correlation** and **Loudness** (LUFS + peak) meters,
-  a control-rate **CV Plotter**, a numeric **Value Monitor**, and 8/16-step sequencers
+  a control-rate **CV Plotter**, an **Audio Health** probe (the audio thread's own
+  callback timing, not the UI's), a numeric **Value Monitor**, and 8/16-step sequencers
   (drag for pitch, click to mute, shift-drag for velocity → frequency, gate and velocity
   outputs).
 - **Drawable editors** — widgets whose drawn shape *is* the parameter: a breakpoint
@@ -65,7 +71,10 @@ runs as WebAssembly AudioWorklets in the browser.
   DSP. See *Custom DSP blocks*.
 - **Multiple tabs** — one patch per tab; only the active tab plays.
 - **Recording + devices** — record the master output (Rec button → `.webm`, or a
-  **Record** node driven from the patch); pick audio input/output devices (File → Settings).
+  **Record** node driven from the patch); pick audio input/output devices, the audio
+  **buffer size** (small/balanced/large), and whether **Audio Input** gets the browser's
+  speech processing (echo cancel / noise suppression / AGC — off by default, since it
+  gates and resamples music) in **File → Settings**.
 - **File management** — a top menu (File / Edit / View / Block / Help) with New, Open,
   Save, Save As, Export, undo/redo, and the `.faustmod` patch format.
 - **AI DSP authoring** — the New DSP editor has a **Make** button that generates Faust from
@@ -132,7 +141,7 @@ compilation happens at startup (see below).
 
 ## Block catalog & precompiled factories (scaling)
 
-The built-in library is **440+ DSP blocks**, and it must not slow startup.
+The built-in library is **647 DSP blocks**, and it must not slow startup.
 So blocks are **precompiled at build time**, never in the browser:
 
 - `scripts/blocks.mjs` declares candidate blocks as families of Faust functions.
@@ -141,6 +150,11 @@ So blocks are **precompiled at build time**, never in the browser:
   per block, and writes `src/generated/catalog.json` with all the metadata. Blocks that
   fail to compile — or whose real I/O count doesn't match — are **pruned**, so the
   shipped catalog is always valid.
+- `scripts/faust-docs.mjs` reads the standard-library documentation straight out of the
+  `.lib` sources packed inside `libfaust-wasm.data` and attaches each block's description,
+  usage, parameters, library and licence to its catalog entry — which is where the hover
+  tooltips come from, and how the licence of every block is known (see
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
 - At runtime the UI imports `catalog.json` (bundled, parsed instantly) and renders the
   palette. **No libfaust, no compilation at startup** — the UI is interactive immediately.
 - A block's factory is fetched lazily (`FaustService.createFactoryNode`) only when a node
@@ -180,34 +194,29 @@ normal connection.
 
 ## Adding a component
 
-Add an entry to `LIBRARY` in [`src/components/library.ts`](src/components/library.ts).
-Declare the ports and write `process` so its control values are named signal inputs:
+DSP blocks are declared in [`scripts/blocks.mjs`](scripts/blocks.mjs) and compiled by
+`npm run catalog` — `LIBRARY` in [`src/components/library.ts`](src/components/library.ts)
+now holds only the special nodes (Constant, Audio In/Out, patch terminals) and merges the
+generated catalog. A block is `B(id, title, category, args, body, tooltip?)`, where `args`
+are the `process` arguments in order — `sig()` for a signal input, `ctl()` for a control
+input with a default (and optional min/max/unit):
 
-```ts
-{
-  id: "tremolo", title: "Tremolo", category: "Dynamics", kind: "faust",
-  tooltip: "Amplitude modulation — periodic volume wobble.",   // node header tooltip
-  inputs: [
-    { label: "in", tooltip: "Signal to modulate." },           // signal input
-    { label: "rate", default: 5, min: 0.1, max: 20, unit: "Hz", tooltip: "Wobble speed." },
-    { label: "depth", default: 0.5, min: 0, max: 1, tooltip: "Wobble amount." },
-  ],
-  outputs: [{ label: "out", tooltip: "Modulated signal." }],
-  code: `
-import("stdfaust.lib");
-process(x, rate, depth) = x * (1 - depth * (0.5 + 0.5 * os.osc(rate)));
-`,
-},
+```js
+B("tremolo", "Tremolo", "Dynamics",
+  [sig("x", "in"), ctl("rate", "rate", 5, 0.1, 20, "Hz"), ctl("depth", "depth", 0.5, 0, 1)],
+  "x * (1 - depth * (0.5 + 0.5 * os.osc(rate)))");
 ```
 
-At startup every Faust component is compiled once and its actual input/output count is
-checked against the declared ports (a mismatch logs a warning).
+`import("stdfaust.lib")` is prepended, and the block is compiled at build time: its real
+input/output count is checked against the declared args, and anything that fails either
+check is pruned from the shipped catalog.
 
-**Documenting ports:** the `tooltip` field on a component, an `InputSpec`, or an
-`OutputSpec` is how you document what each node/port does. On hover, the node header and
-each port show a tooltip combining your text with auto-generated facts (default value,
-range, unit, whether it's a control or signal input). Nodes shrink-wrap their content, so
-they vary in size and add ports without wasted space.
+**Documenting ports:** a block's `tooltip`, or the `tooltip` field on a component,
+`InputSpec` or `OutputSpec`, is how you document what a node/port does. On hover, the node
+header and each port show a tooltip combining your text, the Faust standard-library docs
+for the underlying function (pulled in automatically by `scripts/faust-docs.mjs`), and
+auto-generated facts (default value, range, unit, whether it's a control or signal input).
+Nodes shrink-wrap their content, so they vary in size and add ports without wasted space.
 
 ## Theme
 
@@ -275,7 +284,7 @@ openrouter.ai, so FaustMod pays no tokens. No catalog/patch context is sent — 
 know Faust; they just need the connector conventions.
 
 **External chat (whole patches):** rather than pay per-token for a built-in LLM (which would need
-the whole ~400-block catalog in context), **File → Export Catalog for AI…** downloads a
+the whole ~650-block catalog in context), **File → Export Catalog for AI…** downloads a
 brief (the `.faustmod`/block file formats + the DSP-block catalog + the control/instrument
 widget nodes) as a Markdown file. Give it to an external AI (e.g. as Project knowledge), ask
 for a patch or a DSP block, and paste the result back via **Open** (patch) or
@@ -288,6 +297,7 @@ catalog at all.
 ```
 src/
   audio/        FaustService, AudioEngine, AudioGraph, units, monitors (widgets),
+                push-measuring units (plot, loudness, spectrogram, record, health),
                 devices, types
   components/   library, widgets, LibraryService, customBlocks (registry)
   editor/       rete editor setup + DspNode + theme/ + widgets/ (React bodies)
@@ -304,8 +314,9 @@ Not built yet (rough priority):
   freq/gate/vel triple, so stacked notes are stored and drawn but only one sounds.
 - **MIDI clock sync and CC mapping** — MIDI In/Out and a MIDI Monitor exist; syncing to
   external clock and mapping CC to a control node do not.
-- **DSP gaps** — stereo/tape/dub delay, drum-synth voices, hard-sync oscillator, octave
-  divider, de-esser, multiband compressor, frequency shifter.
+- **DSP gaps** — stereo/ping-pong and tape/dub delay, octave divider, de-esser,
+  multiband compressor, frequency shifter. (Hard-sync oscillators, tape saturation and
+  the first drum voices landed with the stdlib block sweep.)
 - **Example patches** — a browser of bundled `.faustmod` demos (user-authored).
 - **Recording** — WAV export (currently `.webm`).
 - **Sharing** — export/import patch links; a small gallery.
@@ -326,6 +337,17 @@ Instrument nodes (scope, meters, LEDs, sequencer…) are `kind: "widget"` compon
 React body in `src/editor/widgets/` reads that map each frame to animate. Resizable
 widgets persist their size, and any widget state (drawn points, grid cells, notes) in
 the patch node's `state`.
+
+**Measure in the audio thread, push to the UI.** Anything that must not miss data —
+the **CV Plotter** (`plotUnit.ts`), **Loudness** (`loudnessUnit.ts`), **Spectrogram**
+(`spectrogramUnit.ts`), **Record** (`recordUnit.ts`) and the **Audio Health** probe
+(`healthUnit.ts`) — measures inside the worklet on the audio clock and `postMessage`s
+the results, rather than having the UI poll an `AnalyserNode` each frame. A polling
+widget silently loses whatever happened while a background tab or a janky frame stalled
+the main thread; a pushed queue is delivered intact when the tab wakes. Audio Health
+exists to tell the two apart: it counts missed deadlines from inside the audio thread,
+where main-thread throttling can't reach — and allows for Chrome rendering quanta in
+bursts, so a burst boundary isn't reported as a glitch.
 
 Drawable widgets share `src/editor/widgets/DrawCanvas.tsx`: a DPR-correct canvas,
 pointer drags reported in normalized 0..1 coordinates (so editor zoom cancels out),
