@@ -988,6 +988,19 @@ body {
   font-weight: 400;
   font-size: 13px;
 }
+/* Library reference, pushed to the right of the (draggable) editor header. */
+.fe-doclink {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.fe-doclink:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
 .fe-body {
   flex: 1;
   min-height: 0;

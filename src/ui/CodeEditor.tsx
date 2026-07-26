@@ -160,7 +160,7 @@ export function CodeEditor({ title, initialCode, lang, onApply, onSaveDraft, onC
 
   // Drag by the header.
   const onHeaderDown = (e: PointerEvent) => {
-    if ((e.target as HTMLElement).closest("button")) return;
+    if ((e.target as HTMLElement).closest("button, a")) return;
     e.preventDefault();
     const el = e.currentTarget as HTMLElement;
     el.setPointerCapture(e.pointerId);
@@ -187,6 +187,15 @@ export function CodeEditor({ title, initialCode, lang, onApply, onSaveDraft, onC
           {title}
           {readOnly && <span className="fe-ro"> — read-only</span>}
         </span>
+        <a
+          className="fe-doclink"
+          href="https://faustlibraries.grame.fr/libs/"
+          target="_blank"
+          rel="noreferrer"
+          title="Every function in the Faust standard libraries, with its arguments — opens in a new tab"
+        >
+          Faust libraries ↗
+        </a>
       </div>
       <div className="fe-body" ref={hostRef} />
       {!readOnly && (
