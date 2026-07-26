@@ -118,6 +118,64 @@ libfaust runs in Node via `@grame/faustwasm`. See
 [Block catalog & precompiled factories](#block-catalog--precompiled-factories-scaling)
 for how it works and how to add blocks.
 
+## Deploying (Fly.io)
+
+FaustMod is a static SPA with no backend — nothing to provision, no secrets, no database.
+The repo ships everything the deploy needs:
+
+| File | Role |
+|------|------|
+| [`Dockerfile`](Dockerfile) | Two stages: `node:22-alpine` runs `npm ci && npm run build` (which builds the block catalog via `prebuild`), then `nginx:1.27-alpine` serves the resulting `dist/`. |
+| [`nginx.conf`](nginx.conf) | Static serving: gzip, `application/wasm` MIME type, immutable year-long caching for `/assets/` and `.wasm`, `no-cache` on `index.html`, and SPA fallback to `index.html`. |
+| [`fly.toml`](fly.toml) | App `faustmod`, region `yyz`, internal port 80, forced HTTPS, one `shared-cpu-1x`/256 MB machine that auto-stops when idle and auto-starts on request (`min_machines_running = 0`). |
+
+First time on a new machine, install `flyctl` — on macOS:
+
+```bash
+brew install flyctl
+```
+
+on Linux (or WSL):
+
+```bash
+curl -L https://fly.io/install.sh | sh
+```
+
+on Windows (PowerShell): `iwr https://fly.io/install.ps1 -useb | iex`. Then authenticate:
+
+```bash
+fly auth login
+```
+
+Then, from the repo root:
+
+```bash
+fly deploy
+```
+
+That's the whole loop — `fly deploy` builds the image remotely from the `Dockerfile`,
+pushes it, and rolls the machine. It serves `https://faustmod.fly.dev`.
+
+Notes:
+
+- **Don't build locally first.** `.dockerignore` excludes `dist/` and `node_modules/`, so
+  the image is always built from source inside the container; a stale local `dist/` can't
+  leak into a deploy.
+- **The catalog is built in the image.** `public/factories/` and `src/generated/catalog.json`
+  are gitignored, and `prebuild` regenerates them during `npm run build` — so the deployed
+  catalog always matches `scripts/blocks.mjs` at that commit.
+- **First request after idle is slow.** The machine auto-stops when nothing is hitting it,
+  so a cold start adds a second or two. Set `min_machines_running = 1` in `fly.toml` to
+  keep one warm (at the cost of running it 24/7).
+- **Claiming the app name.** A fresh fork needs its own app: change `app` in `fly.toml`,
+  then `fly launch --no-deploy` (or `fly apps create <name>`) before the first `fly deploy`.
+
+```bash
+fly logs        # nginx access/error output
+fly status      # machine state, region, last release
+fly open        # open the deployed app in a browser
+```
+
 ## Architecture
 
 The **audio engine** (`src/audio/`) is deliberately decoupled from the **editor**
