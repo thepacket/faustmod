@@ -50,11 +50,17 @@ export function loadFaustDocs() {
   }
 
   const docs = new Map();
-  const header = /\/\/-+`\(([a-z]{2,3})\.\)([A-Za-z_][A-Za-z0-9_]*)`-+/g;
+  // A header names one function, or several that share a description:
+  //   //---`(de.)fdelaylti` and `(de.)fdelayltv`---
+  //   //---`(fi.)tf21`, `(fi.)tf22`, `(fi.)tf22t` and `(fi.)tf21t`---
+  // Ten headers in the library are of the second kind; registering only the first
+  // name leaves the siblings looking undocumented.
+  // (A few headers put a space before the trailing dashes — `(ma.)unwrap` ------.)
+  const header = /^\/\/-+(`\([a-z]{2,3}\.\)[A-Za-z_][A-Za-z0-9_]*`(?:[^\n`]*`\([a-z]{2,3}\.\)[A-Za-z_][A-Za-z0-9_]*`)*)\s*-+.*$/gm;
   for (const m of blob.matchAll(header)) {
-    const [prefix, name] = [m[1], m[2]];
-    const key = `${prefix}.${name}`;
-    if (docs.has(key)) continue;
+    const names = [...m[1].matchAll(/`\(([a-z]{2,3})\.\)([A-Za-z_][A-Za-z0-9_]*)`/g)]
+      .map((n) => [`${n[1]}.${n[2]}`, n[1], n[2]]);
+    if (!names.length || names.every(([key]) => docs.has(key))) continue;
 
     // The comment block runs from the header to the first non-comment line.
     const body = [];
@@ -71,8 +77,9 @@ export function loadFaustDocs() {
       if (l.trim()) descLines.push(l.trim());
     }
 
-    // Usage: the first fenced line after "#### Usage".
-    let usage = "";
+    // Usage: the fenced lines after "#### Usage" — one per function when a header
+    // documents several, so each sibling can be given the line that names it.
+    const usages = [];
     const uIdx = body.findIndex((l) => /^####\s*Usage/i.test(l));
     if (uIdx >= 0) {
       let inFence = false;
@@ -82,7 +89,7 @@ export function loadFaustDocs() {
           inFence = true;
           continue;
         }
-        if (inFence && l.trim()) { usage = l.trim(); break; }
+        if (inFence && l.trim()) usages.push(l.trim());
       }
     }
 
@@ -92,13 +99,18 @@ export function loadFaustDocs() {
       if (params.length < 12 && text) params.push({ name: p[1], text: clip(text, 110) });
     }
 
-    docs.set(key, {
-      desc: clip(descLines.join(" "), 320),
-      usage,
-      params,
-      license: licenseOf.get(name),
-      lib: libOf.get(prefix),
-    });
+    for (const [key, prefix, name] of names) {
+      if (docs.has(key)) continue;
+      docs.set(key, {
+        desc: clip(descLines.join(" "), 320),
+        // A shared description usually shows one usage line per function; prefer the
+        // one that names this function, and fall back to the first.
+        usage: usages.find((u) => u.includes(name)) ?? usages[0] ?? "",
+        params,
+        license: licenseOf.get(name),
+        lib: libOf.get(prefix),
+      });
+    }
   }
   return docs;
 }
