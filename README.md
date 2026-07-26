@@ -1,8 +1,5 @@
 # FaustMod
 
-> ⚠️ **FaustMod is in its initial development phase.** Expect rough edges, breaking
-> changes, and features that are still landing or being reworked. Not yet production-ready.
-
 FaustMod offers a modular visual design environment to [Faust](https://faust.grame.fr/)
 (Functional Audio Stream), a functional programming language for sound synthesis and audio
 processing with a strong focus on the design of synthesizers, musical instruments, audio
