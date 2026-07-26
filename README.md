@@ -342,7 +342,17 @@ with the input it reads.
 
 ## License
 
-FaustMod's own source code is licensed under the [MIT License](LICENSE). It bundles one
-LGPL-3.0 dependency — `@grame/faustwasm` (libfaust) — used unmodified; this does not
-change FaustMod's MIT license, but the distributed app carries LGPL notice/source
-obligations for that component. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+FaustMod is free software licensed under the
+[GNU General Public License v3.0 or later](LICENSE). Copyright © 2026 Andre Paquette.
+
+It was MIT-licensed until July 2026. The change was necessary because the block catalog
+compiles functions from the Faust standard libraries into the shipped app, and some of
+those functions — Dario Sanfilippo's compressors and limiters, the Vital and Keith Barr
+reverbs — are declared GPLv3 by their authors. FaustMod also bundles `@grame/faustwasm`
+(libfaust) under LGPL-3.0, used unmodified. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the details and for which blocks
+carry which license.
+
+Patches you build and DSP you write in FaustMod are yours: code *generated* by the Faust
+compiler is not covered by the compiler's licence, and the GPL applies to FaustMod itself,
+not to the audio or patch files you make with it.

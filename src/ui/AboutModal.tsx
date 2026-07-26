@@ -13,11 +13,16 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
         </a>
       </p>
       <p className="hint">
-        Copyright © 2026 Andre Paquette. FaustMod&apos;s own code is MIT-licensed; it uses{" "}
+        Copyright © 2026 Andre Paquette. FaustMod is free software under the{" "}
+        <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">
+          GNU GPL v3
+        </a>{" "}
+        or later. It uses{" "}
         <a href="https://github.com/grame-cncm/faustwasm" target="_blank" rel="noreferrer">
           @grame/faustwasm
         </a>{" "}
-        under LGPL-3.0.
+        under LGPL-3.0, and blocks built from the Faust standard libraries under their own
+        per-function licenses.
       </p>
       <div className="modal-actions">
         <button className="btn primary" onClick={onClose}>
