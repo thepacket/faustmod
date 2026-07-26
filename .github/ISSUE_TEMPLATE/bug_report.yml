@@ -1,0 +1,67 @@
+name: Bug report
+description: Something in FaustMod is broken or behaves unexpectedly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. FaustMod is in early development, so
+        rough edges are expected — but a clear report makes them fixable.
+
+        Questions, ideas and "how do I patch X?" belong in
+        [Discussions](https://github.com/thepacket/faustmod/discussions) instead.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you got instead.
+      placeholder: |
+        1. Dragged a Resonant LP onto the canvas and wired an LFO into cutoff
+        2. Pressed Start
+        3. Expected a sweeping filter; got silence
+    validations:
+      required: true
+
+  - type: textarea
+    id: patch
+    attributes:
+      label: Patch
+      description: >
+        If a specific patch triggers it, attach the `.faustmod` file (File → Save, then
+        drag it into this box) or paste the relevant part. Patches embed their custom
+        blocks, so they're self-contained.
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and OS
+      description: >
+        Audio behaviour varies a lot between browsers. Include the version.
+      placeholder: Chrome 141 on macOS 15.5
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: >
+        Any errors or warnings in the browser console (⌥⌘I / F12 → Console). Faust
+        compile errors show up here in full.
+      render: text
+
+  - type: dropdown
+    id: audio
+    attributes:
+      label: Is this an audio problem?
+      description: >
+        For dropouts, crackle or stuttering, drop an **Audio Health** node into the patch
+        and say what it reports — it measures the audio thread itself, which separates a
+        real glitch from the UI merely being busy.
+      options:
+        - "No — it's a UI, editor or file problem"
+        - "Yes — silence or wrong sound"
+        - "Yes — dropouts, crackle or stuttering"
+    validations:
+      required: true

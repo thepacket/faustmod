@@ -1,0 +1,12 @@
+# Bug reports go through the issue template; everything else goes to Discussions.
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and help
+    url: https://github.com/thepacket/faustmod/discussions/categories/q-a
+    about: How do I patch X? Why does this block behave that way? Ask here.
+  - name: Ideas and feature requests
+    url: https://github.com/thepacket/faustmod/discussions/categories/ideas
+    about: Blocks, widgets or workflow you'd like to see. Not tracked as issues.
+  - name: Show your patches
+    url: https://github.com/thepacket/faustmod/discussions/categories/show-and-tell
+    about: Share a patch or DSP module you built.

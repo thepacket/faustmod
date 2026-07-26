@@ -417,6 +417,23 @@ the canvas is positioned absolutely inside it, so it can't inflate the box it me
 The same applies to text bodies — the Value Monitor spreads its rows so each lines up
 with the input it reads.
 
+## Bugs & discussion
+
+Hearing what breaks is genuinely useful.
+
+- **Something's broken?**
+  [Open an issue](https://github.com/thepacket/faustmod/issues/new/choose). The bug
+  template asks for your browser (audio behaviour varies a lot between them), the
+  console output, and the `.faustmod` patch if a specific one triggers it. For dropouts
+  or crackle, drop an **Audio Health** node into the patch and include what it reports —
+  it measures the audio thread itself, so it separates a real glitch from a busy UI.
+- **Everything else** — questions, blocks or widgets you'd like to see, patches you want
+  to show off — goes to
+  [Discussions](https://github.com/thepacket/faustmod/discussions).
+
+Pull requests aren't being accepted at the moment; see
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 FaustMod is free software licensed under the
