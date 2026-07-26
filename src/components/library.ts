@@ -25,6 +25,10 @@ export interface ComponentDef {
   kind: ComponentKind;
   /** One-line description shown in the node header's hover tooltip. */
   tooltip?: string;
+  /** Faust standard-library documentation for the function this block is built on:
+   *  description, usage line, parameter meanings, source and licence. Generated at
+   *  build time from the libfaust bundle (see scripts/faust-docs.mjs). */
+  doc?: string;
   inputs: InputSpec[];
   outputs: OutputSpec[];
   /** Initial value for a Constant node. */

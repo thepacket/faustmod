@@ -14,6 +14,7 @@ import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 import { mkdir, writeFile, rm, stat, readdir } from "fs/promises";
 import blocks from "./blocks.mjs";
+import { loadFaustDocs, functionsIn, primaryFunction, composeDoc } from "./faust-docs.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
@@ -62,9 +63,11 @@ async function main() {
   const faustModule = await instantiateFaustModuleFromFile(jsPath);
   const compiler = new FaustCompiler(new LibFaust(faustModule));
 
+  const docs = loadFaustDocs();
   const catalog = [];
   const failures = [];
   let totalWasm = 0;
+  let documented = 0;
 
   for (const block of blocks) {
     const code = source(block);
@@ -84,12 +87,21 @@ async function main() {
       await writeFile(resolve(factoryDir, `${block.id}.wasm`), Buffer.from(wasm));
       await writeFile(resolve(factoryDir, `${block.id}.json`), gen.getJSON());
 
+      // Documentation for the library function this block is built on, lifted from the
+      // same libfaust bundle that just compiled it. Blocks written as plain Faust
+      // expressions (floor(x*2^bits)/2^bits) call nothing documented and get none.
+      const called = functionsIn(block.body, docs);
+      const primary = primaryFunction(called);
+      const doc = primary ? composeDoc(primary, docs.get(primary)) : undefined;
+      if (doc) documented++;
+
       catalog.push({
         id: block.id,
         title: block.title,
         category: block.category,
         kind: "faust",
         ...(block.tooltip ? { tooltip: block.tooltip } : {}),
+        ...(doc ? { doc } : {}),
         inputs: block.args.map((a) => ({
           label: a.label,
           ...(a.default !== undefined ? { default: a.default } : {}),
@@ -108,6 +120,7 @@ async function main() {
   await writeFile(resolve(genDir, "catalog.json"), JSON.stringify(catalog, null, 0));
 
   console.log(`\n✓ ${catalog.length} blocks compiled → factories + catalog`);
+  console.log(`  library docs attached to ${documented}/${catalog.length} blocks`);
   console.log(`  total wasm: ${(totalWasm / 1024).toFixed(0)} KB (avg ${(totalWasm / 1024 / (catalog.length || 1)).toFixed(1)} KB)`);
   if (failures.length) {
     console.log(`\n✗ ${failures.length} pruned:`);

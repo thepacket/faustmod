@@ -64,7 +64,9 @@ export class DspNode extends ClassicPreset.Node {
     super(def.title);
     this.componentId = def.id;
     this.category = def.category;
-    this.tooltip = def.tooltip;
+    // On the canvas the bubble sits over the patch, so it gets our note plus the
+    // library description — not the full usage/parameter text the palette shows.
+    this.tooltip = [def.tooltip, def.doc?.split("\nUsage:")[0]].filter(Boolean).join("\n") || undefined;
     this.widget = def.widget;
     this.widgetConfig = def.widgetConfig;
     this.resizable = !!def.resizable;

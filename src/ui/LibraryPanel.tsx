@@ -12,6 +12,18 @@ interface Group {
   items: ComponentDef[];
 }
 
+/**
+ * Hover help for a palette entry: our own note first, then the Faust library
+ * documentation for the function the block is built on (what it does, how it is
+ * called, what each argument means), then the port count and the drag hint.
+ */
+export function componentHelp(def: ComponentDef): string {
+  const ports = `(${def.inputs.length} in / ${def.outputs.length} out)`;
+  return [def.tooltip, def.doc, `${ports}  ·  Drag onto the canvas`]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export function LibraryPanel({ disabled }: Props) {
   const [panelCollapsed, togglePanel] = usePanelCollapsed("faustmod.panel.components");
   const [query, setQuery] = useState("");
@@ -110,7 +122,7 @@ export function LibraryPanel({ disabled }: Props) {
                     e.dataTransfer.setData("text/plain", def.title);
                     e.dataTransfer.effectAllowed = "copy";
                   }}
-                  title={`${def.tooltip ?? ""}  (${def.inputs.length} in / ${def.outputs.length} out)\nDrag onto the canvas`.trim()}
+                  title={componentHelp(def)}
                 >
                   {def.title}
                 </div>
