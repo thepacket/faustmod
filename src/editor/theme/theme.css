@@ -226,6 +226,16 @@
   opacity: 0.35;
   cursor: not-allowed;
 }
+/* Live readout of a connected port. Same white as an editable value — it is real data and
+   has to be as readable as anything else; the recessed background is what marks it as a
+   readout rather than a setting. */
+.dsp-node input.dsp-port-value.dsp-port-live {
+  opacity: 1;
+  cursor: default;
+  color: #e6e8ee;
+  border-color: #16181e;
+  background: linear-gradient(180deg, #14161b, #1c1f26);
+}
 
 /* ---- Connections: soft glowing signal cables ---- */
 .body .canvas svg[data-testid="connection"] path {

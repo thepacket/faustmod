@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AudioGraph } from "../../audio/AudioGraph";
 import type { InputSpec } from "../../audio/types";
 
 interface Props {
@@ -7,7 +8,24 @@ interface Props {
   value: number;
   /** A signal is wired in, so it — not this value — drives the port. */
   connected: boolean;
+  /** Node id + port index, so a connected port can read what's arriving on the wire. */
+  nodeId: string;
+  index: number;
   onCommit: (value: number) => void;
+}
+
+/** How often a connected port re-reads the incoming signal. Deliberately slow: this is a
+ *  glanceable readout on every wired port at once, not a meter. */
+const LIVE_POLL_MS = 333;
+
+/** Fit a live value into a narrow field: precision shrinks as the magnitude grows. */
+function fmtLive(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  const a = Math.abs(v);
+  if (a >= 1000) return v.toFixed(0);
+  if (a >= 100) return v.toFixed(1);
+  if (a >= 10) return v.toFixed(2);
+  return v.toFixed(3);
 }
 
 /** Arrow-key step scaled to the port's declared range. Undeclared (signal inputs) means
@@ -27,11 +45,34 @@ function stepFor(spec: InputSpec): number {
  * off zero to feed the port a fixed DC level. Wire something in and it greys out (the
  * signal wins) but keeps its value, which comes back when the connection is removed.
  *
+ * While connected and playing it stops showing the stored value and READS THE WIRE at a
+ * few hertz, so a patch's actual operating values are visible at a glance instead of
+ * having to wire a monitor onto every point of interest.
+ *
  * Values are clamped to the port's declared range on commit: these feed Faust DSP
  * directly, and out-of-range control values are exactly what makes a zero-delay-feedback
  * filter blow up to NaN and go silent.
  */
-export function PortValue({ spec, value, connected, onCommit }: Props) {
+export function PortValue({ spec, value, connected, nodeId, index, onCommit }: Props) {
+  const liveRef = useRef<HTMLInputElement>(null);
+
+  // Poll the incoming signal on a connected port. Written straight to the DOM rather than
+  // through state: this runs on every wired port of every node, and re-rendering rete
+  // nodes at 3 Hz across a large patch is real work for a value nobody is editing.
+  useEffect(() => {
+    if (!connected) return;
+    const el = liveRef.current;
+    if (!el) return;
+    const tick = () => {
+      const v = AudioGraph.inputProbe(nodeId, index);
+      const next = v === null ? String(value) : fmtLive(v);
+      if (el.value !== next) el.value = next;
+    };
+    tick();
+    const timer = window.setInterval(tick, LIVE_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [connected, nodeId, index, value]);
+
   const [draft, setDraft] = useState(() => String(value));
   // Follow external changes (load, paste, undo) unless the user is mid-edit.
   const [editing, setEditing] = useState(false);
@@ -55,21 +96,39 @@ export function PortValue({ spec, value, connected, onCommit }: Props) {
 
   const range =
     spec.min !== undefined && spec.max !== undefined ? ` (${spec.min}–${spec.max})` : "";
+
+  // Connected: a live readout of the wire, updated imperatively — deliberately NOT a
+  // controlled input, so React never fights the polling for the field's value.
+  if (connected) {
+    return (
+      <input
+        key="live"
+        ref={liveRef}
+        className="dsp-port-value dsp-port-live"
+        type="text"
+        readOnly
+        tabIndex={-1}
+        defaultValue={String(value)}
+        title={`${spec.label}: value arriving on the wire${range}\nUnplug to set it here instead`}
+        onPointerDown={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+      />
+    );
+  }
+
   return (
     <input
+      key="edit"
       className="dsp-port-value"
       type="number"
       value={draft}
       step={stepFor(spec)}
       min={spec.min}
       max={spec.max}
-      disabled={connected}
       title={
-        connected
-          ? `Driven by the connected signal — unplug it to use this value${range}`
-          : spec.default === undefined
-            ? `${spec.label}: resting level while nothing is wired in (0 = silence)`
-            : `${spec.label} value${spec.unit ? ` in ${spec.unit}` : ""}${range}`
+        spec.default === undefined
+          ? `${spec.label}: resting level while nothing is wired in (0 = silence)`
+          : `${spec.label} value${spec.unit ? ` in ${spec.unit}` : ""}${range}`
       }
       // rete would otherwise drag the node, and the canvas would swallow the keys
       // (Delete removes the node, ⌘A selects everything).

@@ -86,6 +86,13 @@ class AudioGraphImpl {
 
   private live = false;
   private units = new Map<string, Promise<AudioUnit | null>>();
+  // Resolved units, for callers that can't await (the input-value probes below).
+  private ready = new Map<string, AudioUnit>();
+  // AnalyserNode taps reading what arrives at a connected input, keyed "<dstId>:<index>".
+  private probes = new Map<
+    string,
+    { analyser: AnalyserNode; scratch: Float32Array; src: AudioNode; srcId: string }
+  >();
 
   /** Optional hook so the UI can surface node-realization failures to the user. */
   onNodeError: ((message: string) => void) | null = null;
@@ -117,6 +124,9 @@ class AudioGraphImpl {
   private async reRealize(nodeId: string) {
     const u = this.units.get(nodeId);
     this.units.delete(nodeId);
+    this.ready.delete(nodeId);
+    this.dropProbes(nodeId); // taps point at the old unit's nodes
+
     if (u) (await u)?.dispose();
     await this.realizeNode(nodeId);
     // Reconnect any live connections touching this node.
@@ -136,17 +146,21 @@ class AudioGraphImpl {
     }
     const u = this.units.get(nodeId);
     this.units.delete(nodeId);
+    this.ready.delete(nodeId);
+    this.dropProbes(nodeId);
     if (u) (await u)?.dispose();
   }
 
   setConn(connId: string, conn: Conn) {
     this.conns.set(connId, conn);
+    this.dropProbe(conn.dst, conn.dstIdx);
     if (this.live) void this.realizeConn(conn);
   }
 
   async removeConn(connId: string) {
     const conn = this.conns.get(connId);
     this.conns.delete(connId);
+    if (conn) this.dropProbe(conn.dst, conn.dstIdx);
     if (this.live && conn) await this.unrealizeConn(conn);
   }
 
@@ -165,6 +179,78 @@ class AudioGraphImpl {
     if (!byIndex) this.params.set(nodeId, (byIndex = new Map()));
     byIndex.set(index, value);
     if (this.live) void this.units.get(nodeId)?.then((u) => u?.setParam?.(index, value));
+  }
+
+  // ---- reading what arrives at a connected input -------------------------
+
+  /**
+   * Current value on the wire feeding `nodeId`'s input `index`, or null when nothing is
+   * connected or audio isn't running. Used by the port's value field to show the incoming
+   * signal instead of the (overridden) resting value while a wire drives it.
+   *
+   * The tap hangs off the SOURCE's output — an input is a merger channel, which can't be
+   * observed directly — and is built on first read, then cached until the connection or
+   * either node goes away. A short window keeps it responsive; the mean over it is the
+   * instantaneous value for anything slower than audio rate, and the average for a signal.
+   */
+  inputProbe(nodeId: string, index: number): number | null {
+    if (!this.live) return null;
+    const key = `${nodeId}:${index}`;
+    let probe = this.probes.get(key);
+    if (!probe) {
+      const conn = [...this.conns.values()].find((c) => c.dst === nodeId && c.dstIdx === index);
+      if (!conn) return null;
+      const ctx = AudioEngine.context;
+      // The source unit has to be realized already; probes are read-only and never wait.
+      const srcUnit = this.ready.get(conn.src);
+      const out = srcUnit?.output(conn.srcIdx);
+      if (!ctx || !out) return null;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      try {
+        out.node.connect(analyser, out.channel);
+      } catch {
+        return null;
+      }
+      probe = {
+        analyser,
+        scratch: new Float32Array(analyser.fftSize),
+        src: out.node,
+        srcId: conn.src,
+      };
+      this.probes.set(key, probe);
+    }
+    probe.analyser.getFloatTimeDomainData(probe.scratch as Float32Array<ArrayBuffer>);
+    let sum = 0;
+    for (const v of probe.scratch) sum += v;
+    return sum / probe.scratch.length;
+  }
+
+  /** Tear down the tap on one input (connection changed/removed). */
+  private dropProbe(nodeId: string, index: number) {
+    const key = `${nodeId}:${index}`;
+    const probe = this.probes.get(key);
+    if (!probe) return;
+    this.probes.delete(key);
+    try {
+      probe.src.disconnect(probe.analyser);
+    } catch {
+      /* already gone */
+    }
+  }
+
+  /** Tear down every tap touching a node, or all of them when `nodeId` is omitted. */
+  private dropProbes(nodeId?: string) {
+    for (const [key, probe] of this.probes) {
+      const dstId = key.slice(0, key.lastIndexOf(":"));
+      if (nodeId && dstId !== nodeId && probe.srcId !== nodeId) continue;
+      this.probes.delete(key);
+      try {
+        probe.src.disconnect(probe.analyser);
+      } catch {
+        /* already gone */
+      }
+    }
   }
 
   // ---- playback ----------------------------------------------------------
@@ -186,8 +272,10 @@ class AudioGraphImpl {
 
   async stop() {
     this.live = false;
+    this.dropProbes();
     const all = [...this.units.values()];
     this.units.clear();
+    this.ready.clear();
     Monitors.clear();
     for (const p of all) (await p)?.dispose();
     await AudioEngine.suspend();
@@ -240,6 +328,11 @@ class AudioGraphImpl {
     })();
 
     this.units.set(nodeId, promise);
+    void promise.then((u) => {
+      // Only keep it if this node's unit is still the one we just built (a rebuild or
+      // removal in the meantime wins).
+      if (u && this.units.get(nodeId) === promise) this.ready.set(nodeId, u);
+    });
     return promise;
   }
 

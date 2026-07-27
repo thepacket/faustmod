@@ -133,6 +133,8 @@ export function ThemedNode(props: Props) {
             spec={spec}
             value={restingValue(key, spec)}
             connected={!!props.data.connectedInputs?.has(key)}
+            nodeId={id}
+            index={Number(key.slice(3))}
             onCommit={commitParam(key)}
           />
         )}
