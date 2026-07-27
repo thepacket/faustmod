@@ -360,27 +360,6 @@ src/
   ui/           App, MenuBar, TabBar, LibraryPanel, modals, styles
 ```
 
-## Roadmap
-
-Not built yet (rough priority):
-
-- **Polyphony** — voice allocation (Faust supports poly DSP); poly Keyboard/MIDI. Note
-  that the Piano Roll, Keyboard and MIDI In are all monophonic today: each emits a single
-  freq/gate/vel triple, so stacked notes are stored and drawn but only one sounds.
-- **MIDI clock sync and CC mapping** — MIDI In/Out and a MIDI Monitor exist; syncing to
-  external clock and mapping CC to a control node do not.
-- **DSP gaps** — stereo/ping-pong and tape/dub delay, octave divider, de-esser,
-  multiband compressor, frequency shifter. (Hard-sync oscillators, tape saturation and
-  the first drum voices landed with the stdlib block sweep.)
-- **Example patches** — a browser of bundled `.faustmod` demos (user-authored).
-- **Recording** — WAV export (currently `.webm`).
-- **Sharing** — export/import patch links; a small gallery.
-
-Already working: nested patches (a saved patch with I/O terminals is draggable into
-another patch as a node, nested to any depth), a master **Transport** driving the
-sequencing widgets, a **Looper** for record/play/overdub, copy/paste, duplicate, marquee
-selection and group-drag.
-
 ## Widget nodes
 
 Instrument nodes (scope, meters, LEDs, sequencer…) are `kind: "widget"` components
