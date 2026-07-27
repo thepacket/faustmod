@@ -93,15 +93,36 @@ B("fi-fb-comb", "Comb (feedback)", "Filters", [sig("x", "in"), ctl("ms", "delay"
   "x : (+ ~ (@(max(1, ma.SR*ms/1000)) : *(fb)))");
 
 // ------------------------------------------------------------------ Virtual analog
-B("ve-moog", "Moog VCF", "Virtual Analog", [sig("x", "in"), CUT(), ctl("res", "res", 0.5, 0, 1)], "x : ve.moog_vcf(res, cutoff)");
-B("ve-moogladder", "Moog Ladder", "Virtual Analog", [sig("x", "in"), CUT(), ctl("res", "res", 0.5, 0, 1)], "x : ve.moogLadder(cutoff, res)");
-B("ve-korg35lpf", "Korg 35 LP", "Virtual Analog", [sig("x", "in"), CUT(), ctl("q", "q", 2, 0.5, 20)], "x : ve.korg35LPF(cutoff, q)");
-B("ve-korg35hpf", "Korg 35 HP", "Virtual Analog", [sig("x", "in"), CUT(), ctl("q", "q", 2, 0.5, 20)], "x : ve.korg35HPF(cutoff, q)");
-B("ve-diodeladder", "Diode Ladder", "Virtual Analog", [sig("x", "in"), CUT(), ctl("q", "q", 2, 0.5, 20)], "x : ve.diodeLadder(cutoff, q)");
-B("ve-oberheim-bpf", "Oberheim BP", "Virtual Analog", [sig("x", "in"), CUT(), ctl("q", "q", 2, 0.5, 20)], "x : ve.oberheimBPF(cutoff, q)");
-B("ve-oberheim-lpf", "Oberheim LP", "Virtual Analog", [sig("x", "in"), CUT(), ctl("q", "q", 2, 0.5, 20)], "x : ve.oberheimLPF(cutoff, q)");
-B("ve-sallenkey-lpf", "Sallen-Key LP", "Virtual Analog", [sig("x", "in"), CUT(), ctl("q", "q", 2, 0.5, 20)], "x : ve.sallenKey2ndOrderLPF(cutoff, q)");
-B("ve-sallenkey-hpf", "Sallen-Key HP", "Virtual Analog", [sig("x", "in"), CUT(), ctl("q", "q", 2, 0.5, 20)], "x : ve.sallenKey2ndOrderHPF(cutoff, q)");
+// The zero-delay-feedback filters in vaeffects.lib take a *normalised* cutoff in
+// 0..1, not Hz — these were declared with a Hz cutoff port, which drove the
+// feedback loop straight to NaN, so every one of them was silent with no error
+// anywhere. normFreq is exponential and sample-rate independent: one unit spans
+// ten octaves, cutoff ~ C * 2^(10*normFreq). C is measured per filter (its -3 dB
+// corner at the block's default q, the peak for the bandpass) and is used only to
+// document the knob and to place the default near 1 kHz.
+const hz = (f) => (f >= 1000 ? `${(f / 1000).toFixed(f < 10000 ? 1 : 0)} kHz` : `${Math.round(f)} Hz`);
+const VA_NOTE = (C) =>
+  `Cutoff is normalised 0-1 and exponential (ten octaves): 0 ~ ${hz(C)}, 0.5 ~ ${hz(C * 32)}, ` +
+  `1 ~ ${C * 1024 >= 20000 ? "past the top of the audio band" : hz(C * 1024)}.`;
+const VA_Q = () => ctl("q", "q", 2, 0.5, 20);
+const VA = (id, title, fn, C, q = VA_Q()) =>
+  B(id, title, "Virtual Analog",
+    [sig("x", "in"), ctl("nf", "cutoff", +(Math.log2(1000 / C) / 10).toFixed(2), 0, 1), q],
+    `x : ve.${fn}(nf, q)`, VA_NOTE(C));
+
+// moog_vcf is the one VA filter that really does take Hz, but it blows up above
+// roughly SR/8 (measured: NaN at 6 kHz / 44.1 kHz), so its cutoff stops at 5 kHz.
+B("ve-moog", "Moog VCF", "Virtual Analog", [sig("x", "in"), ctl("cutoff", "cutoff", 1000, 20, 5000, "Hz"), ctl("res", "res", 0.5, 0, 1)],
+  "x : ve.moog_vcf(res, cutoff)", "Cutoff stops at 5 kHz — the circuit model diverges above about SR/8.");
+VA("ve-moogladder", "Moog Ladder", "moogLadder", 11.651, ctl("q", "q", 2, 0.707, 25));
+// korg35 self-destructs (NaN, and it never recovers) somewhere above q ~ 10.
+VA("ve-korg35lpf", "Korg 35 LP", "korg35LPF", 15.616, ctl("q", "q", 2, 0.5, 10));
+VA("ve-korg35hpf", "Korg 35 HP", "korg35HPF", 15.414, ctl("q", "q", 2, 0.5, 10));
+VA("ve-diodeladder", "Diode Ladder", "diodeLadder", 5.518);
+VA("ve-oberheim-bpf", "Oberheim BP", "oberheimBPF", 19.469);
+VA("ve-oberheim-lpf", "Oberheim LP", "oberheimLPF", 24.442);
+VA("ve-sallenkey-lpf", "Sallen-Key LP", "sallenKey2ndOrderLPF", 29.244);
+VA("ve-sallenkey-hpf", "Sallen-Key HP", "sallenKey2ndOrderHPF", 13.307);
 
 // ------------------------------------------------------------------ Delays
 B("de-delay", "Delay (samples)", "Delay", [sig("x", "in"), ctl("n", "samples", 4800, 0, 96000)], "x : de.delay(96000, int(n))");

@@ -72,8 +72,14 @@ runs as WebAssembly AudioWorklets in the browser.
   **buffer size** (small/balanced/large), and whether **Audio Input** gets the browser's
   speech processing (echo cancel / noise suppression / AGC — off by default, since it
   gates and resamples music) in **File → Settings**.
+- **Example patches** — bundled, musically-verified demos (Acid Bassline, Evolving Pad,
+  FM Pluck, Karplus Melody) in a preset browser; opening one drops the whole patch on a
+  new tab to take apart.
 - **File management** — a top menu (File / Edit / View / Block / Help) with New, Open,
   Save, Save As, Export, undo/redo, and the `.faustmod` patch format.
+- **Portable backup** — patches, your DSP modules and settings live in `localStorage`,
+  which is tied to one browser on one machine; **File → Export All…** writes the whole
+  library to a single JSON file and **Import All…** restores it elsewhere.
 - **AI DSP authoring** — the New DSP editor has a **Make** button that generates Faust from
   a prompt via **your own OpenRouter key** (File → Settings). See *Using an external AI*.
 - **Bring-your-own-AI** — or drive an external chat: **File → Export Catalog for AI…**

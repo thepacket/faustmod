@@ -16,6 +16,8 @@ interface Props {
   onOpenPatch: (id: string) => void;
   /** Rename a saved patch (and any open tab for it). */
   onRenamePatch: (id: string, name: string) => void;
+  /** Open the AI prompt editor to generate a whole patch. */
+  onGenPatch: () => void;
   /** When set, render the panel's collapse button in this (top) section's header. */
   onCollapse?: () => void;
 }
@@ -26,7 +28,15 @@ interface Props {
  * it gets an ⧉ badge and can be dragged onto a canvas as a node. Rename / download /
  * delete per entry. Persisted in localStorage via SavedPatches.
  */
-export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onRenamePatch, onCollapse }: Props) {
+export function PatchPanel({
+  disabled,
+  onNewPatch,
+  onLoadPatch,
+  onOpenPatch,
+  onRenamePatch,
+  onGenPatch,
+  onCollapse,
+}: Props) {
   const [rev, bump] = useReducer((x) => x + 1, 0);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -75,6 +85,14 @@ export function PatchPanel({ disabled, onNewPatch, onLoadPatch, onOpenPatch, onR
           title="Duplicate the selected patch"
         >
           Dup
+        </button>
+        <button
+          className="palette-btn"
+          onClick={onGenPatch}
+          disabled={disabled}
+          title="Generate a whole patch from a prompt (uses your OpenRouter key)"
+        >
+          Gen
         </button>
       </div>
 

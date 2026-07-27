@@ -19,6 +19,8 @@ interface Props {
   onOpenPatch: (id: string) => void;
   /** Rename a saved patch (and any open tab for it). */
   onRenamePatch: (id: string, name: string) => void;
+  /** Open the AI prompt editor to generate a whole patch. */
+  onGenPatch: () => void;
 }
 
 const SPLIT_KEY = "faustmod.embedSplit";
@@ -39,7 +41,15 @@ const FAUST_DOCS = "https://faustdoc.grame.fr/manual/syntax/";
  * double-click to edit, rename (✎) and delete (×), drag onto the canvas. Dirty
  * (saved-but-not-compiled) modules show an amber dot.
  */
-export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenPatch, onRenamePatch }: Props) {
+export function ModulePanel({
+  disabled,
+  onEdit,
+  onNewPatch,
+  onLoadPatch,
+  onOpenPatch,
+  onRenamePatch,
+  onGenPatch,
+}: Props) {
   const [panelCollapsed, togglePanel] = usePanelCollapsed("faustmod.panel.modules");
   const [query, setQuery] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -161,6 +171,7 @@ export function ModulePanel({ disabled, onEdit, onNewPatch, onLoadPatch, onOpenP
           onLoadPatch={onLoadPatch}
           onOpenPatch={onOpenPatch}
           onRenamePatch={onRenamePatch}
+          onGenPatch={onGenPatch}
           onCollapse={togglePanel}
         />
       </section>

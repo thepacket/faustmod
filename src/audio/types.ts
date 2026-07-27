@@ -45,6 +45,12 @@ export interface AudioUnit {
   /** Set the emitted value of a Constant unit. No-op elsewhere. */
   setValue(value: number): void;
   /**
+   * Override the resting value of control input `i` — the value the port holds while
+   * nothing is wired into it. Only units with control inputs implement it; a wired port
+   * keeps the override for when the connection is removed.
+   */
+  setParam?(i: number, value: number): void;
+  /**
    * Toggle whether input port `i` has an external connection. When connected, the
    * port's fallback default source (if any) is detached so the external signal
    * drives it; when disconnected, the default is restored.

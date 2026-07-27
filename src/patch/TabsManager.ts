@@ -36,6 +36,9 @@ export class TabsManager {
   /** Called just before the active tab is left (switch/close/new) — lets App flush a
    *  pending autosave of the active tab before its editor state is replaced/discarded. */
   onBeforeLeaveTab: (() => void) | null = null;
+  /** Audio started or stopped underneath the UI (see `load`) — keeps App's Start/Stop
+   *  button and status in step. `errors` carries any node failures from the restart. */
+  onPlayingChange: ((playing: boolean, errors: string[]) => void) | null = null;
 
   constructor(private pm: PatchManager) {}
 
@@ -45,9 +48,12 @@ export class TabsManager {
     this.onChange?.();
   }
 
-  /** Blank the editor (no tab open): stop audio and clear the graph. */
+  /** Blank the editor (no tab open): stop audio and clear the graph. Nothing is left to
+   *  play, so unlike `load` this one stays stopped — the UI has to follow it down. */
   private async loadEmpty(): Promise<void> {
+    const wasPlaying = AudioGraph.isLive;
     await AudioGraph.stop();
+    if (wasPlaying) this.onPlayingChange?.(false, []);
     await this.pm.applyPatchObject({ ...emptyPatch(), nodes: [], connections: [] });
     this.pm.setIdentity({ name: "Untitled", handle: null, dirty: false });
   }
@@ -82,11 +88,23 @@ export class TabsManager {
     t.handle = id.handle;
   }
 
+  /**
+   * Swap the editor over to `t`: stop audio, load the patch, then start again if it was
+   * playing. The stop is what makes the load safe — every unit of the outgoing graph is
+   * disposed before the incoming nodes are realized — but leaving it stopped stranded the
+   * UI, which still showed Stop while nothing was running. Restarting is also the only way
+   * the new patch gets realized at all, since nodes only build while the graph is live.
+   */
   private async load(t: Tab): Promise<void> {
+    const wasPlaying = AudioGraph.isLive;
     await AudioGraph.stop();
     await this.pm.applyPatchObject(t.patch);
     // applyPatchObject rebuilds the graph (which flags dirty); restore stored identity.
     this.pm.setIdentity({ name: t.name, handle: t.handle, dirty: t.dirty });
+    if (wasPlaying) {
+      const errors = await AudioGraph.start();
+      this.onPlayingChange?.(true, errors);
+    }
   }
 
   async switchTo(index: number): Promise<void> {

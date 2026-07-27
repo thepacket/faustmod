@@ -20,7 +20,7 @@ function inputTip(spec: InputSpec): string {
       bits.push(`range ${spec.min}–${spec.max}`);
     }
   } else {
-    bits.push("signal input");
+    bits.push("signal input · rests at 0 when unconnected");
   }
   const meta = bits.join(" · ");
   return spec.tooltip ? `${spec.tooltip}\n${meta}` : meta;
@@ -34,7 +34,8 @@ function outputTip(spec: OutputSpec): string {
 /**
  * A rete node backed by a library component. Input/output ports come from the
  * component's declared ports. Only Constant nodes carry an inline value control;
- * all other values arrive by wiring a node into a control input.
+ * every other value is either the control input's own adjustable default (edited on
+ * the port itself) or a signal wired into that input, which takes over while connected.
  *
  * `tips` maps each socket key to documentation shown as a hover tooltip; `tooltip`
  * documents the node itself. These are read by the themed node renderer.
@@ -46,6 +47,13 @@ export class DspNode extends ClassicPreset.Node {
   readonly tips: Record<string, string> = {};
   /** The declared spec (label/default/range/tooltip) per input socket key. */
   readonly inputSpecs: Record<string, InputSpec> = {};
+  /** Per-instance overrides of control-input defaults, by socket key ("in-1"). */
+  paramValues: Record<string, number> = {};
+  /** Input socket keys that currently have a connection — the renderer greys their
+   *  value field, since an incoming signal drives the port instead. */
+  connectedInputs = new Set<string>();
+  /** Set by the editor; pushes an edited control-input default into the audio graph. */
+  onParamChange: ((nodeId: string, key: string, value: number) => void) | null = null;
 
   // Widget nodes (scope, meters, sequencer…) render a custom body.
   readonly widget?: string;

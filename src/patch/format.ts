@@ -14,6 +14,11 @@ export interface PatchNode {
   /** User-renamed node title (absent = the component's default title). */
   label?: string;
   value?: number;
+  /**
+   * Adjusted resting values for this node's control inputs, keyed by socket ("in-1").
+   * Only inputs the user changed appear; the rest use the component's declared default.
+   */
+  params?: Record<string, number>;
   /** Widget node size (resizable widgets). */
   size?: { w: number; h: number };
   /** Widget node state (e.g. sequencer notes). */

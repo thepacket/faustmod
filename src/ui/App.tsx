@@ -16,12 +16,13 @@ import { AboutModal } from "./AboutModal";
 import { SettingsModal } from "./SettingsModal";
 import { PresetModal } from "./PresetModal";
 import { CodeEditor } from "./CodeEditor";
-import { faustLang } from "./editorLangs";
+import { faustLang, patchLang } from "./editorLangs";
 import { ModuleEditBridge } from "../editor/widgets/ModuleEditBridge";
 import { RecordBridge } from "../editor/widgets/RecordBridge";
 import { ContextMenuBridge, type ContextMenuTarget } from "../editor/widgets/ContextMenuBridge";
 import { SavedPatches } from "../patch/savedPatches";
 import { emptyPatch, parsePatch, PATCH_EXTENSION } from "../patch/format";
+import { validatePatch } from "../patch/validate";
 import { buildAiBrief } from "../patch/aiBrief";
 import { buildBackup, importBackup } from "../patch/backup";
 import { download } from "../patch/download";
@@ -57,6 +58,8 @@ export function App() {
   const [activeTab, setActiveTab] = useState(0);
   const [modal, setModal] = useState<ModalKind>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
+  // Patches → Gen: the AI prompt editor for generating a whole patch.
+  const [genPatch, setGenPatch] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<ContextMenuTarget | null>(null);
 
   useEffect(() => {
@@ -113,6 +116,12 @@ export function App() {
         mgr.markDirty();
         scheduleAutosave(mgr, tabsMgr);
       });
+      // Opening/switching a patch cycles the audio engine (stop → load → start). Follow it
+      // so the Start/Stop button never claims to be playing a graph that was torn down.
+      tabsMgr.onPlayingChange = (isPlaying, errors) => {
+        setPlaying(isPlaying);
+        setStatus(errors.length ? `⚠ ${errors.length} node(s) failed — ${errors[0]}` : "");
+      };
       // Capture the final edit before a tab switch/close discards it, and on page unload.
       tabsMgr.onBeforeLeaveTab = flushAutosave;
       window.addEventListener("beforeunload", flushAutosave);
@@ -241,6 +250,20 @@ export function App() {
     }
   };
 
+  // Edit → Fold Constants: dissolve Constant nodes into the control inputs they feed.
+  const foldConstants = async () => {
+    const r = await ed()?.foldConstants();
+    if (!r) return;
+    if (!r.folded && !r.kept) {
+      setStatus("No constants in this patch");
+    } else {
+      setStatus(
+        `Folded ${r.folded} value(s) into their inputs, removed ${r.removed} constant(s)` +
+          (r.kept ? ` — kept ${r.kept} that can't be folded` : ""),
+      );
+    }
+  };
+
   const uniquePatchName = (base: string) => {
     const taken = new Set(SavedPatches.all().map((p) => p.name));
     let name = base;
@@ -279,6 +302,21 @@ export function App() {
       }
     };
     input.click();
+  };
+
+  // Take a generated patch document, add it to the library and open it in a tab. Shared
+  // by the Gen editor's Done button; throws so the editor can show the parse/validate
+  // error and offer Fix.
+  const openGeneratedPatch = async (json: string) => {
+    const patch = parsePatch(json);
+    const issues = validatePatch(patch);
+    if (issues.length) throw new Error(issues.join("\n"));
+    const name = uniquePatchName(patch.name?.trim() || "Generated");
+    const id = `saved-${Date.now().toString(36)}`;
+    const stored = { ...patch, name };
+    SavedPatches.add({ id, name, patch: stored });
+    await tabsRef.current?.openPatch(structuredClone(stored), id);
+    setStatus(`Generated patch "${name}"`);
   };
 
   const openSavedPatch = (id: string) => {
@@ -383,6 +421,8 @@ export function App() {
         { label: "Delete", shortcut: "⌫", onClick: () => void ed()?.removeSelected() },
         { label: "Select All", shortcut: "⌘A", onClick: () => void ed()?.selectAll() },
         { separator: true },
+        { label: "Fold Constants", onClick: () => void foldConstants() },
+        { separator: true },
         { label: "Align Left", onClick: () => void ed()?.alignSelected("left") },
         { label: "Align Center", onClick: () => void ed()?.alignSelected("center") },
         { label: "Align Right", onClick: () => void ed()?.alignSelected("right") },
@@ -477,6 +517,7 @@ export function App() {
           onLoadPatch={loadPatchFromDisk}
           onOpenPatch={openSavedPatch}
           onRenamePatch={renamePatch}
+          onGenPatch={() => setGenPatch(true)}
           onEdit={(def: ComponentDef, readOnly: boolean) => {
             if (!def.code) return;
             if (readOnly) setEditTarget({ kind: "example", title: def.title, code: def.code });
@@ -537,6 +578,20 @@ export function App() {
                   setStatus(`Saved "${editTarget.title}"`);
                 }
           }
+        />
+      )}
+
+      {genPatch && (
+        <CodeEditor
+          key="gen-patch"
+          lang={patchLang}
+          title="Generate Patch"
+          initialCode=""
+          onCancel={() => setGenPatch(false)}
+          onApply={async (json) => {
+            await openGeneratedPatch(json);
+            setGenPatch(false);
+          }}
         />
       )}
 

@@ -204,6 +204,29 @@
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(240, 165, 60, 0.28);
 }
 
+/* ---- Control input's own adjustable default (sits on the port row) ---- */
+.dsp-node input.dsp-port-value {
+  width: 58px;
+  padding: 2px 5px;
+  font-size: 11px;
+  border-radius: 5px;
+  margin-left: auto; /* hug the right edge so the labels stay aligned */
+  font-variant-numeric: tabular-nums;
+  /* Spinners would nearly double the field's width for no gain — arrows still step. */
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.dsp-node input.dsp-port-value::-webkit-outer-spin-button,
+.dsp-node input.dsp-port-value::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+/* Wired up: the incoming signal drives the port, so the value is only a fallback. */
+.dsp-node input.dsp-port-value:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 /* ---- Connections: soft glowing signal cables ---- */
 .body .canvas svg[data-testid="connection"] path {
   stroke: #b8bdc9;

@@ -49,6 +49,8 @@ interface NodeData {
   value?: number;
   code?: string;
   overrideInputs?: InputSpec[];
+  /** Per-node adjusted resting values for control inputs, by port index. */
+  params?: ReadonlyMap<number, number>;
   state?: Record<string, unknown>;
   /** Register widgets in Monitors (top-level only — embedded widgets have no UI). */
   registerMonitors: boolean;
@@ -75,6 +77,9 @@ class AudioGraphImpl {
   private desiredNodes = new Map<string, string>(); // nodeId -> componentId
   private conns = new Map<string, Conn>(); // connId -> Conn
   private values = new Map<string, number>(); // nodeId -> constant value
+  // nodeId -> (input index -> adjusted resting value). A control input with no entry
+  // rests at the component's declared default.
+  private params = new Map<string, Map<number, number>>();
   // Per-node edited Faust source (module editor). When present, the node compiles
   // this source instead of loading its precompiled factory.
   private overrides = new Map<string, { code: string; inputs: InputSpec[] }>();
@@ -123,6 +128,7 @@ class AudioGraphImpl {
   async removeNode(nodeId: string) {
     this.desiredNodes.delete(nodeId);
     this.values.delete(nodeId);
+    this.params.delete(nodeId);
     this.overrides.delete(nodeId);
     Monitors.delete(nodeId);
     for (const [id, c] of this.conns) {
@@ -148,6 +154,17 @@ class AudioGraphImpl {
   setValue(nodeId: string, value: number) {
     this.values.set(nodeId, value);
     if (this.live) void this.units.get(nodeId)?.then((u) => u?.setValue(value));
+  }
+
+  /**
+   * Adjust the resting value of one control input — what the port holds when nothing is
+   * wired into it. Takes effect immediately on a live unit, no rebuild.
+   */
+  setParam(nodeId: string, index: number, value: number) {
+    let byIndex = this.params.get(nodeId);
+    if (!byIndex) this.params.set(nodeId, (byIndex = new Map()));
+    byIndex.set(index, value);
+    if (this.live) void this.units.get(nodeId)?.then((u) => u?.setParam?.(index, value));
   }
 
   // ---- playback ----------------------------------------------------------
@@ -182,6 +199,7 @@ class AudioGraphImpl {
     this.desiredNodes.clear();
     this.conns.clear();
     this.values.clear();
+    this.params.clear();
     this.overrides.clear();
   }
 
@@ -202,6 +220,7 @@ class AudioGraphImpl {
         return await this.createUnit(ctx, def, {
           nodeId,
           value: this.values.get(nodeId),
+          params: this.params.get(nodeId),
           code: override?.code,
           overrideInputs: override?.inputs,
           registerMonitors: true,
@@ -239,7 +258,7 @@ class AudioGraphImpl {
     if (data.code) {
       const compiled = await FaustService.compile(`${def.id}-edit`, data.code);
       const worklet = await FaustService.createNode(compiled, ctx);
-      return new FaustUnit(ctx, worklet, data.overrideInputs ?? def.inputs);
+      return new FaustUnit(ctx, worklet, data.overrideInputs ?? def.inputs, data.params);
     }
     switch (def.kind) {
       case "output":
@@ -264,7 +283,7 @@ class AudioGraphImpl {
       case "module": {
         // Ported Faust example: precompiled factory + params-as-control-inputs.
         const worklet = await FaustService.createFactoryNode(def.id, ctx);
-        return new ModuleUnit(ctx, worklet, def.inputs);
+        return new ModuleUnit(ctx, worklet, def.inputs, data.params);
       }
       case "widget": {
         let widgetUnit: AudioUnit;
@@ -426,7 +445,7 @@ class AudioGraphImpl {
           // Built-in block: load its precompiled WASM factory (no compiler).
           worklet = await FaustService.createFactoryNode(def.id, ctx);
         }
-        return new FaustUnit(ctx, worklet, def.inputs);
+        return new FaustUnit(ctx, worklet, def.inputs, data.params);
       }
     }
   }
@@ -459,6 +478,9 @@ class AudioGraphImpl {
       const unit = await this.createUnit(ctx, cdef, {
         nodeId: n.id,
         value: n.value,
+        // An embedded patch has no UI of its own, so its nodes' adjusted control-input
+        // defaults come straight from the stored document.
+        params: n.params && new Map(Object.entries(n.params).map(([k, v]) => [socketIndex(k), v])),
         code: n.code,
         state: n.state,
         registerMonitors: false,

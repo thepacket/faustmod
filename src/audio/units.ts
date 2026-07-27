@@ -34,15 +34,20 @@ export class FaustUnit implements AudioUnit {
   private merger: ChannelMergerNode | null = null;
   private splitter: ChannelSplitterNode | null = null;
   private ports: (
-    | { kind: "audio"; channel: number; def: ConstantSourceNode | null }
-    | { kind: "param"; gain: GainNode; param: AudioParam; init: number }
+    | { kind: "audio"; channel: number; def: ConstantSourceNode | null; connected: boolean }
+    | { kind: "param"; gain: GainNode; param: AudioParam; init: number; connected: boolean }
     | null
   )[] = [];
 
+  /**
+   * `params` overrides the resting value of individual control inputs by port index —
+   * the node's own adjusted defaults, which win over the component's declared ones.
+   */
   constructor(
-    ctx: BaseAudioContext,
+    private ctx: BaseAudioContext,
     private worklet: FaustMonoAudioWorkletNode,
     inputs: InputSpec[],
+    params?: ReadonlyMap<number, number>,
   ) {
     const numAudioIn = worklet.getNumInputs();
     this.numOutputs = worklet.getNumOutputs();
@@ -57,30 +62,56 @@ export class FaustUnit implements AudioUnit {
       (worklet as unknown as AudioNode).connect(this.splitter);
     }
 
-    const params = (worklet as unknown as AudioWorkletNode).parameters;
+    const workletParams = (worklet as unknown as AudioWorkletNode).parameters;
     let audioIdx = 0;
     inputs.forEach((spec, i) => {
-      const param = spec.paramPath ? findParam(params, spec.paramPath) : undefined;
+      const resting = params?.get(i) ?? spec.default;
+      const param = spec.paramPath ? findParam(workletParams, spec.paramPath) : undefined;
       if (param) {
-        const init = spec.default ?? param.defaultValue;
+        const init = resting ?? param.defaultValue;
         param.value = init;
         const gain = ctx.createGain();
         gain.connect(param);
-        this.ports[i] = { kind: "param", gain, param, init };
+        this.ports[i] = { kind: "param", gain, param, init, connected: false };
       } else if (this.merger && audioIdx < numAudioIn) {
         const channel = audioIdx++;
         let def: ConstantSourceNode | null = null;
-        if (spec.default !== undefined) {
+        // Every input rests at a value: a control input's declared default, or 0 for a
+        // plain signal input. A resting 0 is what silence already sounds like, so no node
+        // is allocated for it — setParam creates one on demand if it's edited off zero.
+        const rest = resting ?? 0;
+        if (rest !== 0) {
           def = ctx.createConstantSource();
-          def.offset.value = spec.default;
+          def.offset.value = rest;
           def.connect(this.merger, 0, channel);
           def.start();
         }
-        this.ports[i] = { kind: "audio", channel, def };
+        this.ports[i] = { kind: "audio", channel, def, connected: false };
       } else {
         this.ports[i] = null;
       }
     });
+  }
+
+  /** Adjust an input's resting value. Applied now if the port is unwired, and remembered
+   *  either way so unplugging a connection falls back to the new value. */
+  setParam(i: number, value: number) {
+    const p = this.ports[i];
+    if (!p || !Number.isFinite(value)) return;
+    if (p.kind === "param") {
+      p.init = value;
+      if (!p.connected) p.param.value = value;
+      return;
+    }
+    if (p.def) {
+      p.def.offset.value = value;
+    } else if (value !== 0 && this.merger) {
+      // Ports resting at 0 carry no source (see the constructor); make one now.
+      p.def = this.ctx.createConstantSource();
+      p.def.offset.value = value;
+      p.def.start();
+      if (!p.connected) p.def.connect(this.merger, 0, p.channel);
+    }
   }
 
   input(i: number) {
@@ -100,6 +131,7 @@ export class FaustUnit implements AudioUnit {
   onInputConnected(i: number, connected: boolean) {
     const p = this.ports[i];
     if (!p) return;
+    p.connected = connected;
     try {
       if (p.kind === "param") {
         // While wired, zero the param so the incoming signal is the sole driver.
@@ -143,15 +175,17 @@ export class ModuleUnit implements AudioUnit {
   private splitter: ChannelSplitterNode | null = null;
   // Per input port: either an audio channel index, or a driven AudioParam.
   private ports: (
-    | { kind: "audio"; channel: number }
-    | { kind: "param"; gain: GainNode; param: AudioParam; init: number }
+    | { kind: "audio"; channel: number; def: ConstantSourceNode | null; connected: boolean }
+    | { kind: "param"; gain: GainNode; param: AudioParam; init: number; connected: boolean }
     | null
   )[] = [];
 
+  /** `params` overrides input resting values by port index (see FaustUnit). */
   constructor(
-    ctx: BaseAudioContext,
+    private ctx: BaseAudioContext,
     private worklet: FaustMonoAudioWorkletNode,
     inputs: InputSpec[],
+    paramValues?: ReadonlyMap<number, number>,
   ) {
     const numAudioIn = worklet.getNumInputs();
     this.numOutputs = worklet.getNumOutputs();
@@ -172,16 +206,25 @@ export class ModuleUnit implements AudioUnit {
       if (spec.paramPath) {
         const param = params.get(spec.paramPath);
         if (param) {
-          const init = spec.default ?? param.defaultValue;
+          const init = paramValues?.get(i) ?? spec.default ?? param.defaultValue;
           param.value = init;
           const gain = ctx.createGain();
           gain.connect(param);
-          this.ports[i] = { kind: "param", gain, param, init };
+          this.ports[i] = { kind: "param", gain, param, init, connected: false };
         } else {
           this.ports[i] = null; // param address not found on the node
         }
       } else if (this.merger && audioIdx < numAudioIn) {
-        this.ports[i] = { kind: "audio", channel: audioIdx++ };
+        const channel = audioIdx++;
+        let def: ConstantSourceNode | null = null;
+        const rest = paramValues?.get(i) ?? spec.default ?? 0;
+        if (rest !== 0) {
+          def = ctx.createConstantSource();
+          def.offset.value = rest;
+          def.connect(this.merger, 0, channel);
+          def.start();
+        }
+        this.ports[i] = { kind: "audio", channel, def, connected: false };
       } else {
         this.ports[i] = null;
       }
@@ -199,13 +242,44 @@ export class ModuleUnit implements AudioUnit {
     return { node: this.splitter as AudioNode, channel: i };
   }
   setValue() {}
+  setParam(i: number, value: number) {
+    const p = this.ports[i];
+    if (!p || !Number.isFinite(value)) return;
+    if (p.kind === "param") {
+      p.init = value;
+      if (!p.connected) p.param.value = value;
+      return;
+    }
+    if (p.def) {
+      p.def.offset.value = value;
+    } else if (value !== 0 && this.merger) {
+      p.def = this.ctx.createConstantSource();
+      p.def.offset.value = value;
+      p.def.start();
+      if (!p.connected) p.def.connect(this.merger, 0, p.channel);
+    }
+  }
   onInputConnected(i: number, connected: boolean) {
     const p = this.ports[i];
-    if (p?.kind === "param") p.param.value = connected ? 0 : p.init;
+    if (!p) return;
+    p.connected = connected;
+    if (p.kind === "param") {
+      p.param.value = connected ? 0 : p.init;
+    } else if (p.def && this.merger) {
+      try {
+        if (connected) p.def.disconnect();
+        else p.def.connect(this.merger, 0, p.channel);
+      } catch {
+        /* already in the desired state */
+      }
+    }
   }
   dispose() {
     try {
-      for (const p of this.ports) if (p?.kind === "param") p.gain.disconnect();
+      for (const p of this.ports) {
+        if (p?.kind === "param") p.gain.disconnect();
+        else if (p?.kind === "audio" && p.def) (p.def.disconnect(), p.def.stop());
+      }
       this.merger?.disconnect();
       this.splitter?.disconnect();
       (this.worklet as unknown as AudioNode).disconnect();

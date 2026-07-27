@@ -82,6 +82,9 @@ export interface EditorHandle {
   copySelection(): void;
   paste(): Promise<void>;
   selectAll(): Promise<void>;
+  /** Fold Constant nodes into the control inputs they feed, then delete them.
+   *  Returns what happened, for a status message. */
+  foldConstants(): Promise<{ folded: number; removed: number; kept: number }>;
   clear(): Promise<void>;
   snapshot(): GraphSnapshot;
   load(snapshot: GraphSnapshot): Promise<void>;
@@ -143,6 +146,17 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
   WidgetBridge.zoom = () => area.area.transform.k;
 
   // --- mirror editor events into the live audio graph ---------------------
+  // A control input's inline value field greys out while something is wired into it, so
+  // the node has to know which of its inputs are connected — and re-render when that
+  // changes. (Rete's Input carries no connection list of its own.)
+  const markConnected = (nodeId: string, inputKey: string, connected: boolean) => {
+    const node = editor.getNode(nodeId) as DspNode | undefined;
+    if (!node) return;
+    if (connected) node.connectedInputs.add(inputKey);
+    else node.connectedInputs.delete(inputKey);
+    void area.update("node", nodeId);
+  };
+
   editor.addPipe((ctx) => {
     if (ctx.type === "connectioncreated") {
       const c = ctx.data;
@@ -152,9 +166,12 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         dst: c.target,
         dstIdx: indexFromKey(c.targetInput),
       });
+      markConnected(c.target, c.targetInput as string, true);
       notifyChange();
     } else if (ctx.type === "connectionremoved") {
-      void AudioGraph.removeConn(ctx.data.id);
+      const c = ctx.data;
+      void AudioGraph.removeConn(c.id);
+      markConnected(c.target, c.targetInput as string, false);
       notifyChange();
     } else if (ctx.type === "nodecreated") {
       notifyChange();
@@ -233,6 +250,16 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     notifyChange();
   };
 
+  // An edited control-input default: straight into the live graph (no rebuild), then
+  // mark the patch dirty so it autosaves. The re-render matters — the field writes into
+  // the node's paramValues directly, which React can't see, so without this the input
+  // snaps back to the previous value even though the new one took effect.
+  const onParamChange = (nodeId: string, key: string, value: number) => {
+    AudioGraph.setParam(nodeId, indexFromKey(key), value);
+    void area.update("node", nodeId);
+    notifyChange();
+  };
+
   // Instantiate a node from a def, optionally with an edited-source override (module
   // editor). The override compiles `code` instead of loading the stock factory, and
   // `def` must already carry ports derived from that code.
@@ -241,14 +268,21 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     position?: { x: number; y: number },
     overrideCode?: string,
     state?: Record<string, unknown>,
+    params?: Record<string, number>,
   ): Promise<DspNode> => {
     const node = new DspNode(def, onValueChange);
-    // Restore widget state (knob/slider value, sequencer notes…) BEFORE the node mounts,
-    // so the React widget reads it in its initial render instead of the def default.
+    node.onParamChange = onParamChange;
+    // Restore widget state (knob/slider value, sequencer notes…) and adjusted control-input
+    // defaults BEFORE the node mounts, so the React body reads them in its initial render
+    // instead of the def defaults.
     if (state) node.widgetState = { ...state };
+    if (params) node.paramValues = { ...params };
     await editor.addNode(node);
 
     AudioGraph.setNode(node.id, def.id);
+    for (const [key, v] of Object.entries(node.paramValues)) {
+      AudioGraph.setParam(node.id, indexFromKey(key), v);
+    }
     if (overrideCode) {
       node.code = overrideCode;
       AudioGraph.setOverride(node.id, overrideCode, def.inputs);
@@ -603,6 +637,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         position: view ? { x: view.position.x, y: view.position.y } : { x: 0, y: 0 },
         label: def && n.label !== def.title ? n.label : undefined,
         value: valueCtrl ? Number(valueCtrl.value) : undefined,
+        params: Object.keys(n.paramValues).length ? { ...n.paramValues } : undefined,
         size:
           isWidget && n.width != null && n.height != null
             ? { w: n.width, h: n.height }
@@ -637,7 +672,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         console.warn(`Unknown component "${n.componentId}" in snapshot — skipped`);
         continue;
       }
-      const node = await instantiate(def, n.position, n.code || undefined, n.state);
+      const node = await instantiate(def, n.position, n.code || undefined, n.state, n.params);
       idMap.set(n.id, node.id);
       if (def.kind === "constant" && typeof n.value === "number") {
         const ctrl = node.controls.value as ClassicPreset.InputControl<"number">;
@@ -677,6 +712,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
       position: { x: number; y: number };
       label?: string;
       value?: number;
+      params?: Record<string, number>;
       size?: { w: number; h: number };
       state?: Record<string, unknown>;
       code?: string;
@@ -698,6 +734,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         position: view ? { x: view.position.x, y: view.position.y } : { x: 0, y: 0 },
         label: n.label,
         value: n.componentId === "constant" && ctrl ? Number(ctrl.value) : undefined,
+        params: Object.keys(n.paramValues).length ? { ...n.paramValues } : undefined,
         size: n.width && n.height ? { w: n.width, h: n.height } : undefined,
         state:
           n.widgetState && Object.keys(n.widgetState).length
@@ -734,6 +771,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
         { x: n.position.x + dx, y: n.position.y + dy },
         n.code || undefined,
         n.state ? structuredClone(n.state) : undefined,
+        n.params,
       );
       idMap.set(n.id, copy.id);
       if (n.label) (copy as unknown as { label: string }).label = n.label;
@@ -783,6 +821,70 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
 
   const selectAll: EditorHandle["selectAll"] = async () => {
     for (const node of editor.getNodes()) await selectable.select(node.id, true);
+  };
+
+  /**
+   * "Fold Constants": every Constant node that only feeds control inputs is dissolved into
+   * them — its value becomes each target port's own adjustable default — and the node and
+   * its wires go away. Same sound, far less canvas.
+   *
+   * A constant is KEPT whenever any of its wires can't be folded, so nothing is ever
+   * silently dropped: signal inputs have no default to hold a value, and widget/embedded-
+   * patch units have no setParam, so only faust and module targets qualify.
+   */
+  const foldConstants: EditorHandle["foldConstants"] = async () => {
+    let folded = 0;
+    let removed = 0;
+    let kept = 0;
+
+    for (const node of editor.getNodes() as DspNode[]) {
+      if (node.componentId !== "constant") continue;
+      const ctrl = node.controls.value as ClassicPreset.InputControl<"number"> | undefined;
+      const value = Number(ctrl?.value ?? 0);
+      if (!Number.isFinite(value)) continue;
+
+      const wires = (editor.getConnections() as unknown as Conn[]).filter(
+        (c) => c.source === node.id,
+      );
+      if (!wires.length) {
+        kept++; // nothing attached — there is no parameter to fold it into
+        continue;
+      }
+
+      // Every input of a Faust node can hold a value (a signal input rests at 0), so the
+      // only unfoldable targets are units without setParam: widgets, embedded patches,
+      // and the output node.
+      const foldable = wires.filter((c) => {
+        const target = editor.getNode(c.target) as DspNode | undefined;
+        if (!target) return false;
+        const kind = resolveComponent(target.componentId)?.kind;
+        return kind === "faust" || kind === "module";
+      });
+
+      for (const c of foldable) {
+        const target = editor.getNode(c.target) as DspNode;
+        const key = c.targetInput as string;
+        const spec = target.inputSpecs[key];
+        // Clamp exactly as the inline field does — a constant could hold anything, and an
+        // out-of-range control value is what makes a feedback filter blow up to NaN.
+        const v = Math.min(spec.max ?? Infinity, Math.max(spec.min ?? -Infinity, value));
+        target.paramValues[key] = v;
+        AudioGraph.setParam(target.id, indexFromKey(key), v);
+        await editor.removeConnection(c.id);
+        await area.update("node", target.id);
+        folded++;
+      }
+
+      if (foldable.length === wires.length) {
+        await editor.removeNode(node.id);
+        removed++;
+      } else {
+        kept++; // still feeding something that can't hold a value of its own
+      }
+    }
+
+    if (folded) notifyChange();
+    return { folded, removed, kept };
   };
 
   const zoomToFit: EditorHandle["zoomToFit"] = async () => {
@@ -1058,6 +1160,7 @@ export async function createEditor(container: HTMLElement): Promise<EditorHandle
     copySelection,
     paste,
     selectAll,
+    foldConstants,
     clear,
     snapshot,
     load,

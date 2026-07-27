@@ -35,10 +35,13 @@ export function buildAiBrief(): string {
     .map(describe)
     .join("\n");
   return `You are helping build patches for FaustMod, a modular audio synthesis IDE.
-DSP blocks are Faust; parameters are AUDIO-RATE control inputs (not knobs). An input
-with a default (e.g. freq=220) uses that default when unconnected. To set or vary a value,
-wire a source into that input: a "constant" node for a fixed value, or a control widget
-(knob, slider-v/slider-h, xypad) for a settable one; sequencers/keyboard emit note data.
+DSP blocks are Faust; parameters are AUDIO-RATE control inputs (not knobs). An input with a
+default (e.g. freq=220) uses that default when unconnected, and each node can override that
+default for itself via "params" (see the file format) — that is the simplest way to set a
+fixed value, no extra node required. To VARY a value over time, wire a source into the
+input: a "constant" node for a fixed value you want visible on the canvas, or a control
+widget (knob, slider-v/slider-h, xypad) for a settable one; sequencers/keyboard emit note
+data. A connected input ignores "params" for as long as it stays connected.
 Every audible patch routes signal into the "output" node's in-0 (L) and in-1 (R).
 "mono-to-stereo" duplicates a mono signal.
 
@@ -47,7 +50,7 @@ Every audible patch routes signal into the "output" node's in-0 (L) and in-1 (R)
   "format": "${PATCH_FORMAT}", "version": ${PATCH_VERSION}, "name": "My Patch",
   "customBlocks": [ /* optional; see block format below, minus "format" */ ],
   "nodes": [
-    { "id": "osc1", "componentId": "<catalog id or custom block id>", "position": {"x":0,"y":0} },
+    { "id": "osc1", "componentId": "<catalog id or custom block id>", "position": {"x":0,"y":0}, "params": {"in-1": 0.8} },
     { "id": "k1", "componentId": "constant", "position": {"x":-200,"y":0}, "value": 440 },
     { "id": "out", "componentId": "output", "position": {"x":400,"y":0} }
   ],
@@ -55,6 +58,11 @@ Every audible patch routes signal into the "output" node's in-0 (L) and in-1 (R)
     { "id": "c1", "source": "k1", "sourceOutput": "out-0", "target": "osc1", "targetInput": "in-0" }
   ]
 }
+"params" is optional and keyed by input port ("in-1"), holding that port's resting value
+for this node only; omit it to keep the port's own default (a control input's declared
+default, or 0 for a signal input). Control-input values must stay inside the declared
+min/max. It only works on Faust blocks — widget and embedded-patch nodes ignore it, so
+wire a signal into those. Note the JSON you produce must contain no comments.
 
 == Custom block format (paste into "Import Block") ==
 {

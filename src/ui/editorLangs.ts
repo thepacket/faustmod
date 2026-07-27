@@ -1,6 +1,8 @@
 import type { Extension } from "@codemirror/state";
-import { generateDsp } from "../ai/openrouter";
+import { generateDsp, generatePatch } from "../ai/openrouter";
 import { FaustService } from "../audio/FaustService";
+import { parsePatch } from "../patch/format";
+import { validatePatch } from "../patch/validate";
 import { faustLanguage } from "./editor/faustLanguage";
 import { faustEditorTheme, faustHighlighting } from "./editor/faustTheme";
 
@@ -34,5 +36,29 @@ export const faustLang: EditorLang = {
     const first = message.split("\n")[0].trim();
     const m = first.match(/^[^\s:]+:(\d+)\s*:\s*ERROR\s*:\s*(.*)$/i);
     return m ? `Line ${m[1]}: ${m[2]}` : first;
+  },
+};
+
+/**
+ * Whole-patch generation (Patches → Gen). The document is a `.faustmod` JSON file rather
+ * than source, so "compile" means parse + validate against the real catalog; the Fix
+ * button then hands any problems back to the model. No JSON syntax mode is bundled —
+ * CodeMirror's bracket matching and the shared theme are enough for generated JSON.
+ */
+export const patchLang: EditorLang = {
+  extensions: [faustEditorTheme],
+  promptKey: "faustmod.patchPrompt",
+  promptPlaceholder:
+    "Describe the patch to make… (uses your OpenRouter key — set it in File → Settings). ⌘/Ctrl+Enter.",
+  generate: generatePatch,
+  compile: async (json) => {
+    const patch = parsePatch(json);
+    const issues = validatePatch(patch);
+    if (issues.length) throw new Error(issues.join("\n"));
+    return `✓ Valid — ${patch.nodes.length} nodes · ${patch.connections.length} connections`;
+  },
+  formatError: (message) => {
+    const lines = message.split("\n").filter((l) => l.trim());
+    return lines.length > 1 ? `${lines[0]} (+${lines.length - 1} more)` : (lines[0] ?? message);
   },
 };

@@ -8,6 +8,8 @@ import { WidgetBridge, type WidgetNode } from "../widgets/WidgetBridge";
 import { ModuleEditBridge } from "../widgets/ModuleEditBridge";
 import { ContextMenuBridge } from "../widgets/ContextMenuBridge";
 import { resolveComponent } from "../../components/customBlocks";
+import { PortValue } from "./PortValue";
+import type { InputSpec } from "../../audio/types";
 import type { MouseEvent } from "react";
 
 // Ref components from the classic preset — they register each socket/control with
@@ -27,6 +29,10 @@ interface NodeData extends ClassicPreset.Node {
   selected?: boolean;
   tooltip?: string;
   tips?: Record<string, string>;
+  inputSpecs?: Record<string, InputSpec>;
+  paramValues?: Record<string, number>;
+  connectedInputs?: Set<string>;
+  onParamChange?: ((nodeId: string, key: string, value: number) => void) | null;
   widget?: string;
   widgetConfig?: Record<string, unknown>;
   widgetState?: Record<string, unknown>;
@@ -86,8 +92,26 @@ export function ThemedNode(props: Props) {
     WidgetBridge.onChange();
   };
 
-  const inputPort = ([key, input]: Entry<any>) =>
-    input && (
+  // Every input of a Faust node rests at an editable value: a control input's declared
+  // default, or 0 for a plain signal input. Only FaustUnit/ModuleUnit implement setParam,
+  // so nodes backed by anything else (widgets, embedded patches, output) get no field —
+  // showing one there would accept edits and quietly not apply them.
+  const editableInputs = (() => {
+    const kind = componentId ? resolveComponent(componentId)?.kind : undefined;
+    return kind === "faust" || kind === "module";
+  })();
+  const specOf = (key: string) => props.data.inputSpecs?.[key];
+  const restingValue = (key: string, spec: InputSpec) =>
+    props.data.paramValues?.[key] ?? spec.default ?? 0;
+  const commitParam = (key: string) => (value: number) => {
+    (props.data.paramValues ??= {})[key] = value;
+    props.data.onParamChange?.(id, key, value);
+  };
+
+  const inputPort = ([key, input]: Entry<any>) => {
+    if (!input) return null;
+    const spec = specOf(key);
+    return (
       <div
         className="dsp-port dsp-input"
         key={key}
@@ -104,8 +128,17 @@ export function ThemedNode(props: Props) {
           payload={input.socket}
         />
         <span className="dsp-port-label">{input.label}</span>
+        {editableInputs && spec && (
+          <PortValue
+            spec={spec}
+            value={restingValue(key, spec)}
+            connected={!!props.data.connectedInputs?.has(key)}
+            onCommit={commitParam(key)}
+          />
+        )}
       </div>
     );
+  };
   const outputPort = ([key, output]: Entry<any>) =>
     output && (
       <div className="dsp-port dsp-output" key={key} data-testid={`output-${key}`} data-tip={tip(key)}>
@@ -241,32 +274,7 @@ export function ThemedNode(props: Props) {
 
       {!isConstant && !isWidget && (hasInputs || hasOutputs) && (
         <div className="dsp-io">
-          {hasInputs && (
-            <div className="dsp-col dsp-inputs">
-              {inputEntries.map(
-                ([key, input]) =>
-                  input && (
-                    <div
-                      className="dsp-port dsp-input"
-                      key={key}
-                      data-testid={`input-${key}`}
-                      data-tip={tip(key)}
-                      onContextMenu={onInputContext(key, input.label)}
-                    >
-                      <RefSocket
-                        name="input-socket"
-                        side="input"
-                        socketKey={key}
-                        nodeId={id}
-                        emit={props.emit}
-                        payload={input.socket}
-                      />
-                      <span className="dsp-port-label">{input.label}</span>
-                    </div>
-                  ),
-              )}
-            </div>
-          )}
+          {hasInputs && <div className="dsp-col dsp-inputs">{inputEntries.map(inputPort)}</div>}
 
           {hasOutputs && (
             <div className="dsp-col dsp-outputs">
